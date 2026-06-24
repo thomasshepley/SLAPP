@@ -1283,7 +1283,6 @@ const SEED: FixtureSeed[] = [
     colour: { cri: 95, tlci: 96, cctRange: { minK: 2300, maxK: 10000 }, hasColourMixing: true },
     beam: { angleDeg: 15, fieldAngleDeg: 45 },
     weightKg: 9.2,
-    powerW: 720,
   },
   {
     seedKey: 'aputure-electro-storm-cs15',
@@ -1328,7 +1327,6 @@ const SEED: FixtureSeed[] = [
     colour: { cri: 95, tlci: 96, cctRange: { minK: 2300, maxK: 10000 }, hasColourMixing: true },
     beam: { angleDeg: 15, fieldAngleDeg: 45 },
     weightKg: 14.5,
-    powerW: 1500,
   },
   {
     seedKey: 'aputure-electro-storm-xt26',
@@ -1373,7 +1371,6 @@ const SEED: FixtureSeed[] = [
     colour: { cri: 95, tlci: 96, cctRange: { minK: 2300, maxK: 10000 }, hasColourMixing: true },
     beam: { angleDeg: 15, fieldAngleDeg: 45 },
     weightKg: 22.0,
-    powerW: 2600,
   },
   {
     seedKey: 'aputure-nova-p300c',
@@ -1417,7 +1414,6 @@ const SEED: FixtureSeed[] = [
     colour: { cri: 95, tlci: 97, cctRange: { minK: 2000, maxK: 10000 }, hasColourMixing: true },
     beam: { angleDeg: 120 },
     weightKg: 8.5,
-    powerW: 350,
   },
   {
     seedKey: 'aputure-amaran-300c',
@@ -1459,7 +1455,6 @@ const SEED: FixtureSeed[] = [
     colour: { cri: 95, tlci: 95, cctRange: { minK: 2500, maxK: 7500 }, hasColourMixing: true },
     beam: { angleDeg: 15, fieldAngleDeg: 45 },
     weightKg: 2.8,
-    powerW: 300,
   },
   {
     seedKey: 'aputure-amaran-150c',
@@ -1501,7 +1496,6 @@ const SEED: FixtureSeed[] = [
     colour: { cri: 95, tlci: 95, cctRange: { minK: 2500, maxK: 7500 }, hasColourMixing: true },
     beam: { angleDeg: 15, fieldAngleDeg: 45 },
     weightKg: 1.9,
-    powerW: 150,
   },
   {
     seedKey: 'aputure-amaran-f22c',
@@ -1543,7 +1537,6 @@ const SEED: FixtureSeed[] = [
     colour: { cri: 95, tlci: 96, cctRange: { minK: 2500, maxK: 7500 }, hasColourMixing: true },
     beam: { angleDeg: 130 },
     weightKg: 1.6,
-    powerW: 200,
   },
   {
     seedKey: 'aputure-infinibar-pb6',
@@ -1585,7 +1578,6 @@ const SEED: FixtureSeed[] = [
     colour: { cri: 95, tlci: 96, cctRange: { minK: 2000, maxK: 10000 }, hasColourMixing: true },
     beam: { angleDeg: 120 },
     weightKg: 1.2,
-    powerW: 60,
   },
 
   // ---------------------------------------------------------------------------
@@ -1633,7 +1625,6 @@ const SEED: FixtureSeed[] = [
     colour: { cri: 95, tlci: 90, cctRange: { minK: 2800, maxK: 10000 }, hasColourMixing: true },
     beam: { angleDeg: 105 },
     weightKg: 47.0,
-    powerW: 1500,
   },
   {
     seedKey: 'arri-l5-c',
@@ -1672,7 +1663,6 @@ const SEED: FixtureSeed[] = [
     colour: { cri: 94, tlci: 90, cctRange: { minK: 2800, maxK: 10000 }, hasColourMixing: true },
     beam: { zoomRangeDeg: { minDeg: 15, maxDeg: 50 } },
     weightKg: 7.6,
-    powerW: 115,
   },
   {
     seedKey: 'arri-l7-c',
@@ -1711,7 +1701,6 @@ const SEED: FixtureSeed[] = [
     colour: { cri: 94, tlci: 90, cctRange: { minK: 2800, maxK: 10000 }, hasColourMixing: true },
     beam: { zoomRangeDeg: { minDeg: 15, maxDeg: 50 } },
     weightKg: 11.4,
-    powerW: 200,
   },
   {
     seedKey: 'arri-l10-c',
@@ -1750,7 +1739,6 @@ const SEED: FixtureSeed[] = [
     colour: { cri: 94, tlci: 90, cctRange: { minK: 2800, maxK: 10000 }, hasColourMixing: true },
     beam: { zoomRangeDeg: { minDeg: 15, maxDeg: 50 } },
     weightKg: 14.0,
-    powerW: 400,
   },
 
   // ---------------------------------------------------------------------------
@@ -1809,7 +1797,6 @@ const SEED: FixtureSeed[] = [
     colour: { cri: 96, tlci: 95, cctRange: { minK: 1750, maxK: 20000 }, hasColourMixing: true },
     beam: { angleDeg: 180 },
     weightKg: 1.1,
-    powerW: 36,
   },
   {
     seedKey: 'astera-ax3-lightdrop',
@@ -1853,7 +1840,6 @@ const SEED: FixtureSeed[] = [
     colour: { cri: 96, tlci: 95, cctRange: { minK: 1750, maxK: 20000 }, hasColourMixing: true },
     beam: { angleDeg: 110 },
     weightKg: 0.45,
-    powerW: 15,
   },
   {
     seedKey: 'astera-nyx-bulb',
@@ -1896,7 +1882,6 @@ const SEED: FixtureSeed[] = [
     colour: { cri: 96, tlci: 95, cctRange: { minK: 1750, maxK: 20000 }, hasColourMixing: true },
     beam: { angleDeg: 320 },
     weightKg: 0.12,
-    powerW: 8,
   },
   {
     seedKey: 'astera-leofresnel',
@@ -1944,7 +1929,6 @@ const SEED: FixtureSeed[] = [
     colour: { cri: 96, tlci: 95, cctRange: { minK: 1750, maxK: 20000 }, hasColourMixing: true },
     beam: { zoomRangeDeg: { minDeg: 15, maxDeg: 60 } },
     weightKg: 8.9,
-    powerW: 300,
   },
 
   // ---------------------------------------------------------------------------
@@ -1983,7 +1967,6 @@ const SEED: FixtureSeed[] = [
     colour: { cri: 95, tlci: 96, cctRange: { minK: 2700, maxK: 6500 } },
     beam: { angleDeg: 14, fieldAngleDeg: 45 },
     weightKg: 18.5,
-    powerW: 2600,
   },
   {
     seedKey: 'nanlux-dyno-650c',
@@ -2030,7 +2013,6 @@ const SEED: FixtureSeed[] = [
     colour: { cri: 95, tlci: 96, cctRange: { minK: 2700, maxK: 10000 }, hasColourMixing: true },
     beam: { angleDeg: 110 },
     weightKg: 13.0,
-    powerW: 650,
   },
   {
     seedKey: 'nanlux-tk-450b',
@@ -2065,7 +2047,6 @@ const SEED: FixtureSeed[] = [
     colour: { cri: 96, tlci: 97, cctRange: { minK: 2700, maxK: 5600 } },
     beam: { angleDeg: 14, fieldAngleDeg: 45 },
     weightKg: 6.2,
-    powerW: 450,
   },
 
   // ---------------------------------------------------------------------------
@@ -2102,7 +2083,6 @@ const SEED: FixtureSeed[] = [
     colour: { cri: 96, tlci: 97, nativeCct: 5600 },
     beam: { angleDeg: 12, fieldAngleDeg: 40 },
     weightKg: 1.2,
-    powerW: 70,
   },
   {
     seedKey: 'nanlite-forza-150',
@@ -2135,7 +2115,6 @@ const SEED: FixtureSeed[] = [
     colour: { cri: 96, tlci: 97, nativeCct: 5600 },
     beam: { angleDeg: 12, fieldAngleDeg: 40 },
     weightKg: 2.0,
-    powerW: 170,
   },
   {
     seedKey: 'nanlite-pavotube-ii-15x',
@@ -2186,7 +2165,6 @@ const SEED: FixtureSeed[] = [
     colour: { cri: 95, tlci: 96, cctRange: { minK: 2700, maxK: 7500 }, hasColourMixing: true },
     beam: { angleDeg: 180 },
     weightKg: 0.55,
-    powerW: 15,
   },
   {
     seedKey: 'nanlite-pavotube-ii-6c',
@@ -2229,7 +2207,6 @@ const SEED: FixtureSeed[] = [
     colour: { cri: 95, tlci: 96, cctRange: { minK: 2700, maxK: 7500 }, hasColourMixing: true },
     beam: { angleDeg: 180 },
     weightKg: 0.28,
-    powerW: 9,
   },
   {
     seedKey: 'nanlite-fc-500b',
@@ -2264,7 +2241,6 @@ const SEED: FixtureSeed[] = [
     colour: { cri: 96, tlci: 97, cctRange: { minK: 2700, maxK: 6500 } },
     beam: { angleDeg: 12, fieldAngleDeg: 45 },
     weightKg: 4.4,
-    powerW: 500,
   },
   {
     seedKey: 'nanlite-compac-200',
@@ -2294,7 +2270,6 @@ const SEED: FixtureSeed[] = [
     colour: { cri: 96, tlci: 96, nativeCct: 5600 },
     beam: { angleDeg: 120 },
     weightKg: 3.2,
-    powerW: 200,
   },
 
   // ---------------------------------------------------------------------------
@@ -2334,7 +2309,6 @@ const SEED: FixtureSeed[] = [
     colour: { cri: 96, tlci: 97, cctRange: { minK: 2800, maxK: 6500 } },
     beam: { angleDeg: 15, fieldAngleDeg: 45 },
     weightKg: 12.2,
-    powerW: 1300,
   },
   {
     seedKey: 'godox-knowled-m200d',
@@ -2367,7 +2341,6 @@ const SEED: FixtureSeed[] = [
     colour: { cri: 96, tlci: 97, nativeCct: 5600 },
     beam: { angleDeg: 15, fieldAngleDeg: 45 },
     weightKg: 3.0,
-    powerW: 230,
   },
   {
     seedKey: 'godox-knowled-p300r',
@@ -2411,7 +2384,6 @@ const SEED: FixtureSeed[] = [
     colour: { cri: 96, tlci: 96, cctRange: { minK: 2500, maxK: 10000 }, hasColourMixing: true },
     beam: { angleDeg: 110 },
     weightKg: 7.0,
-    powerW: 320,
   },
   {
     seedKey: 'godox-vl150',
@@ -2444,7 +2416,6 @@ const SEED: FixtureSeed[] = [
     colour: { cri: 96, tlci: 96, nativeCct: 5600 },
     beam: { angleDeg: 16, fieldAngleDeg: 50 },
     weightKg: 2.5,
-    powerW: 150,
   },
   {
     seedKey: 'godox-sl150-iii',
@@ -2477,7 +2448,6 @@ const SEED: FixtureSeed[] = [
     colour: { cri: 96, tlci: 96, nativeCct: 5600 },
     beam: { angleDeg: 16, fieldAngleDeg: 50 },
     weightKg: 2.3,
-    powerW: 190,
   },
 
   // ---------------------------------------------------------------------------
@@ -2525,7 +2495,6 @@ const SEED: FixtureSeed[] = [
     colour: { cri: 96, tlci: 96, cctRange: { minK: 2700, maxK: 10000 }, hasColourMixing: true },
     beam: { angleDeg: 80 },
     weightKg: 4.5,
-    powerW: 325,
   },
   {
     seedKey: 'litepanels-gemini-1x1-soft',
@@ -2569,7 +2538,6 @@ const SEED: FixtureSeed[] = [
     colour: { cri: 96, tlci: 96, cctRange: { minK: 2700, maxK: 10000 }, hasColourMixing: true },
     beam: { angleDeg: 110 },
     weightKg: 4.5,
-    powerW: 325,
   },
   {
     seedKey: 'litepanels-astra-6x',
@@ -2602,7 +2570,6 @@ const SEED: FixtureSeed[] = [
     colour: { cri: 96, tlci: 95, cctRange: { minK: 2700, maxK: 6500 } },
     beam: { angleDeg: 65 },
     weightKg: 3.2,
-    powerW: 130,
   },
 
   // ---------------------------------------------------------------------------
@@ -2649,7 +2616,6 @@ const SEED: FixtureSeed[] = [
     colour: { cri: 95, tlci: 96, cctRange: { minK: 2200, maxK: 15000 }, hasColourMixing: true },
     beam: { angleDeg: 115 },
     weightKg: 9.8,
-    powerW: 650,
   },
   {
     seedKey: 'creamsource-vortex4',
@@ -2692,7 +2658,6 @@ const SEED: FixtureSeed[] = [
     colour: { cri: 95, tlci: 96, cctRange: { minK: 2200, maxK: 15000 }, hasColourMixing: true },
     beam: { angleDeg: 115 },
     weightKg: 6.0,
-    powerW: 325,
   },
   {
     seedKey: 'creamsource-spacex',
@@ -2735,7 +2700,6 @@ const SEED: FixtureSeed[] = [
     colour: { cri: 95, tlci: 96, cctRange: { minK: 2200, maxK: 15000 }, hasColourMixing: true },
     beam: { angleDeg: 140 },
     weightKg: 18.0,
-    powerW: 1200,
   },
 
   // ---------------------------------------------------------------------------
@@ -2780,7 +2744,6 @@ const SEED: FixtureSeed[] = [
     colour: { cri: 95, tlci: 96, cctRange: { minK: 2000, maxK: 6000 }, hasColourMixing: true },
     beam: { angleDeg: 240 },
     weightKg: 1.4,
-    powerW: 75,
   },
   {
     seedKey: 'quasar-double-rainbow',
@@ -2821,7 +2784,6 @@ const SEED: FixtureSeed[] = [
     colour: { cri: 95, tlci: 96, cctRange: { minK: 2000, maxK: 6000 }, hasColourMixing: true },
     beam: { angleDeg: 270 },
     weightKg: 1.6,
-    powerW: 90,
   },
   {
     seedKey: 'quasar-crossfade',
@@ -2854,7 +2816,6 @@ const SEED: FixtureSeed[] = [
     colour: { cri: 95, tlci: 95, cctRange: { minK: 2000, maxK: 6000 } },
     beam: { angleDeg: 240 },
     weightKg: 1.3,
-    powerW: 65,
   },
 
   // ---------------------------------------------------------------------------
@@ -2900,7 +2861,6 @@ const SEED: FixtureSeed[] = [
     colour: { cri: 96, tlci: 97, cctRange: { minK: 1700, maxK: 10000 }, hasColourMixing: true },
     beam: { angleDeg: 115 },
     weightKg: 3.0,
-    powerW: 230,
   },
   {
     seedKey: 'dmg-maxi-mix',
@@ -2942,7 +2902,6 @@ const SEED: FixtureSeed[] = [
     colour: { cri: 96, tlci: 97, cctRange: { minK: 1700, maxK: 10000 }, hasColourMixing: true },
     beam: { angleDeg: 115 },
     weightKg: 8.5,
-    powerW: 700,
   },
   {
     seedKey: 'dmg-mini-mix',
@@ -2984,7 +2943,6 @@ const SEED: FixtureSeed[] = [
     colour: { cri: 96, tlci: 97, cctRange: { minK: 1700, maxK: 10000 }, hasColourMixing: true },
     beam: { angleDeg: 115 },
     weightKg: 1.6,
-    powerW: 115,
   },
 
   // ---------------------------------------------------------------------------
@@ -3022,7 +2980,6 @@ const SEED: FixtureSeed[] = [
     colour: { cri: 95, tlci: 92, cctRange: { minK: 2700, maxK: 5500 } },
     beam: { angleDeg: 120 },
     weightKg: 8.6,
-    powerW: 300,
   },
   {
     seedKey: 'kinoflo-diva-lite-30-led',
@@ -3056,7 +3013,6 @@ const SEED: FixtureSeed[] = [
     colour: { cri: 95, tlci: 92, cctRange: { minK: 2700, maxK: 5500 } },
     beam: { angleDeg: 120 },
     weightKg: 4.5,
-    powerW: 200,
   },
   {
     seedKey: 'kinoflo-freestyle-31',
@@ -3093,7 +3049,6 @@ const SEED: FixtureSeed[] = [
     colour: { cri: 95, tlci: 93, cctRange: { minK: 2500, maxK: 9900 }, hasColourMixing: true },
     beam: { angleDeg: 120 },
     weightKg: 2.0,
-    powerW: 100,
   },
 ];
 
