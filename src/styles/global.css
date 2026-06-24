@@ -431,6 +431,19 @@ code {
   min-height: 28px;
 }
 
+.topbar-settings {
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  padding: 4px;
+  border-radius: 8px;
+  transition: color 0.15s;
+}
+
+.topbar-settings:hover {
+  color: var(--accent);
+}
+
 /* --- Fixture picker (tabbed) --- */
 .fixture-picker {
   display: flex;
@@ -591,6 +604,31 @@ code {
 }
 
 .mode-tab-active {
+  background: var(--accent);
+  color: #1a1300;
+  border-color: var(--accent);
+  font-weight: 600;
+}
+
+/* --- Home page --- */
+.home-group-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin: 28px 0 4px;
+}
+
+.home-quick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0 8px;
+}
+
+.home-quick-actions .chip {
+  text-decoration: none;
   background: var(--accent);
   color: #1a1300;
   border-color: var(--accent);

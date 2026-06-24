@@ -1,25 +1,95 @@
-import { useState } from 'react';
-import { Result, Select, ToolCard, ToolPage } from '@/components/ui';
+import { useRef, useState } from 'react';
+import { Result, Select, TextInput, ToolCard, ToolPage } from '@/components/ui';
 import { useFixtures } from '@/hooks/useLibrary';
+import { fixtureRepo } from '@/db';
+import { parseGdtf } from '@/services/gdtf';
 import { DEFAULT_PHOTOMETRY_KEY, type Fixture, type FixtureMode } from '@/models/fixture';
 
 export function FixtureLibrary() {
   const fixtures = useFixtures();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [activeMode, setActiveMode] = useState<Record<string, string>>({});
+  const [search, setSearch] = useState('');
   const [a, setA] = useState('');
   const [b, setB] = useState('');
   const fxA = fixtures.find((f) => f.id === a);
   const fxB = fixtures.find((f) => f.id === b);
 
-  const grouped = groupByManufacturer(fixtures);
+  const [importStatus, setImportStatus] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const filtered = search.trim()
+    ? fixtures.filter((f) => {
+        const q = search.trim().toLowerCase();
+        return (
+          f.manufacturer.toLowerCase().includes(q) ||
+          f.model.toLowerCase().includes(q) ||
+          (f.category ?? '').toLowerCase().includes(q)
+        );
+      })
+    : fixtures;
+
+  const grouped = groupByManufacturer(filtered);
+
+  const handleGdtfImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files?.length) return;
+    let imported = 0;
+    let warnings: string[] = [];
+    for (const file of Array.from(files)) {
+      try {
+        const buf = await file.arrayBuffer();
+        const result = parseGdtf(buf);
+        await fixtureRepo.put(result.fixture);
+        imported++;
+        if (result.warnings.length) warnings.push(...result.warnings.map((w) => `${file.name}: ${w}`));
+      } catch (err) {
+        warnings.push(`${file.name}: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      }
+    }
+    setImportStatus(
+      `Imported ${imported} fixture${imported !== 1 ? 's' : ''}` +
+        (warnings.length ? `. Warnings: ${warnings.join('; ')}` : '.'),
+    );
+    if (fileRef.current) fileRef.current.value = '';
+    setTimeout(() => setImportStatus(null), 8000);
+  };
+
+  const handleDelete = async (fx: Fixture) => {
+    if (!confirm(`Delete "${fx.manufacturer} ${fx.model}" from the library?`)) return;
+    await fixtureRepo.delete(fx.id);
+    if (expandedId === fx.id) setExpandedId(null);
+  };
 
   return (
     <ToolPage
-      section={3}
       title="Fixture Library"
-      intro={`${fixtures.length} fixtures across ${grouped.length} brands.`}
+      intro={`${fixtures.length} fixtures across ${groupByManufacturer(fixtures).length} brands.`}
     >
+      <ToolCard title="Search & Import">
+        <TextInput value={search} onChange={setSearch} placeholder="Search by name, brand, or type..." />
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          <label className="btn" style={{ cursor: 'pointer' }}>
+            Import .gdtf
+            <input
+              ref={fileRef}
+              type="file"
+              accept=".gdtf,.zip"
+              multiple
+              style={{ display: 'none' }}
+              onChange={handleGdtfImport}
+            />
+          </label>
+          <span className="muted" style={{ fontSize: '0.82rem' }}>
+            Download .gdtf files from gdtf-share.com
+          </span>
+        </div>
+        {importStatus && <p className="status-line">{importStatus}</p>}
+        {search && filtered.length === 0 && (
+          <p className="muted">No fixtures match "{search}".</p>
+        )}
+      </ToolCard>
+
       {grouped.map(([brand, brandFixtures]) => (
         <ToolCard key={brand} title={`${brand} (${brandFixtures.length})`}>
           <ul className="fixture-list">
@@ -77,7 +147,16 @@ export function FixtureLibrary() {
                           <Result label="CCT" value={f.colour.nativeCct} unit="K" />
                         )}
                         <Result label="Dimming curve" value={f.photometry[DEFAULT_PHOTOMETRY_KEY]?.dimmingCurve.type ?? '—'} />
+                        <Result label="Source" value={f.source.origin} />
                       </div>
+
+                      <button
+                        className="chip"
+                        style={{ alignSelf: 'flex-start', color: '#ff5c5c', borderColor: '#ff5c5c40' }}
+                        onClick={() => handleDelete(f)}
+                      >
+                        Delete fixture
+                      </button>
                     </div>
                   )}
                 </li>
@@ -163,7 +242,7 @@ function groupByManufacturer(fixtures: Fixture[]): [string, Fixture[]][] {
 }
 
 const pickOptions = (fixtures: Fixture[]) => [
-  { value: '', label: 'Select…' },
+  { value: '', label: 'Select...' },
   ...fixtures.map((f) => ({ value: f.id, label: `${f.manufacturer} ${f.model}` })),
 ];
 
