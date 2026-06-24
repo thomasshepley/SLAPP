@@ -373,6 +373,37 @@ code {
   font-size: 0.9rem;
 }
 
+/* Plot tagging */
+.plot-canvas {
+  display: block;
+  border-radius: 8px;
+  border: 1px solid var(--surface-2);
+  touch-action: manipulation;
+  cursor: crosshair;
+  max-width: 100%;
+}
+
+.plot-tag {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  background: var(--accent);
+  color: #1a1300;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 999px;
+  pointer-events: none;
+  white-space: nowrap;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.4);
+}
+
+.tag-edit {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
+
 /* Print: show only the cheat sheet, in print-friendly black on white. */
 .print-only {
   display: none;

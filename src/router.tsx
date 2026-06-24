@@ -1,3 +1,4 @@
+import { lazy, Suspense, type ReactNode } from 'react';
 import { createBrowserRouter } from 'react-router-dom';
 import { App } from './App';
 import { Home } from './features/Home';
@@ -11,6 +12,16 @@ import { StopsTool } from './features/stops/StopsTool';
 import { FixtureLibrary } from './features/fixtures/FixtureLibrary';
 import { Shows } from './features/shows/Shows';
 import { ShowfileMacro } from './features/showfile/ShowfileMacro';
+
+// Plot import pulls in pdf.js (large); load it only when the route is opened
+// so the app shell stays small and boots fast offline.
+const PlotImport = lazy(() =>
+  import('./features/plot/PlotImport').then((m) => ({ default: m.PlotImport })),
+);
+
+const lazyRoute = (node: ReactNode): ReactNode => (
+  <Suspense fallback={<div className="page muted">Loading…</div>}>{node}</Suspense>
+);
 
 export const router = createBrowserRouter([
   {
@@ -27,7 +38,8 @@ export const router = createBrowserRouter([
       { path: 'f/fixtures', element: <FixtureLibrary /> },
       { path: 'f/shows', element: <Shows /> },
       { path: 'f/showfile', element: <ShowfileMacro /> },
-      // Console and plot still use the placeholder shell.
+      { path: 'f/plot', element: lazyRoute(<PlotImport />) },
+      // Console still uses the placeholder shell (needs hardware to integrate).
       { path: 'f/:featureId', element: <Placeholder /> },
     ],
   },
