@@ -26,6 +26,7 @@ jobs:
       - run: npm run build
         env:
           BASE_URL: /slapp/
+      - run: cp dist/index.html dist/404.html
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
