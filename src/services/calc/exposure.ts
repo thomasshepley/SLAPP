@@ -54,4 +54,67 @@ export function checkFlicker(
   return { safe, flickerHz, nearestSafe: Array.from(new Set([lower, upper])) };
 }
 
+// --- Exposure triangle ----------------------------------------------------
+
+/** Standard full-stop f-numbers. */
+export const F_STOPS = [1.0, 1.4, 2.0, 2.8, 4.0, 5.6, 8.0, 11, 16, 22, 32];
+
+export interface ExposureSuggestion {
+  fNumber: number;
+  iso: number;
+  /** Shutter as the x in 1/x seconds. */
+  shutter: number;
+}
+
+/**
+ * Solve the exposure equation N² / t = (L · S) / K for aperture, given a lux
+ * reading, ISO and shutter speed. K = 12.5 (reflected) is the usual stills
+ * constant; for an incident reading the EV is the same, so this lines up with
+ * {@link luxToEv100}. Returns the exact f-number and the nearest standard stop.
+ */
+export function apertureForExposure(
+  lux: Lux,
+  iso: number,
+  shutter: number, // 1/x s
+): { exact: number; nearestStop: number } {
+  const t = 1 / shutter;
+  const ev100 = luxToEv100(lux);
+  // EV at this ISO: EV = EV100 + log2(ISO/100)
+  const ev = ev100 + Math.log2(iso / 100);
+  // 2^EV = N²/t  →  N = sqrt(2^EV · t)
+  const nSquared = Math.pow(2, ev) * t;
+  const exact = Math.sqrt(Math.max(0, nSquared));
+  return { exact: round2(exact), nearestStop: nearestFStop(exact) };
+}
+
+/**
+ * Build a row of equivalent exposures (same EV) around a base, walking ISO and
+ * shutter so a DoP can pick a working combination. Useful when matching a
+ * required depth of field or motion-blur shutter.
+ */
+export function equivalentExposures(
+  lux: Lux,
+  isos: number[],
+  shutters: number[],
+): ExposureSuggestion[] {
+  const out: ExposureSuggestion[] = [];
+  for (const iso of isos) {
+    for (const shutter of shutters) {
+      const { nearestStop } = apertureForExposure(lux, iso, shutter);
+      out.push({ fNumber: nearestStop, iso, shutter });
+    }
+  }
+  return out;
+}
+
+function nearestFStop(n: number): number {
+  let best = F_STOPS[0]!;
+  for (const f of F_STOPS) {
+    if (Math.abs(Math.log2(f) - Math.log2(n)) < Math.abs(Math.log2(best) - Math.log2(n))) {
+      best = f;
+    }
+  }
+  return best;
+}
+
 const round2 = (n: number): number => Math.round(n * 100) / 100;

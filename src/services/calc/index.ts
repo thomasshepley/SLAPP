@@ -4,3 +4,5 @@ export * from './stops';
 export * from './colour';
 export * from './exposure';
 export * from './power';
+export * from './sun';
+export * from './reference';
