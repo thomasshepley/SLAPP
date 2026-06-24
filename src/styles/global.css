@@ -356,3 +356,19 @@ code {
   color: var(--accent);
   font-weight: 600;
 }
+
+.show-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px;
+  background: var(--surface-2);
+  border-radius: 10px;
+  flex-wrap: wrap;
+}
+
+.status-line {
+  color: var(--accent);
+  font-size: 0.9rem;
+}

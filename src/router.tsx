@@ -9,6 +9,7 @@ import { PowerTools } from './features/power/PowerTools';
 import { ReferenceTools } from './features/reference/ReferenceTools';
 import { StopsTool } from './features/stops/StopsTool';
 import { FixtureLibrary } from './features/fixtures/FixtureLibrary';
+import { Shows } from './features/shows/Shows';
 
 export const router = createBrowserRouter([
   {
@@ -23,7 +24,8 @@ export const router = createBrowserRouter([
       { path: 'f/reference', element: <ReferenceTools /> },
       { path: 'f/stops', element: <StopsTool /> },
       { path: 'f/fixtures', element: <FixtureLibrary /> },
-      // Console, shows, showfile and plot still use the placeholder shell.
+      { path: 'f/shows', element: <Shows /> },
+      // Console, showfile and plot still use the placeholder shell.
       { path: 'f/:featureId', element: <Placeholder /> },
     ],
   },
