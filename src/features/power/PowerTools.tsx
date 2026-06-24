@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Field, NumberInput, Result, Select, ToolCard, ToolPage } from '@/components/ui';
+import { FixturePicker } from '@/components/FixturePicker';
 import { computePowerBudget } from '@/services/calc';
 import { CABLE_RATINGS, deratedCapacity, recommendCable } from '@/services/calc';
 import { useFixtures } from '@/hooks/useLibrary';
@@ -20,7 +21,7 @@ function PowerBudgetCalc() {
   const [items, setItems] = useState<PowerBudgetItem[]>([]);
   const [voltage, setVoltage] = useState<number | ''>(230);
   const [distro, setDistro] = useState<number | ''>(32);
-  const [picker, setPicker] = useState('');
+  const [picker, setPicker] = useState<FixtureId | ''>('');
   const [qty, setQty] = useState<number | ''>(1);
 
   const result = useMemo(
@@ -46,6 +47,7 @@ function PowerBudgetCalc() {
         perUnitW: mode?.powerW ?? 0,
       },
     ]);
+    setPicker('');
   };
 
   const nameOf = (id: FixtureId) => {
@@ -60,14 +62,7 @@ function PowerBudgetCalc() {
         <Field label="Distro rating"><NumberInput value={distro} onChange={setDistro} suffix="A" /></Field>
       </div>
       <Field label="Add fixture">
-        <Select
-          value={picker}
-          onChange={setPicker}
-          options={[
-            { value: '', label: 'Select…' },
-            ...fixtures.map((f) => ({ value: f.id, label: `${f.manufacturer} ${f.model}` })),
-          ]}
-        />
+        <FixturePicker value={picker} onChange={(id) => setPicker(id)} />
       </Field>
       <div className="row2">
         <Field label="Quantity"><NumberInput value={qty} onChange={setQty} min={1} /></Field>

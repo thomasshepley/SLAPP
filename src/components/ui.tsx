@@ -136,19 +136,18 @@ export function ToolCard({ title, children }: { title?: string; children: ReactN
 }
 
 export function ToolPage({
-  section,
+  section: _section,
   title,
   intro,
   children,
 }: {
-  section: number;
+  section?: number;
   title: string;
   intro?: string;
   children: ReactNode;
 }) {
   return (
     <section className="page">
-      <p className="eyebrow">Section {section}</p>
       <h1>{title}</h1>
       {intro && <p className="muted">{intro}</p>}
       <div className="tool-stack">{children}</div>

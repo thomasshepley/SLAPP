@@ -1,12 +1,15 @@
 import { useMemo, useState } from 'react';
 import { Field, NumberInput, Select, TextInput, ToolCard, ToolPage } from '@/components/ui';
+import { FixturePicker } from '@/components/FixturePicker';
 import { useFixtures } from '@/hooks/useLibrary';
 import { useShows } from '@/hooks/useShows';
+import { useActiveShow } from '@/hooks/useActiveShow';
 import { showRepo } from '@/db';
 import { defaultUniverseProfile } from '@/services/show';
 import { packPatch, type PackRequest } from '@/services/patch/packer';
 import type { Fixture } from '@/models/fixture';
 import type { FixtureId, ShowId } from '@/models/common';
+import type { UniverseAssignment } from '@/models/patch';
 
 interface DraftLine extends PackRequest {
   key: string;
@@ -15,21 +18,30 @@ interface DraftLine extends PackRequest {
 export function ShowfileMacro() {
   const fixtures = useFixtures();
   const shows = useShows();
+  const { show: activeShow } = useActiveShow();
   const [lines, setLines] = useState<DraftLine[]>([]);
   const [status, setStatus] = useState<string | null>(null);
 
-  // Add-line form state.
-  const [pick, setPick] = useState('');
+  const [pick, setPick] = useState<FixtureId | ''>('');
   const [mode, setMode] = useState('');
   const [qty, setQty] = useState<number | ''>(4);
   const [label, setLabel] = useState('');
 
+  const [universeConfig, setUniverseConfig] = useState<UniverseAssignment[]>(() =>
+    defaultUniverseProfile().universes,
+  );
+
   const picked = fixtures.find((f) => f.id === pick);
   const fxMap = useMemo(() => new Map(fixtures.map((f) => [f.id, f])), [fixtures]);
 
+  const profile = useMemo(
+    () => ({ name: 'Custom', universes: universeConfig }),
+    [universeConfig],
+  );
+
   const result = useMemo(
-    () => packPatch(lines, defaultUniverseProfile(), fxMap),
-    [lines, fxMap],
+    () => packPatch(lines, profile, fxMap),
+    [lines, profile, fxMap],
   );
 
   const addLine = () => {
@@ -52,9 +64,9 @@ export function ShowfileMacro() {
     const show = await showRepo.get(showId);
     if (!show) return;
     show.patch = result.items;
-    show.universeProfile = defaultUniverseProfile();
+    show.universeProfile = profile;
     await showRepo.save(show);
-    setStatus(`Saved ${result.items.length} fixtures to “${show.name}”`);
+    setStatus(`Saved ${result.items.length} fixtures to "${show.name}"`);
   };
 
   const nameOf = (id: FixtureId) => {
@@ -62,25 +74,51 @@ export function ShowfileMacro() {
     return f ? `${f.manufacturer} ${f.model}` : id;
   };
 
+  const updateTransport = (idx: number, transport: 'wireless' | 'copper') => {
+    setUniverseConfig(universeConfig.map((u, i) => (i === idx ? { ...u, transport } : u)));
+  };
+
   return (
     <ToolPage
       section={4}
       title="New Showfile"
-      intro="Build a fixture list, auto-pack addresses across universes, then save to a show or print a cheat sheet. (Push-to-console lands with console integration.)"
+      intro="Build a fixture list, auto-pack addresses across universes, then save to a show or print a cheat sheet."
     >
+      <ToolCard title="Universes">
+        <p className="muted" style={{ fontSize: '0.85rem' }}>Set each universe as wireless or copper (sACN/Art-Net).</p>
+        <table className="dmx-table">
+          <thead>
+            <tr><th>Univ</th><th>Transport</th><th>Note</th></tr>
+          </thead>
+          <tbody>
+            {universeConfig.map((u, i) => (
+              <tr key={u.universe}>
+                <td>{u.universe}</td>
+                <td>
+                  <Select
+                    value={u.transport}
+                    onChange={(v) => updateTransport(i, v as 'wireless' | 'copper')}
+                    options={[
+                      { value: 'copper', label: 'Copper' },
+                      { value: 'wireless', label: 'Wireless' },
+                    ]}
+                  />
+                </td>
+                <td className="muted">{u.note ?? ''}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </ToolCard>
+
       <ToolCard title="Add fixtures">
         <Field label="Fixture type">
-          <Select
+          <FixturePicker
             value={pick}
-            onChange={(v) => {
-              setPick(v);
-              const f = fixtures.find((fx) => fx.id === v);
-              setMode(f?.modes[0]?.name ?? '');
+            onChange={(id, fx) => {
+              setPick(id);
+              setMode(fx?.modes[0]?.name ?? '');
             }}
-            options={[
-              { value: '', label: 'Select…' },
-              ...fixtures.map((f) => ({ value: f.id, label: `${f.manufacturer} ${f.model}` })),
-            ]}
           />
         </Field>
         {picked && (
@@ -117,10 +155,10 @@ export function ShowfileMacro() {
           <ToolCard title="Patch preview">
             {result.overflows.length > 0 && (
               <p className="status-line" style={{ color: '#ff5c5c' }}>
-                ⚠ Universe overflow — {result.overflows.reduce((s, o) => s + o.excessChannels, 0)} channels didn't fit. Add universes to the profile.
+                Universe overflow — {result.overflows.reduce((s, o) => s + o.excessChannels, 0)} channels didn't fit. Add universes to the profile.
               </p>
             )}
-            <PatchTable items={result.items} nameOf={nameOf} fixtures={fxMap} />
+            <PatchTable items={result.items} nameOf={nameOf} fixtures={fxMap} universes={universeConfig} />
           </ToolCard>
 
           <ToolCard title="Save / export">
@@ -129,8 +167,16 @@ export function ShowfileMacro() {
                 value=""
                 onChange={(v) => v && void saveToShow(v as ShowId)}
                 options={[
-                  { value: '', label: shows.length ? 'Choose a show…' : 'No saved shows yet' },
-                  ...shows.map((s) => ({ value: s.id as string, label: s.name })),
+                  {
+                    value: '',
+                    label: shows.length
+                      ? activeShow
+                        ? `Save to "${activeShow.name}"…`
+                        : 'Choose a show…'
+                      : 'No saved shows yet',
+                  },
+                  ...(activeShow ? [{ value: activeShow.id as string, label: `${activeShow.name} (active)` }] : []),
+                  ...shows.filter((s) => s.id !== activeShow?.id).map((s) => ({ value: s.id as string, label: s.name })),
                 ]}
               />
             </Field>
@@ -149,32 +195,37 @@ function PatchTable({
   items,
   nameOf,
   fixtures,
+  universes,
 }: {
   items: ReturnType<typeof packPatch>['items'];
   nameOf: (id: FixtureId) => string;
   fixtures: Map<FixtureId, Fixture>;
+  universes: UniverseAssignment[];
 }) {
   return (
     <table className="stops-table">
       <thead>
-        <tr><th>Label</th><th>Fixture</th><th>Mode</th><th>Univ</th><th>Addr</th></tr>
+        <tr><th>Label</th><th>Fixture</th><th>Mode</th><th>Univ</th><th>Transport</th><th>Addr</th></tr>
       </thead>
       <tbody>
-        {items.map((it) => (
-          <tr key={it.id}>
-            <td>{it.label}</td>
-            <td>{nameOf(it.fixtureId)}</td>
-            <td className="muted">{fixtures.get(it.fixtureId)?.modes.find((m) => m.name === it.mode)?.channelCount ?? '?'}ch</td>
-            <td>{it.universe}</td>
-            <td>{it.startAddress}</td>
-          </tr>
-        ))}
+        {items.map((it) => {
+          const uni = universes.find((u) => u.universe === it.universe);
+          return (
+            <tr key={it.id}>
+              <td>{it.label}</td>
+              <td>{nameOf(it.fixtureId)}</td>
+              <td className="muted">{fixtures.get(it.fixtureId)?.modes.find((m) => m.name === it.mode)?.channelCount ?? '?'}ch</td>
+              <td>{it.universe}</td>
+              <td className="muted">{uni?.transport ?? '—'}</td>
+              <td>{it.startAddress}</td>
+            </tr>
+          );
+        })}
       </tbody>
     </table>
   );
 }
 
-/** Print-optimised cheat sheet, hidden on screen, shown by the print stylesheet. */
 function CheatSheet({
   items,
   nameOf,

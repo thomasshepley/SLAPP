@@ -1,20 +1,20 @@
 import { Link } from 'react-router-dom';
+import { useActiveShow } from '@/hooks/useActiveShow';
 import { FEATURES } from './manifest';
 
 export function Home() {
+  const { show } = useActiveShow();
+
   return (
     <section className="page">
-      <p className="eyebrow">v0.1 scaffold</p>
       <h1>Shepley Lighting Companion</h1>
       <p className="muted">
-        Offline-first on-set companion for MA3 &amp; Titan. Pick an area — the
-        foundation (data model, IndexedDB storage, calculation engines) is built;
-        screens land on top of it next.
+        Offline-first on-set companion for film &amp; TV lighting.
+        {show ? ` Working on "${show.name}".` : ' Open or create a show to get started.'}
       </p>
       <div className="grid">
         {FEATURES.map((f) => (
           <Link key={f.id} to={`/f/${f.id}`} className="card">
-            <span className="eyebrow">Section {f.section}</span>
             <strong>{f.title}</strong>
             <span className="muted">{f.summary}</span>
           </Link>

@@ -404,6 +404,199 @@ code {
   align-items: center;
 }
 
+/* --- Active show indicator --- */
+.topbar-show {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+}
+
+.topbar-show-name {
+  color: var(--accent);
+  font-weight: 600;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.topbar-show-set {
+  background: transparent;
+  border: 1px dashed var(--muted);
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 0.78rem;
+  min-height: 28px;
+}
+
+/* --- Fixture picker (tabbed) --- */
+.fixture-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.fp-selected {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  background: var(--surface-2);
+  border-radius: 10px;
+  border: 1px solid var(--accent);
+}
+
+.fp-selected-name {
+  font-weight: 600;
+}
+
+.fp-tabs {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 2px 0;
+  scrollbar-width: none;
+}
+
+.fp-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.fp-tab {
+  background: var(--surface-2);
+  border: 1px solid #2c2c38;
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 0.82rem;
+  white-space: nowrap;
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+.fp-tab-active {
+  background: var(--accent);
+  color: #1a1300;
+  border-color: var(--accent);
+  font-weight: 600;
+}
+
+.fp-tab-count {
+  font-size: 0.72rem;
+  opacity: 0.7;
+}
+
+.fp-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.fp-item {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  background: var(--surface-2);
+  border: 1px solid transparent;
+  border-radius: 10px;
+  color: var(--text);
+  font-size: 0.95rem;
+  text-align: left;
+  min-height: 44px;
+}
+
+.fp-item:active {
+  background: var(--accent);
+  color: #1a1300;
+}
+
+.fp-item-name {
+  font-weight: 500;
+}
+
+.fp-item-meta {
+  display: flex;
+  gap: 8px;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.fp-item:active .fp-item-meta {
+  color: #1a1300;
+  opacity: 0.7;
+}
+
+.fp-manual-btn {
+  align-self: flex-start;
+  margin-bottom: 4px;
+}
+
+/* --- DMX channel table --- */
+.dmx-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.dmx-table th,
+.dmx-table td {
+  padding: 6px 8px;
+  text-align: left;
+  border-bottom: 1px solid var(--surface-2);
+}
+
+.dmx-table th {
+  color: var(--muted);
+  font-weight: 500;
+  font-size: 0.78rem;
+}
+
+.dmx-attr {
+  background: var(--surface);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  color: var(--accent);
+}
+
+/* --- Mode tabs (for fixture detail) --- */
+.mode-tabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.mode-tab {
+  background: var(--surface-2);
+  border: 1px solid #2c2c38;
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-size: 0.8rem;
+  min-height: 30px;
+}
+
+.mode-tab-active {
+  background: var(--accent);
+  color: #1a1300;
+  border-color: var(--accent);
+  font-weight: 600;
+}
+
 /* Print: show only the cheat sheet, in print-friendly black on white. */
 .print-only {
   display: none;

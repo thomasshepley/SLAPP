@@ -1,30 +1,91 @@
 import { useState } from 'react';
 import { Result, Select, ToolCard, ToolPage } from '@/components/ui';
 import { useFixtures } from '@/hooks/useLibrary';
-import { DEFAULT_PHOTOMETRY_KEY, type Fixture } from '@/models/fixture';
+import { DEFAULT_PHOTOMETRY_KEY, type Fixture, type FixtureMode } from '@/models/fixture';
 
 export function FixtureLibrary() {
   const fixtures = useFixtures();
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [activeMode, setActiveMode] = useState<Record<string, string>>({});
   const [a, setA] = useState('');
   const [b, setB] = useState('');
   const fxA = fixtures.find((f) => f.id === a);
   const fxB = fixtures.find((f) => f.id === b);
 
+  const grouped = groupByManufacturer(fixtures);
+
   return (
-    <ToolPage section={3} title="Fixture Library" intro={`${fixtures.length} fixtures. GDTF sync and PDF storage land with the sync feature.`}>
-      <ToolCard title="Library">
-        <ul className="fixture-list">
-          {fixtures.map((f) => (
-            <li key={f.id} className="fixture-row">
-              <span className="fixture-meta">
-                <strong>{f.manufacturer} {f.model}</strong>
-                <span className="muted">{f.category} · {f.modes.length} mode{f.modes.length === 1 ? '' : 's'}</span>
-              </span>
-              <span className="muted">{summarise(f)}</span>
-            </li>
-          ))}
-        </ul>
-      </ToolCard>
+    <ToolPage
+      section={3}
+      title="Fixture Library"
+      intro={`${fixtures.length} fixtures across ${grouped.length} brands.`}
+    >
+      {grouped.map(([brand, brandFixtures]) => (
+        <ToolCard key={brand} title={`${brand} (${brandFixtures.length})`}>
+          <ul className="fixture-list">
+            {brandFixtures.map((f) => {
+              const isExpanded = expandedId === f.id;
+              const currentModeName = activeMode[f.id] ?? f.modes[0]?.name ?? '';
+              const currentMode = f.modes.find((m) => m.name === currentModeName) ?? f.modes[0];
+
+              return (
+                <li key={f.id}>
+                  <button
+                    className="fixture-row"
+                    style={{ width: '100%', textAlign: 'left', cursor: 'pointer' }}
+                    onClick={() => setExpandedId(isExpanded ? null : f.id)}
+                  >
+                    <span className="fixture-meta">
+                      <strong>{f.model}</strong>
+                      <span className="muted">
+                        {f.category} · {f.modes.length} mode{f.modes.length === 1 ? '' : 's'}
+                        {' · '}{summarise(f)}
+                      </span>
+                    </span>
+                    <span className="muted" style={{ fontSize: '1.1rem' }}>{isExpanded ? '−' : '+'}</span>
+                  </button>
+
+                  {isExpanded && currentMode && (
+                    <div style={{ padding: '12px 8px 4px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                      {f.modes.length > 1 && (
+                        <div className="mode-tabs">
+                          {f.modes.map((m) => (
+                            <button
+                              key={m.name}
+                              className={`mode-tab${m.name === currentModeName ? ' mode-tab-active' : ''}`}
+                              onClick={() => setActiveMode({ ...activeMode, [f.id]: m.name })}
+                            >
+                              {m.name} ({m.channelCount}ch)
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      <DmxChart mode={currentMode} />
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        <Result label="Output @ 1m" value={lux(f)} unit="lux" />
+                        <Result label="Max power" value={maxPower(f)} unit="W" />
+                        {f.weightKg && <Result label="Weight" value={f.weightKg} unit="kg" />}
+                        {f.colour.cri && <Result label="CRI" value={f.colour.cri} />}
+                        {f.colour.tlci && <Result label="TLCI" value={f.colour.tlci} />}
+                        <Result label="Beam" value={beam(f)} unit="°" />
+                        {f.colour.cctRange && (
+                          <Result label="CCT range" value={`${f.colour.cctRange.minK}–${f.colour.cctRange.maxK}`} unit="K" />
+                        )}
+                        {f.colour.nativeCct && !f.colour.cctRange && (
+                          <Result label="CCT" value={f.colour.nativeCct} unit="K" />
+                        )}
+                        <Result label="Dimming curve" value={f.photometry[DEFAULT_PHOTOMETRY_KEY]?.dimmingCurve.type ?? '—'} />
+                      </div>
+                    </div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </ToolCard>
+      ))}
 
       <ToolCard title="Comparator">
         <div className="row2">
@@ -52,6 +113,34 @@ export function FixtureLibrary() {
   );
 }
 
+function DmxChart({ mode }: { mode: FixtureMode }) {
+  if (mode.channels.length === 0) {
+    return <p className="muted" style={{ fontSize: '0.85rem' }}>No channel detail available for this mode.</p>;
+  }
+  return (
+    <table className="dmx-table">
+      <thead>
+        <tr>
+          <th>Ch</th>
+          <th>Label</th>
+          <th>Attribute</th>
+          <th>Res</th>
+        </tr>
+      </thead>
+      <tbody>
+        {mode.channels.map((ch) => (
+          <tr key={ch.offset}>
+            <td>{ch.offset + 1}</td>
+            <td>{ch.label}</td>
+            <td><span className="dmx-attr">{ch.attribute}</span></td>
+            <td className="muted">{ch.resolution}bit</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
 function CompareRow({ label, a, b }: { label: string; a: number | string; b: number | string }) {
   const better = typeof a === 'number' && typeof b === 'number' && a !== b ? (a > b ? 'a' : 'b') : null;
   return (
@@ -61,6 +150,16 @@ function CompareRow({ label, a, b }: { label: string; a: number | string; b: num
       <td className={better === 'b' ? 'compare-best' : ''}>{b}</td>
     </tr>
   );
+}
+
+function groupByManufacturer(fixtures: Fixture[]): [string, Fixture[]][] {
+  const map = new Map<string, Fixture[]>();
+  for (const f of fixtures) {
+    const list = map.get(f.manufacturer) ?? [];
+    list.push(f);
+    map.set(f.manufacturer, list);
+  }
+  return [...map.entries()].sort(([a], [b]) => a.localeCompare(b));
 }
 
 const pickOptions = (fixtures: Fixture[]) => [
@@ -79,7 +178,7 @@ const beam = (f: Fixture): number | string =>
 function summarise(f: Fixture): string {
   const parts: string[] = [];
   const l = f.photometry[DEFAULT_PHOTOMETRY_KEY]?.luxAt1m;
-  if (l) parts.push(`${l} lux@1m`);
+  if (l) parts.push(`${l.toLocaleString()} lux@1m`);
   if (f.colour.cri) parts.push(`CRI ${f.colour.cri}`);
   return parts.join(' · ');
 }
