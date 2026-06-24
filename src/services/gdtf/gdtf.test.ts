@@ -160,3 +160,39 @@ describe('gdtfDocToFixture', () => {
     expect(warnings).toHaveLength(0);
   });
 });
+
+// A 16-bit channel occupies two DMX slots; if it is the highest-offset channel
+// the footprint must include its fine byte (regression guard).
+const TRAILING_16BIT = `<?xml version="1.0" encoding="UTF-8"?>
+<GDTF DataVersion="1.1">
+  <FixtureType Manufacturer="ACME" Name="Mover" FixtureTypeID="def-456">
+    <DMXModes>
+      <DMXMode Name="Pan16">
+        <DMXChannels>
+          <DMXChannel DMXBreak="1" Offset="1" Geometry="Head">
+            <LogicalChannel Attribute="Dimmer"><ChannelFunction Attribute="Dimmer" Name="Dim"/></LogicalChannel>
+          </DMXChannel>
+          <DMXChannel DMXBreak="1" Offset="2,3" Geometry="Head">
+            <LogicalChannel Attribute="Pan"><ChannelFunction Attribute="Pan" Name="Pan"/></LogicalChannel>
+          </DMXChannel>
+        </DMXChannels>
+      </DMXMode>
+    </DMXModes>
+  </FixtureType>
+</GDTF>`;
+
+describe('gdtfDocToFixture footprint', () => {
+  const parser = new XMLParser({
+    ignoreAttributes: false,
+    attributeNamePrefix: '@_',
+    isArray: (name) =>
+      ['DMXMode', 'DMXChannel', 'LogicalChannel', 'ChannelFunction', 'Geometry', 'Beam'].includes(name),
+  });
+
+  it('counts the fine byte of a trailing 16-bit channel', () => {
+    const { fixture } = gdtfDocToFixture(parser.parse(TRAILING_16BIT));
+    const mode = fixture.modes[0]!;
+    // Dimmer @1 (8-bit) + Pan @2,3 (16-bit) → footprint 3, not 2.
+    expect(mode.channelCount).toBe(3);
+  });
+});

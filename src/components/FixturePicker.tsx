@@ -30,14 +30,16 @@ export function FixturePicker({ value, onChange, filter, showManualOption }: Fix
   const currentBrand = activeBrand && brands.includes(activeBrand) ? activeBrand : brands[0] ?? null;
   const brandFixtures = grouped.find(([b]) => b === currentBrand)?.[1] ?? [];
 
+  const isManual = value === 'manual';
   const selected = fixtures.find((f) => f.id === value);
+  const hasSelection = isManual || !!selected;
 
   return (
     <div className="fixture-picker">
-      {selected && value && (
+      {hasSelection && (
         <div className="fp-selected">
           <span className="fp-selected-name">
-            {selected.manufacturer} {selected.model}
+            {isManual ? 'Manual entry' : `${selected!.manufacturer} ${selected!.model}`}
           </span>
           <button
             className="chip"
@@ -48,7 +50,7 @@ export function FixturePicker({ value, onChange, filter, showManualOption }: Fix
         </div>
       )}
 
-      {!value && (
+      {!hasSelection && (
         <>
           {showManualOption && (
             <button

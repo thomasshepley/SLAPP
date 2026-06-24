@@ -89,7 +89,9 @@ describe('exposure', () => {
   });
 
   it('converts lux to EV100', () => {
-    expect(luxToEv100(2500)).toBeCloseTo(Math.log2(2500 / 250), 5);
+    // Incident relation EV100 = log2(lux/2.5); 2500 lux ≈ EV 10.
+    expect(luxToEv100(2500)).toBeCloseTo(Math.log2(2500 / 2.5), 5);
+    expect(luxToEv100(2500)).toBeCloseTo(9.966, 2);
   });
 });
 

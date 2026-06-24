@@ -53,7 +53,12 @@ export function gdtfDocToFixture(doc: unknown): ParsedGdtf {
   const modes: FixtureMode[] = [];
   for (const m of rawModes) {
     const channels = extractChannels(m);
-    const channelCount = channels.reduce((max, c) => Math.max(max, c.offset + 1), 0);
+    // A channel occupies resolution/8 DMX slots (2 for 16-bit), so the mode's
+    // footprint is the highest top-byte offset reached, not just coarse+1.
+    const channelCount = channels.reduce(
+      (max, c) => Math.max(max, c.offset + Math.max(1, c.resolution / 8)),
+      0,
+    );
     modes.push({
       name: String(m['@_Name'] ?? `Mode ${modes.length + 1}`),
       channelCount: channelCount || channels.length,
