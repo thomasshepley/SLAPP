@@ -23,6 +23,8 @@ const lazyRoute = (node: ReactNode): ReactNode => (
   <Suspense fallback={<div className="page muted">Loading…</div>}>{node}</Suspense>
 );
 
+const basename = import.meta.env.BASE_URL.replace(/\/$/, '') || '/';
+
 export const router = createBrowserRouter([
   {
     path: '/',
@@ -43,4 +45,4 @@ export const router = createBrowserRouter([
       { path: 'f/:featureId', element: <Placeholder /> },
     ],
   },
-]);
+], { basename });
