@@ -372,3 +372,39 @@ code {
   color: var(--accent);
   font-size: 0.9rem;
 }
+
+/* Print: show only the cheat sheet, in print-friendly black on white. */
+.print-only {
+  display: none;
+}
+
+@media print {
+  body {
+    background: #fff;
+    color: #000;
+  }
+  .topbar,
+  .tool-card,
+  .eyebrow,
+  .page > h1,
+  .page > .muted {
+    display: none !important;
+  }
+  .print-only {
+    display: block;
+  }
+  .cheat-sheet table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .cheat-sheet th,
+  .cheat-sheet td {
+    border: 1px solid #000;
+    padding: 6px 8px;
+    text-align: left;
+    font-size: 12px;
+  }
+  .cheat-sheet h1 {
+    font-size: 18px;
+  }
+}
