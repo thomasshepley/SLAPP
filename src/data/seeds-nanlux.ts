@@ -1,6 +1,6 @@
 import { DEFAULT_PHOTOMETRY_KEY } from '@/models/fixture';
 import type { FixtureSeed } from './seed-helpers';
-import { intensityFirst, dimmerOnly, cctChannels, rgbwChannels } from './seed-helpers';
+import { dimmerOnly, cctChannels, rgbwChannels } from './seed-helpers';
 
 export const NANLUX_SEEDS: FixtureSeed[] = [
   // ---------------------------------------------------------------------------

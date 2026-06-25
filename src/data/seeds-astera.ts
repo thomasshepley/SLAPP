@@ -1,6 +1,6 @@
 import { DEFAULT_PHOTOMETRY_KEY } from '@/models/fixture';
 import type { FixtureSeed } from './seed-helpers';
-import { intensityFirst, rgbwChannels, pixelTubeChannels, hsiChannels } from './seed-helpers';
+import { intensityFirst, rgbwChannels } from './seed-helpers';
 
 /**
  * Astera fixture seeds — battery-powered RGBMA LED fixtures.

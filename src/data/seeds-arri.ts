@@ -1,6 +1,6 @@
 import { DEFAULT_PHOTOMETRY_KEY } from '@/models/fixture';
 import type { FixtureSeed } from './seed-helpers';
-import { intensityFirst, dimmerOnly, rgbwExtChannels, cctChannels } from './seed-helpers';
+import { dimmerOnly, rgbwExtChannels, cctChannels } from './seed-helpers';
 
 export const ARRI_SEEDS: FixtureSeed[] = [
   // ---------------------------------------------------------------------------

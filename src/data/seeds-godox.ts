@@ -1,6 +1,6 @@
 import { DEFAULT_PHOTOMETRY_KEY } from '@/models/fixture';
 import type { FixtureSeed } from './seed-helpers';
-import { intensityFirst, dimmerOnly, cctChannels, rgbwChannels, pixelTubeChannels, hsiChannels } from './seed-helpers';
+import { dimmerOnly, cctChannels, rgbwChannels, pixelTubeChannels, hsiChannels } from './seed-helpers';
 
 /**
  * Godox fixture seeds.
