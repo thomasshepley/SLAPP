@@ -35,6 +35,8 @@ export interface Fixture extends Auditable, Versioned {
 
   manualPdf?: FileRef;
   dmxTablePdf?: FileRef;
+  thumbnailUrl?: string;
+  externalLinks?: ExternalLinks;
 
   /** Provenance: how this entry got into the library. */
   source: FixtureSource;
@@ -51,6 +53,12 @@ export interface FixtureSource {
   /** GDTF-Share revision id, for detecting newer revisions on sync. */
   gdtfRevision?: string;
   lastSyncedAt?: string;
+}
+
+export interface ExternalLinks {
+  productPage?: string;
+  manualUrl?: string;
+  dmxChartUrl?: string;
 }
 
 // --- Modes & channels -----------------------------------------------------

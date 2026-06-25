@@ -1,23 +1,14 @@
 import { now, type FixtureId } from '@/models/common';
-import { DEFAULT_PHOTOMETRY_KEY, type Fixture, type FixtureMode } from '@/models/fixture';
-
-/**
- * Seed fixture library — a starter set of fixtures common on film/TV sets.
- * Photometry figures are approximate manufacturer specs (centre-beam lux scaled
- * to 1 m), good enough for the stops, ISL and power tools; users refine or add
- * to the library, and GDTF sync fills in channel detail. Channel maps here are
- * deliberately minimal (the attributes the app reasons about), not exhaustive.
- */
-
-type FixtureSeed = Omit<
-  Fixture,
-  'id' | 'createdAt' | 'updatedAt' | 'schemaVersion' | 'userModified' | 'source'
-> & { seedKey: string };
-
-const intensityFirst = (extra: FixtureMode['channels'] = []): FixtureMode['channels'] => [
-  { offset: 0, resolution: 8, attribute: 'intensity', label: 'Dimmer' },
-  ...extra,
-];
+import { DEFAULT_PHOTOMETRY_KEY, type Fixture } from '@/models/fixture';
+import type { FixtureSeed } from './seed-helpers';
+import { intensityFirst } from './seed-helpers';
+import { ARRI_SEEDS } from './seeds-arri';
+import { APUTURE_SEEDS } from './seeds-aputure';
+import { ASTERA_SEEDS } from './seeds-astera';
+import { NANLUX_SEEDS } from './seeds-nanlux';
+import { NANLITE_SEEDS } from './seeds-nanlite';
+import { GODOX_SEEDS } from './seeds-godox';
+import { OTHER_SEEDS } from './seeds-other';
 
 const SEED: FixtureSeed[] = [
   // ---------------------------------------------------------------------------
@@ -3052,9 +3043,20 @@ const SEED: FixtureSeed[] = [
   },
 ];
 
+const ALL_SEEDS: FixtureSeed[] = [
+  ...SEED,
+  ...ARRI_SEEDS,
+  ...APUTURE_SEEDS,
+  ...ASTERA_SEEDS,
+  ...NANLUX_SEEDS,
+  ...NANLITE_SEEDS,
+  ...GODOX_SEEDS,
+  ...OTHER_SEEDS,
+];
+
 export function seedFixtures(): Fixture[] {
   const stamp = now();
-  return SEED.map(({ seedKey, ...rest }) => ({
+  return ALL_SEEDS.map(({ seedKey, ...rest }) => ({
     ...rest,
     id: `fx-${seedKey}` as FixtureId,
     schemaVersion: 1,
