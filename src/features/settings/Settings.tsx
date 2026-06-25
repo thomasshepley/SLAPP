@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Field, NumberInput, Result, Select, ToolCard, ToolPage } from '@/components/ui';
-import { settingsRepo } from '@/db';
+import { restoreCuratedLibrary, settingsRepo } from '@/db';
+import { useFixtures } from '@/hooks/useLibrary';
 import { type AppSettings, DEFAULT_APP_SETTINGS } from '@/models/settings';
+
+const VERSION = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'dev';
 
 const UNITS: Array<{ value: 'metric' | 'imperial'; label: string }> = [
   { value: 'metric', label: 'Metric (m, kg, lux)' },
@@ -16,9 +19,23 @@ const MAINS: Array<{ value: '50' | '60'; label: string }> = [
 export function Settings() {
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_APP_SETTINGS);
   const [saved, setSaved] = useState(false);
+  const [restoreStatus, setRestoreStatus] = useState<string | null>(null);
+  const fixtures = useFixtures();
+  const brandCount = new Set(fixtures.map((f) => f.manufacturer)).size;
 
   useEffect(() => {
     settingsRepo.get().then(setSettings);
+  }, []);
+
+  const handleRestore = useCallback(async () => {
+    setRestoreStatus('Restoring…');
+    const n = await restoreCuratedLibrary();
+    setRestoreStatus(
+      n === 0
+        ? 'Library already up to date.'
+        : `Added or refreshed ${n} curated fixture${n === 1 ? '' : 's'}.`,
+    );
+    setTimeout(() => setRestoreStatus(null), 5000);
   }, []);
 
   const update = useCallback(async (patch: Partial<Omit<AppSettings, 'id'>>) => {
@@ -71,8 +88,22 @@ export function Settings() {
         </Field>
       </ToolCard>
 
+      <ToolCard title="Fixture Library">
+        <Result label="Fixtures cached" value={fixtures.length} unit="offline" emphasis />
+        <Result label="Brands" value={brandCount} />
+        <p className="field-hint">
+          The full curated library is bundled and cached for offline use. If an app
+          update added new fixtures, restore them here.
+        </p>
+        <button className="btn btn-secondary" style={{ alignSelf: 'flex-start' }} onClick={handleRestore}>
+          Restore fixture library
+        </button>
+        {restoreStatus && <p className="status-line">{restoreStatus}</p>}
+      </ToolCard>
+
       <ToolCard title="About">
         <Result label="App" value="Shepley Lighting Companion" />
+        <Result label="Version" value={`v${VERSION}`} emphasis />
         <Result label="Storage" value="IndexedDB (offline-first)" />
         <Result label="Fixture import" value="GDTF / manual entry" />
       </ToolCard>

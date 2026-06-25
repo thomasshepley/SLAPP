@@ -1,6 +1,8 @@
 import { Link, Outlet } from 'react-router-dom';
 import { useActiveShow } from '@/hooks/useActiveShow';
 
+const VERSION = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'dev';
+
 export function App() {
   const { show } = useActiveShow();
 
@@ -8,7 +10,11 @@ export function App() {
     <div className="app">
       <header className="topbar">
         <Link to="/" className="brand">
-          Lighting Co.
+          <span className="brand-mark" aria-hidden="true" />
+          <span className="brand-text">Lighting&nbsp;Co.</span>
+          <span className="brand-version" title={`Version ${VERSION}`}>
+            v{VERSION}
+          </span>
         </Link>
         <div className="topbar-show">
           {show ? (
@@ -31,6 +37,13 @@ export function App() {
       <main>
         <Outlet />
       </main>
+      <footer className="appfoot">
+        <span>Shepley Lighting Companion</span>
+        <span className="appfoot-sep">·</span>
+        <span>v{VERSION}</span>
+        <span className="appfoot-sep">·</span>
+        <span>offline-ready</span>
+      </footer>
     </div>
   );
 }
