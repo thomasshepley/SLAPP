@@ -9,7 +9,7 @@ import type { Fixture } from '@/models/fixture';
  * pull in any new or refreshed curated entries — without it, the library would
  * be frozen at whatever shipped the day the user first opened the app.
  */
-export const CURATED_SEED_VERSION = 2;
+export const CURATED_SEED_VERSION = 3;
 
 const SEED_VERSION_KEY = 'slapp.curatedSeedVersion';
 

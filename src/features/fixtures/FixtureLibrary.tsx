@@ -1,12 +1,15 @@
 import { useRef, useState } from 'react';
-import { Result, Select, TextInput, ToolCard, ToolPage } from '@/components/ui';
+import { Field, Result, Select, TextInput, ToolCard, ToolPage } from '@/components/ui';
 import { useFixtures } from '@/hooks/useLibrary';
+import { useUnits } from '@/hooks/useUnits';
 import { fixtureRepo } from '@/db';
 import { parseGdtf } from '@/services/gdtf';
 import { DEFAULT_PHOTOMETRY_KEY, type Fixture, type FixtureMode } from '@/models/fixture';
+import type { Units } from '@/services/units';
 
 export function FixtureLibrary() {
   const fixtures = useFixtures();
+  const u = useUnits();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [activeMode, setActiveMode] = useState<Record<string, string>>({});
   const [search, setSearch] = useState('');
@@ -109,7 +112,7 @@ export function FixtureLibrary() {
                       <strong>{f.model}</strong>
                       <span className="muted">
                         {f.category} · {f.modes.length} mode{f.modes.length === 1 ? '' : 's'}
-                        {' · '}{summarise(f)}
+                        {' · '}{summarise(f, u)}
                       </span>
                     </span>
                     <span className="muted" style={{ fontSize: '1.1rem' }}>{isExpanded ? '−' : '+'}</span>
@@ -118,25 +121,43 @@ export function FixtureLibrary() {
                   {isExpanded && currentMode && (
                     <div style={{ padding: '12px 8px 4px', display: 'flex', flexDirection: 'column', gap: 12 }}>
                       {f.modes.length > 1 && (
-                        <div className="mode-tabs">
-                          {f.modes.map((m) => (
-                            <button
-                              key={m.name}
-                              className={`mode-tab${m.name === currentModeName ? ' mode-tab-active' : ''}`}
-                              onClick={() => setActiveMode({ ...activeMode, [f.id]: m.name })}
-                            >
-                              {m.name} ({m.channelCount}ch)
-                            </button>
-                          ))}
-                        </div>
+                        <Field label={`DMX mode (${f.modes.length} available)`}>
+                          {f.modes.length > 6 ? (
+                            <Select
+                              value={currentModeName}
+                              onChange={(name) => setActiveMode({ ...activeMode, [f.id]: name })}
+                              options={f.modes.map((m) => ({ value: m.name, label: `${m.name} — ${m.channelCount} ch` }))}
+                            />
+                          ) : (
+                            <div className="mode-tabs">
+                              {f.modes.map((m) => (
+                                <button
+                                  key={m.name}
+                                  className={`mode-tab${m.name === currentModeName ? ' mode-tab-active' : ''}`}
+                                  onClick={() => setActiveMode({ ...activeMode, [f.id]: m.name })}
+                                >
+                                  {m.name} ({m.channelCount}ch)
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </Field>
                       )}
 
-                      <DmxChart mode={currentMode} />
+                      <div className="mode-summary">
+                        <span><strong>{currentMode.channelCount}</strong> ch footprint</span>
+                        {currentMode.powerW !== undefined && <span>{currentMode.powerW} W</span>}
+                        <span>{currentMode.channels.length} mapped</span>
+                      </div>
+
+                      <div className="dmx-scroll">
+                        <DmxChart mode={currentMode} />
+                      </div>
 
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                        <Result label="Output @ 1m" value={lux(f)} unit="lux" />
+                        <Result label="Output @ 1m" value={fmtLux(f, u)} unit={u.lux.unit} />
                         <Result label="Max power" value={maxPower(f)} unit="W" />
-                        {f.weightKg && <Result label="Weight" value={f.weightKg} unit="kg" />}
+                        {f.weightKg && <Result label="Weight" value={u.mass.format(f.weightKg)} unit={u.mass.unit} />}
                         {f.colour.cri && <Result label="CRI" value={f.colour.cri} />}
                         {f.colour.tlci && <Result label="TLCI" value={f.colour.tlci} />}
                         <Result label="Beam" value={beam(f)} unit="°" />
@@ -177,9 +198,9 @@ export function FixtureLibrary() {
               <tr><th /><th>{fxA.model}</th><th>{fxB.model}</th></tr>
             </thead>
             <tbody>
-              <CompareRow label="Output @ 1 m (lux)" a={lux(fxA)} b={lux(fxB)} />
+              <CompareRow label={`Output @ 1 m (${u.lux.unit})`} a={lux(fxA)} b={lux(fxB)} format={(v) => u.lux.format(v)} />
               <CompareRow label="Max power (W)" a={maxPower(fxA)} b={maxPower(fxB)} />
-              <CompareRow label="Weight (kg)" a={fxA.weightKg ?? '—'} b={fxB.weightKg ?? '—'} />
+              <CompareRow label={`Weight (${u.mass.unit})`} a={fxA.weightKg ?? '—'} b={fxB.weightKg ?? '—'} format={(v) => u.mass.format(v)} />
               <CompareRow label="CRI" a={fxA.colour.cri ?? '—'} b={fxB.colour.cri ?? '—'} />
               <CompareRow label="TLCI" a={fxA.colour.tlci ?? '—'} b={fxB.colour.tlci ?? '—'} />
               <CompareRow label="Beam angle (°)" a={beam(fxA)} b={beam(fxB)} />
@@ -220,13 +241,24 @@ function DmxChart({ mode }: { mode: FixtureMode }) {
   );
 }
 
-function CompareRow({ label, a, b }: { label: string; a: number | string; b: number | string }) {
+function CompareRow({
+  label,
+  a,
+  b,
+  format,
+}: {
+  label: string;
+  a: number | string;
+  b: number | string;
+  format?: (v: number) => string;
+}) {
   const better = typeof a === 'number' && typeof b === 'number' && a !== b ? (a > b ? 'a' : 'b') : null;
+  const show = (v: number | string) => (typeof v === 'number' && format ? format(v) : v);
   return (
     <tr>
       <td className="muted">{label}</td>
-      <td className={better === 'a' ? 'compare-best' : ''}>{a}</td>
-      <td className={better === 'b' ? 'compare-best' : ''}>{b}</td>
+      <td className={better === 'a' ? 'compare-best' : ''}>{show(a)}</td>
+      <td className={better === 'b' ? 'compare-best' : ''}>{show(b)}</td>
     </tr>
   );
 }
@@ -247,6 +279,10 @@ const pickOptions = (fixtures: Fixture[]) => [
 ];
 
 const lux = (f: Fixture): number | string => f.photometry[DEFAULT_PHOTOMETRY_KEY]?.luxAt1m ?? '—';
+const fmtLux = (f: Fixture, u: Units): string => {
+  const l = f.photometry[DEFAULT_PHOTOMETRY_KEY]?.luxAt1m;
+  return l !== undefined ? u.lux.format(l) : '—';
+};
 const maxPower = (f: Fixture): number | string => {
   const powers = f.modes.map((m) => m.powerW).filter((w): w is number => w !== undefined);
   return powers.length ? Math.max(...powers) : '—';
@@ -254,10 +290,10 @@ const maxPower = (f: Fixture): number | string => {
 const beam = (f: Fixture): number | string =>
   f.beam.angleDeg ?? (f.beam.zoomRangeDeg ? `${f.beam.zoomRangeDeg.minDeg}–${f.beam.zoomRangeDeg.maxDeg}` : '—');
 
-function summarise(f: Fixture): string {
+function summarise(f: Fixture, u: Units): string {
   const parts: string[] = [];
   const l = f.photometry[DEFAULT_PHOTOMETRY_KEY]?.luxAt1m;
-  if (l) parts.push(`${l.toLocaleString()} lux@1m`);
+  if (l) parts.push(`${u.lux.format(l)} ${u.lux.unit}@1m`);
   if (f.colour.cri) parts.push(`CRI ${f.colour.cri}`);
   return parts.join(' · ');
 }

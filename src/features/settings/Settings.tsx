@@ -48,7 +48,7 @@ export function Settings() {
   return (
     <ToolPage title="Settings" intro="Defaults used across all tools.">
       <ToolCard title="Units & Region">
-        <Field label="Display units">
+        <Field label="Display units" hint="Applies to distance, illuminance and weight across all tools">
           <Select
             value={settings.units}
             onChange={(v) => update({ units: v })}

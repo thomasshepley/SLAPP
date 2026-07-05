@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Field, NumberInput, Result, Select, ToolCard, ToolPage } from '@/components/ui';
 import { useSettings } from '@/hooks/useSettings';
+import { useUnits, useMeasure } from '@/hooks/useUnits';
 import {
   apertureForExposure,
   checkFlicker,
@@ -23,7 +24,8 @@ export function CameraTools() {
 }
 
 function ExposureCalc() {
-  const [lux, setLux] = useState<number | ''>(2500);
+  const u = useUnits();
+  const [luxDisplay, setLux, lux] = useMeasure(2500, u.lux);
   const [iso, setIso] = useState<number | ''>(800);
   const [shutter, setShutter] = useState<number | ''>(50);
   const ev100 = typeof lux === 'number' && lux > 0 ? luxToEv100(lux) : null;
@@ -35,7 +37,7 @@ function ExposureCalc() {
   return (
     <ToolCard title="Exposure calculator">
       <Field label="Incident reading">
-        <NumberInput value={lux} onChange={setLux} suffix="lux" />
+        <NumberInput value={luxDisplay} onChange={setLux} suffix={u.lux.unit} />
       </Field>
       <div className="row2">
         <Field label="ISO"><NumberInput value={iso} onChange={setIso} /></Field>

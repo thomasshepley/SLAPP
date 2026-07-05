@@ -1,6 +1,6 @@
 {
   "name": "shepley-lighting-companion",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "description": "On-set lighting companion PWA for film/TV gaffers and lighting techs (MA3 + Titan).",
   "type": "module",

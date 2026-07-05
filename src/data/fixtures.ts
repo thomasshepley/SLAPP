@@ -9,6 +9,7 @@ import { NANLUX_SEEDS } from './seeds-nanlux';
 import { NANLITE_SEEDS } from './seeds-nanlite';
 import { GODOX_SEEDS } from './seeds-godox';
 import { OTHER_SEEDS } from './seeds-other';
+import { enrichModes } from './mode-library';
 
 const SEED: FixtureSeed[] = [
   // ---------------------------------------------------------------------------
@@ -3056,13 +3057,18 @@ const ALL_SEEDS: FixtureSeed[] = [
 
 export function seedFixtures(): Fixture[] {
   const stamp = now();
-  return ALL_SEEDS.map(({ seedKey, ...rest }) => ({
-    ...rest,
-    id: `fx-${seedKey}` as FixtureId,
-    schemaVersion: 1,
-    userModified: false,
-    source: { origin: 'curated' as const },
-    createdAt: stamp,
-    updatedAt: stamp,
-  }));
+  return ALL_SEEDS.map(({ seedKey, ...rest }) => {
+    const fixture: Fixture = {
+      ...rest,
+      id: `fx-${seedKey}` as FixtureId,
+      schemaVersion: 1,
+      userModified: false,
+      source: { origin: 'curated' as const },
+      createdAt: stamp,
+      updatedAt: stamp,
+    };
+    // Expand each curated entry to its realistic DMX personality family.
+    fixture.modes = enrichModes(fixture);
+    return fixture;
+  });
 }

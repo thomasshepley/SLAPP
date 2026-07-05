@@ -704,7 +704,34 @@ code {
   margin-bottom: 4px;
 }
 
-/* --- DMX channel table --- */
+/* --- Mode summary + DMX channel table --- */
+.mode-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.mode-summary strong {
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.dmx-scroll {
+  max-height: 280px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.dmx-scroll .dmx-table th {
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+  z-index: 1;
+}
+
 .dmx-table {
   width: 100%;
   border-collapse: collapse;
