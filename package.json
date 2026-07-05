@@ -1,6 +1,6 @@
 {
   "name": "shepley-lighting-companion",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "private": true,
   "description": "On-set lighting companion PWA for film/TV gaffers and lighting techs (MA3 + Titan).",
   "type": "module",
@@ -15,6 +15,8 @@
   "dependencies": {
     "dexie": "^4.0.8",
     "dexie-react-hooks": "^1.1.7",
+    "fast-xml-parser": "^5.9.3",
+    "fflate": "^0.8.3",
     "pdfjs-dist": "^4.10.38",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

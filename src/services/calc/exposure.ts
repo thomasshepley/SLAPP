@@ -6,10 +6,14 @@ import type { Lux } from '@/models/common';
  * exposure.
  */
 
-/** Incident lux → EV at ISO 100. Uses the standard incident constant C = 250. */
+/**
+ * Incident lux → EV at ISO 100. Standard incident relation EV = log2(E·S/C)
+ * with S = 100 (ISO 100) and the flat-receptor constant C = 250, which reduces
+ * to log2(lux/2.5). So 2500 lux ≈ EV 10, matching a real incident meter.
+ */
 export function luxToEv100(lux: Lux): number {
   if (lux <= 0) return -Infinity;
-  return Math.log2((lux * 100) / (250 * 100));
+  return Math.log2((lux * 100) / 250);
 }
 
 /** ND value (optical density) → stops of light lost (×0.3 density ≈ 1 stop). */

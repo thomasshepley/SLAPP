@@ -47,8 +47,11 @@ describe('CT gel suggestion', () => {
 
 describe('exposure triangle', () => {
   it('gives a sensible aperture for a bright reading', () => {
-    const { nearestStop } = apertureForExposure(8000, 100, 50);
+    // 8000 lux, ISO 100, 1/50 s ≈ f/8 on a real incident meter.
+    const { exact, nearestStop } = apertureForExposure(8000, 100, 50);
     expect(F_STOPS).toContain(nearestStop);
+    expect(nearestStop).toBe(8.0);
+    expect(exact).toBeCloseTo(8.0, 1);
   });
   it('opens up one stop when ISO doubles', () => {
     const low = apertureForExposure(2000, 100, 50).exact;

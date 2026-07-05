@@ -1,5 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Field, NumberInput, Result, Select, ToolCard, ToolPage } from '@/components/ui';
+import { useSettings } from '@/hooks/useSettings';
+import { useUnits, useMeasure } from '@/hooks/useUnits';
 import {
   apertureForExposure,
   checkFlicker,
@@ -22,7 +24,8 @@ export function CameraTools() {
 }
 
 function ExposureCalc() {
-  const [lux, setLux] = useState<number | ''>(2500);
+  const u = useUnits();
+  const [luxDisplay, setLux, lux] = useMeasure(2500, u.lux);
   const [iso, setIso] = useState<number | ''>(800);
   const [shutter, setShutter] = useState<number | ''>(50);
   const ev100 = typeof lux === 'number' && lux > 0 ? luxToEv100(lux) : null;
@@ -34,7 +37,7 @@ function ExposureCalc() {
   return (
     <ToolCard title="Exposure calculator">
       <Field label="Incident reading">
-        <NumberInput value={lux} onChange={setLux} suffix="lux" />
+        <NumberInput value={luxDisplay} onChange={setLux} suffix={u.lux.unit} />
       </Field>
       <div className="row2">
         <Field label="ISO"><NumberInput value={iso} onChange={setIso} /></Field>
@@ -49,9 +52,16 @@ function ExposureCalc() {
 }
 
 function FlickerCalc() {
+  const settings = useSettings();
   const [fps, setFps] = useState<number>(24);
-  const [mains, setMains] = useState<'50' | '60'>('50');
+  const [mains, setMains] = useState<'50' | '60'>(String(settings.mainsFrequencyHz) as '50' | '60');
   const [shutter, setShutter] = useState<number | ''>(48);
+
+  // Default the mains frequency from settings until the user changes it here.
+  const mainsEdited = useRef(false);
+  useEffect(() => {
+    if (!mainsEdited.current) setMains(String(settings.mainsFrequencyHz) as '50' | '60');
+  }, [settings.mainsFrequencyHz]);
   const mainsHz = mains === '50' ? 50 : 60;
   const check = typeof shutter === 'number' && shutter > 0 ? checkFlicker(shutter, mainsHz) : null;
   return (
@@ -67,7 +77,7 @@ function FlickerCalc() {
         <Field label="Mains frequency">
           <Select
             value={mains}
-            onChange={setMains}
+            onChange={(v) => { mainsEdited.current = true; setMains(v); }}
             options={[
               { value: '50', label: '50 Hz' },
               { value: '60', label: '60 Hz' },

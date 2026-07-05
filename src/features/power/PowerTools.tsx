@@ -1,8 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Field, NumberInput, Result, Select, ToolCard, ToolPage } from '@/components/ui';
+import { FixturePicker } from '@/components/FixturePicker';
 import { computePowerBudget } from '@/services/calc';
 import { CABLE_RATINGS, deratedCapacity, recommendCable } from '@/services/calc';
 import { useFixtures } from '@/hooks/useLibrary';
+import { useSettings } from '@/hooks/useSettings';
 import type { PowerBudgetItem } from '@/models/power';
 import type { FixtureId } from '@/models/common';
 
@@ -17,11 +19,18 @@ export function PowerTools() {
 
 function PowerBudgetCalc() {
   const fixtures = useFixtures();
+  const settings = useSettings();
   const [items, setItems] = useState<PowerBudgetItem[]>([]);
-  const [voltage, setVoltage] = useState<number | ''>(230);
+  const [voltage, setVoltage] = useState<number | ''>(settings.supplyVoltage);
   const [distro, setDistro] = useState<number | ''>(32);
-  const [picker, setPicker] = useState('');
+  const [picker, setPicker] = useState<FixtureId | ''>('');
   const [qty, setQty] = useState<number | ''>(1);
+
+  // Seed the supply voltage from settings until the user overrides it.
+  const voltageEdited = useRef(false);
+  useEffect(() => {
+    if (!voltageEdited.current) setVoltage(settings.supplyVoltage);
+  }, [settings.supplyVoltage]);
 
   const result = useMemo(
     () =>
@@ -46,6 +55,7 @@ function PowerBudgetCalc() {
         perUnitW: mode?.powerW ?? 0,
       },
     ]);
+    setPicker('');
   };
 
   const nameOf = (id: FixtureId) => {
@@ -56,18 +66,11 @@ function PowerBudgetCalc() {
   return (
     <ToolCard title="Power budget">
       <div className="row2">
-        <Field label="Supply voltage"><NumberInput value={voltage} onChange={setVoltage} suffix="V" /></Field>
+        <Field label="Supply voltage"><NumberInput value={voltage} onChange={(v) => { voltageEdited.current = true; setVoltage(v); }} suffix="V" /></Field>
         <Field label="Distro rating"><NumberInput value={distro} onChange={setDistro} suffix="A" /></Field>
       </div>
       <Field label="Add fixture">
-        <Select
-          value={picker}
-          onChange={setPicker}
-          options={[
-            { value: '', label: 'Select…' },
-            ...fixtures.map((f) => ({ value: f.id, label: `${f.manufacturer} ${f.model}` })),
-          ]}
-        />
+        <FixturePicker value={picker} onChange={(id) => setPicker(id)} />
       </Field>
       <div className="row2">
         <Field label="Quantity"><NumberInput value={qty} onChange={setQty} min={1} /></Field>

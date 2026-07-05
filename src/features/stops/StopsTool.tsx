@@ -1,8 +1,11 @@
 import { useMemo, useState } from 'react';
 import { Field, NumberInput, Result, Select, ToolCard, ToolPage } from '@/components/ui';
+import { FixturePicker } from '@/components/FixturePicker';
 import { computeStops } from '@/services/calc';
 import { useFixtures } from '@/hooks/useLibrary';
+import { useUnits, useMeasure } from '@/hooks/useUnits';
 import { DEFAULT_PHOTOMETRY_KEY, type DimmingCurveType, type Photometry } from '@/models/fixture';
+import type { FixtureId } from '@/models/common';
 
 const CURVES: Array<{ value: DimmingCurveType; label: string }> = [
   { value: 'linear', label: 'Linear' },
@@ -13,18 +16,20 @@ const CURVES: Array<{ value: DimmingCurveType; label: string }> = [
 
 export function StopsTool() {
   const fixtures = useFixtures();
-  const [fixtureId, setFixtureId] = useState('manual');
+  const u = useUnits();
+  const [fixtureId, setFixtureId] = useState<FixtureId | ''>('');
+  const [isManual, setIsManual] = useState(true);
   const [curve, setCurve] = useState<DimmingCurveType>('square');
-  const [lux1m, setLux1m] = useState<number | ''>(10000);
+  const [lux1m, setLux1m, lux1mCanonical] = useMeasure(10000, u.lux);
   const [currentDmx, setCurrentDmx] = useState<number | ''>(180);
 
   const photometry: Photometry | null = useMemo(() => {
-    if (fixtureId === 'manual') {
-      return { luxAt1m: typeof lux1m === 'number' ? lux1m : undefined, dimmingCurve: { type: curve } };
+    if (isManual) {
+      return { luxAt1m: typeof lux1mCanonical === 'number' ? lux1mCanonical : undefined, dimmingCurve: { type: curve } };
     }
     const fx = fixtures.find((f) => f.id === fixtureId);
     return fx?.photometry[DEFAULT_PHOTOMETRY_KEY] ?? null;
-  }, [fixtureId, curve, lux1m, fixtures]);
+  }, [fixtureId, isManual, curve, lux1mCanonical, fixtures]);
 
   const result = useMemo(() => {
     if (!photometry || typeof currentDmx !== 'number') return null;
@@ -35,31 +40,36 @@ export function StopsTool() {
     <ToolPage
       section={5}
       title="Stops Calculator"
-      intro="Manual mode — pick a fixture or enter a curve, set the current DMX, read off ± stops. (Live console pull lands with console integration.)"
+      intro="Pick a fixture or enter a curve, set the current DMX, read off ± stops."
     >
       <ToolCard>
         <Field label="Fixture">
-          <Select
-            value={fixtureId}
-            onChange={setFixtureId}
-            options={[
-              { value: 'manual', label: 'Manual entry' },
-              ...fixtures.map((f) => ({ value: f.id, label: `${f.manufacturer} ${f.model}` })),
-            ]}
+          <FixturePicker
+            value={isManual ? 'manual' as FixtureId : fixtureId}
+            onChange={(id) => {
+              if (id === 'manual') {
+                setIsManual(true);
+                setFixtureId('');
+              } else {
+                setIsManual(false);
+                setFixtureId(id);
+              }
+            }}
+            showManualOption
           />
         </Field>
-        {fixtureId === 'manual' ? (
+        {isManual ? (
           <>
             <Field label="Dimming curve">
               <Select value={curve} onChange={setCurve} options={CURVES} />
             </Field>
             <Field label="Output at 1 m (optional)">
-              <NumberInput value={lux1m} onChange={setLux1m} suffix="lux" />
+              <NumberInput value={lux1m} onChange={setLux1m} suffix={u.lux.unit} />
             </Field>
           </>
-        ) : (
+        ) : fixtureId ? (
           <Result label="Dimming curve" value={photometry?.dimmingCurve.type ?? '—'} />
-        )}
+        ) : null}
         <Field label="Current DMX" hint="0–255">
           <NumberInput value={currentDmx} onChange={setCurrentDmx} min={0} max={255} />
         </Field>
@@ -69,7 +79,7 @@ export function StopsTool() {
         <ToolCard title="Result">
           <Result label="Current level" value={`${result.currentPercent}%`} unit={`(DMX ${result.currentDmx})`} />
           {result.currentLux !== undefined && (
-            <Result label="Estimated output @ 1 m" value={Math.round(result.currentLux)} unit="lux" />
+            <Result label="Estimated output @ 1 m" value={u.lux.format(result.currentLux)} unit={u.lux.unit} />
           )}
           <table className="stops-table">
             <thead>
