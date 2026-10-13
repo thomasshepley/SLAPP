@@ -69,7 +69,7 @@ function PowerBudgetCalc() {
         <Field label="Supply voltage"><NumberInput value={voltage} onChange={(v) => { voltageEdited.current = true; setVoltage(v); }} suffix="V" /></Field>
         <Field label="Distro rating"><NumberInput value={distro} onChange={setDistro} suffix="A" /></Field>
       </div>
-      <Field label="Add fixture">
+      <Field label="Add fixture" group>
         <FixturePicker value={picker} onChange={(id) => setPicker(id)} />
       </Field>
       <div className="row2">

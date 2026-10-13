@@ -143,6 +143,8 @@ const PIXEL_RE = /tube|pavotube|infinibar|pixelbrick|pixelbar|titan|helios|ax1|a
 
 function detectMaxPixels(f: Fixture): number {
   if (!f.colour.hasColourMixing) return 0;
+  // Panels aren't pixel-addressed tubes, even when the model name says "Titan".
+  if (/panel/i.test(f.category ?? '')) return 0;
   const hay = `${f.model} ${f.category ?? ''}`;
   if (!PIXEL_RE.test(hay)) return 0;
   // Long/hero tubes address 16 cells; shorter tubes/bars 8.

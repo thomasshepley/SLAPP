@@ -136,11 +136,21 @@ function DuvTint() {
         <>
           <Result
             label="Tint"
-            value={reading.direction === 'neutral' ? 'Neutral' : `${reading.direction}`}
+            value={
+              <span className={`tint tint-${reading.direction}`}>
+                {reading.direction === 'neutral' ? 'Neutral' : `Too ${reading.direction}`}
+              </span>
+            }
             emphasis
-            warn={reading.direction !== 'neutral'}
           />
-          <Result label="≈ CC correction" value={`${reading.ccEighths}/8`} />
+          <Result
+            label="Correct with"
+            value={
+              reading.direction === 'neutral' || reading.ccEighths === 0
+                ? 'Nothing needed'
+                : `${reading.ccEighths}/8 ${reading.direction === 'green' ? 'Minus Green' : 'Plus Green'}`
+            }
+          />
         </>
       )}
     </ToolCard>
@@ -152,9 +162,10 @@ function GelSearch() {
   const [mfr, setMfr] = useState<'all' | Gel['manufacturer']>('all');
   const gels = useGels(q, mfr);
   return (
-    <ToolCard title="Gel search">
+    <ToolCard title="Gel search" wide>
+      <div className="row-search">
       <Field label="Search">
-        <TextInput value={q} onChange={setQ} placeholder="name, number, colour…" />
+        <TextInput value={q} onChange={setQ} placeholder="Name, number or colour — e.g. “CTO”, “201”" />
       </Field>
       <Field label="Manufacturer">
         <Select
@@ -168,7 +179,8 @@ function GelSearch() {
           ]}
         />
       </Field>
-      <ul className="gel-list">
+      </div>
+      <ul className="gel-list gel-grid">
         {gels.map((gel) => (
           <li key={gel.id} className="gel-row">
             <span

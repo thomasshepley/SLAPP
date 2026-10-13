@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
-import { Field, Select, TextInput, ToolCard, ToolPage } from '@/components/ui';
+import { EmptyState, Field, TextInput, ToolCard, ToolPage } from '@/components/ui';
+import { Icon } from '@/components/icons';
 import { showRepo } from '@/db';
 import { useShows } from '@/hooks/useShows';
 import { useActiveShow } from '@/hooks/useActiveShow';
@@ -64,70 +65,82 @@ export function Shows() {
   };
 
   return (
-    <ToolPage section={2} title="Shows" intro="Save, open, duplicate, export and import jobs. All stored on this device.">
+    <ToolPage section={2} title="Shows" intro="One show per job. Everything is stored on this device — export a bundle to move it to another.">
       <ToolCard title="New show">
         <Field label="Name">
           <TextInput value={name} onChange={setName} placeholder="e.g. Studio 2 – Drama pilot" />
         </Field>
-        <Field label="Console">
-          <Select
-            value={consoleType}
-            onChange={setConsoleType}
-            options={[
-              { value: 'ma3', label: 'grandMA3' },
-              { value: 'titan', label: 'Avolites Titan' },
-            ]}
-          />
+        <Field label="Console" group>
+          <div className="segmented">
+            {(['ma3', 'titan'] as const).map((c) => (
+              <button key={c} className={consoleType === c ? 'on' : ''} onClick={() => setConsoleType(c)}>
+                {c === 'ma3' ? 'grandMA3' : 'Avolites Titan'}
+              </button>
+            ))}
+          </div>
         </Field>
-        <button className="btn" onClick={create} disabled={!name.trim()}>Create show</button>
+        <button className="btn" onClick={create} disabled={!name.trim()}>
+          <Icon name="shows" size={18} /> Create &amp; open
+        </button>
       </ToolCard>
 
-      <ToolCard title={`Saved shows (${shows.length})`}>
-        {shows.length === 0 && <p className="muted">No saved shows yet.</p>}
-        <ul className="line-list">
-          {shows.map((s) => (
-            <li key={s.id} className="show-row">
-              <span className="fixture-meta">
-                <strong>
-                  {s.name}
-                  {activeShow?.id === s.id && (
-                    <span className="status-line" style={{ marginLeft: 8, fontSize: '0.78rem' }}>ACTIVE</span>
-                  )}
-                </strong>
-                <span className="muted">
-                  {s.console.type.toUpperCase()} · {s.patch.length} fixtures · saved {fmtDate(s.updatedAt)}
-                </span>
-              </span>
-              <span className="chip-row">
-                {activeShow?.id !== s.id && (
-                  <button className="chip" onClick={() => void setActiveShow(s.id)}>Open</button>
-                )}
-                <button className="chip" onClick={() => duplicate(s.id, s.name)}>Duplicate</button>
-                <button className="chip" onClick={() => exportShow(s.id, s.name)}>Export</button>
-                <button className="chip" onClick={() => remove(s.id, s.name)}>Delete</button>
-              </span>
-            </li>
-          ))}
-        </ul>
+      <ToolCard title="Import a show">
+        <label className="dropzone">
+          <Icon name="upload" size={26} />
+          <strong>Choose a .slapp.json bundle</strong>
+          <span className="muted small">Exported from Shows on another iPad or phone — patch, plot and fixtures come with it.</span>
+          <input
+            ref={fileInput}
+            type="file"
+            accept="application/json,.json"
+            hidden
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) void onImportFile(f);
+              e.target.value = '';
+            }}
+          />
+        </label>
       </ToolCard>
 
-      <ToolCard title="Import">
-        <p className="muted">Restore a show from a .slapp.json bundle exported on another device.</p>
-        <input
-          ref={fileInput}
-          type="file"
-          accept="application/json,.json"
-          style={{ display: 'none' }}
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) void onImportFile(f);
-            e.target.value = '';
-          }}
-        />
-        <button className="btn" onClick={() => fileInput.current?.click()}>Choose bundle file…</button>
+      <ToolCard title={`Saved shows · ${shows.length}`} wide>
+        {status && <p className="status-line" style={{ margin: 0 }}>{status}</p>}
+        {shows.length === 0 ? (
+          <EmptyState icon={<Icon name="shows" size={28} />} title="No shows yet">
+            Create one above — it becomes your active show straight away.
+          </EmptyState>
+        ) : (
+          <ul className="show-list">
+            {shows.map((s) => {
+              const on = activeShow?.id === s.id;
+              return (
+                <li key={s.id} className={`show-card${on ? ' show-card-on' : ''}`}>
+                  <div className="show-card-main">
+                    <strong>{s.name}</strong>
+                    <span className="muted small">
+                      {s.console.type === 'titan' ? 'Avolites Titan' : 'grandMA3'} · {s.patch.length} fixture{s.patch.length === 1 ? '' : 's'}
+                      {s.plot ? ` · plot (${s.plot.tags.length} tags)` : ''} · {fmtDate(s.updatedAt)}
+                    </span>
+                  </div>
+                  <div className="btn-row">
+                    {on ? (
+                      <span className="badge badge-on">Active</span>
+                    ) : (
+                      <button className="btn btn-sm" onClick={() => void setActiveShow(s.id)}>Open</button>
+                    )}
+                    <button className="btn btn-sm btn-ghost" onClick={() => duplicate(s.id, s.name)}>Duplicate</button>
+                    <button className="btn btn-sm btn-ghost" onClick={() => exportShow(s.id, s.name)}>
+                      <Icon name="download" size={16} /> Export
+                    </button>
+                    <button className="btn btn-sm btn-ghost btn-danger-text" onClick={() => remove(s.id, s.name)}>Delete</button>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </ToolCard>
 
-      {status && <p className="status-line">{status}</p>}
     </ToolPage>
   );
 }

@@ -13,6 +13,7 @@ import { FixtureLibrary } from './features/fixtures/FixtureLibrary';
 import { Shows } from './features/shows/Shows';
 import { ShowfileMacro } from './features/showfile/ShowfileMacro';
 import { Settings } from './features/settings/Settings';
+import { ConsoleExport } from './features/console/ConsoleExport';
 
 // Plot import pulls in pdf.js (large); load it only when the route is opened
 // so the app shell stays small and boots fast offline.
@@ -43,7 +44,7 @@ export const router = createBrowserRouter([
       { path: 'f/showfile', element: <ShowfileMacro /> },
       { path: 'f/plot', element: lazyRoute(<PlotImport />) },
       { path: 'f/settings', element: <Settings /> },
-      // Console still uses the placeholder shell (needs hardware to integrate).
+      { path: 'f/console', element: <ConsoleExport /> },
       { path: 'f/:featureId', element: <Placeholder /> },
     ],
   },
