@@ -1,5 +1,8 @@
 import { useMemo, useState } from 'react';
-import { Field, NumberInput, Select, TextInput, ToolCard, ToolPage } from '@/components/ui';
+import { Link } from 'react-router-dom';
+import { EmptyState, Field, NumberInput, Select, TextInput, ToolCard, ToolPage } from '@/components/ui';
+import { FixtureSymbol } from '@/components/FixtureSymbol';
+import { Icon } from '@/components/icons';
 import { FixturePicker } from '@/components/FixturePicker';
 import { useFixtures } from '@/hooks/useLibrary';
 import { useShows } from '@/hooks/useShows';
@@ -21,6 +24,7 @@ export function ShowfileMacro() {
   const { show: activeShow } = useActiveShow();
   const [lines, setLines] = useState<DraftLine[]>([]);
   const [status, setStatus] = useState<string | null>(null);
+  const [added, setAdded] = useState<string | null>(null);
 
   const [pick, setPick] = useState<FixtureId | ''>('');
   const [mode, setMode] = useState('');
@@ -57,6 +61,10 @@ export function ShowfileMacro() {
         labelPrefix: label.trim() || picked.model,
       },
     ]);
+    // Ready for the next type — the fixture list below confirms what went in.
+    setAdded(`Added ${typeof qty === 'number' ? qty : 1} × ${picked.model}`);
+    setPick('');
+    setMode('');
     setLabel('');
   };
 
@@ -84,35 +92,8 @@ export function ShowfileMacro() {
       title="New Showfile"
       intro="Build a fixture list, auto-pack addresses across universes, then save to a show or print a cheat sheet."
     >
-      <ToolCard title="Universes">
-        <p className="muted" style={{ fontSize: '0.85rem' }}>Set each universe as wireless or copper (sACN/Art-Net).</p>
-        <table className="dmx-table">
-          <thead>
-            <tr><th>Univ</th><th>Transport</th><th>Note</th></tr>
-          </thead>
-          <tbody>
-            {universeConfig.map((u, i) => (
-              <tr key={u.universe}>
-                <td>{u.universe}</td>
-                <td>
-                  <Select
-                    value={u.transport}
-                    onChange={(v) => updateTransport(i, v as 'wireless' | 'copper')}
-                    options={[
-                      { value: 'copper', label: 'Copper' },
-                      { value: 'wireless', label: 'Wireless' },
-                    ]}
-                  />
-                </td>
-                <td className="muted">{u.note ?? ''}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </ToolCard>
-
       <ToolCard title="Add fixtures">
-        <Field label="Fixture type">
+        <Field label="Fixture type" group>
           <FixturePicker
             value={pick}
             onChange={(id, fx) => {
@@ -122,7 +103,7 @@ export function ShowfileMacro() {
           />
         </Field>
         {picked && (
-          <Field label="Mode">
+          <Field label={`Mode · ${picked.modes.length} available`}>
             <Select
               value={mode}
               onChange={setMode}
@@ -134,53 +115,103 @@ export function ShowfileMacro() {
           <Field label="Quantity"><NumberInput value={qty} onChange={setQty} min={1} /></Field>
           <Field label="Label prefix"><TextInput value={label} onChange={setLabel} placeholder={picked?.model ?? 'e.g. Key'} /></Field>
         </div>
-        <button className="btn" onClick={addLine} disabled={!picked}>Add to list</button>
+        <button className="btn" onClick={addLine} disabled={!picked}>
+          {picked ? `Add ${typeof qty === 'number' ? qty : 1} × ${picked.model}` : 'Pick a fixture to add'}
+        </button>
       </ToolCard>
 
-      {lines.length > 0 && (
-        <ToolCard title="Fixture list">
+      <ToolCard title={`Fixture list${lines.length ? ` · ${lines.reduce((n, l) => n + l.quantity, 0)} units` : ''}`}>
+        {lines.length === 0 ? (
+          <EmptyState icon={<Icon name="fixtures" size={28} />} title="Nothing added yet">
+            Pick a fixture type, set a quantity and label, then add it. Addresses pack automatically.
+          </EmptyState>
+        ) : (
           <ul className="line-list">
-            {lines.map((l) => (
-              <li key={l.key} className="line-row">
-                <span>{l.quantity} × {nameOf(l.fixtureId)} <span className="muted">[{l.mode}]</span></span>
-                <button className="chip" onClick={() => setLines(lines.filter((x) => x.key !== l.key))}>×</button>
-              </li>
-            ))}
+            {lines.map((l) => {
+              const fx = fxMap.get(l.fixtureId);
+              const ch = fx?.modes.find((m) => m.name === l.mode)?.channelCount ?? 0;
+              return (
+                <li key={l.key} className="line-row">
+                  {fx && <FixtureSymbol fixture={fx} size={24} />}
+                  <span className="line-main">
+                    <strong>{l.quantity} × {nameOf(l.fixtureId)}</strong>
+                    <span className="muted small">{l.labelPrefix} · {l.mode} · {ch * l.quantity} ch</span>
+                  </span>
+                  <button className="chip" aria-label="Remove" onClick={() => setLines(lines.filter((x) => x.key !== l.key))}>×</button>
+                </li>
+              );
+            })}
           </ul>
-        </ToolCard>
-      )}
+        )}
+        {added && <p className="status-line">{added}</p>}
+      </ToolCard>
+
+      <ToolCard title="Universes" wide>
+        <p className="muted small" style={{ margin: 0 }}>
+          Tap a universe to switch it between copper and wireless DMX. Usage updates as you add fixtures.
+        </p>
+        <div className="uni-grid">
+          {universeConfig.map((u, i) => {
+            const used = result.items.filter((it) => it.universe === u.universe).reduce((n, it) => n + it.footprint, 0);
+            return (
+              <button
+                key={u.universe}
+                className={`uni-tile uni-${u.transport}`}
+                onClick={() => updateTransport(i, u.transport === 'copper' ? 'wireless' : 'copper')}
+              >
+                <span className="uni-num">U{u.universe}</span>
+                <span className="uni-kind">{u.transport === 'copper' ? 'Copper' : 'Wireless'}</span>
+                <span className="uni-bar"><span style={{ width: `${Math.min(100, (used / 512) * 100)}%` }} /></span>
+                <span className="uni-used">{used}/512</span>
+              </button>
+            );
+          })}
+        </div>
+      </ToolCard>
 
       {result.items.length > 0 && (
         <>
-          <ToolCard title="Patch preview">
+          <ToolCard title="Patch preview" wide>
             {result.overflows.length > 0 && (
               <p className="status-line" style={{ color: '#ff5c5c' }}>
                 Universe overflow — {result.overflows.reduce((s, o) => s + o.excessChannels, 0)} channels didn't fit. Add universes to the profile.
               </p>
             )}
-            <PatchTable items={result.items} nameOf={nameOf} fixtures={fxMap} universes={universeConfig} />
+            <div className="table-scroll">
+              <PatchTable items={result.items} nameOf={nameOf} fixtures={fxMap} universes={universeConfig} />
+            </div>
           </ToolCard>
 
-          <ToolCard title="Save / export">
-            <Field label="Save patch into show">
-              <Select<string>
-                value=""
-                onChange={(v) => v && void saveToShow(v as ShowId)}
-                options={[
-                  {
-                    value: '',
-                    label: shows.length
-                      ? activeShow
-                        ? `Save to "${activeShow.name}"…`
-                        : 'Choose a show…'
-                      : 'No saved shows yet',
-                  },
-                  ...(activeShow ? [{ value: activeShow.id as string, label: `${activeShow.name} (active)` }] : []),
-                  ...shows.filter((s) => s.id !== activeShow?.id).map((s) => ({ value: s.id as string, label: s.name })),
-                ]}
-              />
-            </Field>
-            <button className="btn" onClick={() => window.print()}>Print cheat sheet</button>
+          <ToolCard title="Save & export">
+            {activeShow ? (
+              <button className="btn" onClick={() => void saveToShow(activeShow.id)}>
+                <Icon name="check" size={18} /> Save {result.items.length} fixtures to “{activeShow.name}”
+              </button>
+            ) : (
+              <p className="muted small" style={{ margin: 0 }}>
+                No active show — <Link to="/f/shows">create one</Link> or pick a saved show below.
+              </p>
+            )}
+            {shows.some((s) => s.id !== activeShow?.id) && (
+              <Field label="Or save into another show">
+                <Select<string>
+                  value=""
+                  onChange={(v) => v && void saveToShow(v as ShowId)}
+                  options={[
+                    { value: '', label: 'Choose a show…' },
+                    ...shows.filter((s) => s.id !== activeShow?.id).map((s) => ({ value: s.id as string, label: s.name })),
+                  ]}
+                />
+              </Field>
+            )}
+            <div className="btn-row">
+              <button className="btn btn-sm btn-secondary" onClick={() => window.print()}>
+                <Icon name="showfile" size={16} /> Print cheat sheet
+              </button>
+              <Link className="btn btn-sm btn-secondary" to="/f/console">
+                <Icon name="console" size={16} /> Export to console
+              </Link>
+            </div>
             {status && <p className="status-line">{status}</p>}
           </ToolCard>
 
@@ -205,7 +236,7 @@ function PatchTable({
   return (
     <table className="stops-table">
       <thead>
-        <tr><th>Label</th><th>Fixture</th><th>Mode</th><th>Univ</th><th>Transport</th><th>Addr</th></tr>
+        <tr><th>Label</th><th>Fixture</th><th>Mode</th><th>Univ</th><th>Transport</th><th>Univ.Addr</th></tr>
       </thead>
       <tbody>
         {items.map((it) => {
@@ -213,11 +244,14 @@ function PatchTable({
           return (
             <tr key={it.id}>
               <td>{it.label}</td>
-              <td>{nameOf(it.fixtureId)}</td>
-              <td className="muted">{fixtures.get(it.fixtureId)?.modes.find((m) => m.name === it.mode)?.channelCount ?? '?'}ch</td>
+              <td className="cell-fixture">
+                {fixtures.get(it.fixtureId) && <FixtureSymbol fixture={fixtures.get(it.fixtureId)!} size={20} />}
+                {nameOf(it.fixtureId)}
+              </td>
+              <td className="muted">{it.mode} · {it.footprint}ch</td>
               <td>{it.universe}</td>
               <td className="muted">{uni?.transport ?? '—'}</td>
-              <td>{it.startAddress}</td>
+              <td><span className="addr">{it.universe}.{it.startAddress}</span></td>
             </tr>
           );
         })}
@@ -250,7 +284,7 @@ function CheatSheet({
               <td>{nameOf(it.fixtureId)}</td>
               <td>{it.mode} ({fixtures.get(it.fixtureId)?.modes.find((m) => m.name === it.mode)?.channelCount}ch)</td>
               <td>{it.universe}</td>
-              <td>{it.startAddress}</td>
+              <td><span className="addr">{it.universe}.{it.startAddress}</span></td>
             </tr>
           ))}
         </tbody>

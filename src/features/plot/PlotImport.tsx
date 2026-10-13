@@ -1,5 +1,7 @@
 import { useRef, useState } from 'react';
 import { Field, Select, TextInput, ToolCard, ToolPage } from '@/components/ui';
+import { Icon } from '@/components/icons';
+import { FixtureSymbol } from '@/components/FixtureSymbol';
 import { useFixtures } from '@/hooks/useLibrary';
 import { useShows } from '@/hooks/useShows';
 import { fileRepo, showRepo } from '@/db';
@@ -67,35 +69,48 @@ export function PlotImport() {
       title="Polycam Plot"
       intro="Import a Polycam PDF, then tap the plan to tag fixtures. Tagging is manual (visual PDF, not structured data) — tags are stored with the show and reusable."
     >
-      <ToolCard title="Import">
-        <input
-          type="file"
-          accept="application/pdf,.pdf"
-          className="input"
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) void onFile(f);
-          }}
-        />
-        {pdfName && <p className="muted">{pdfName}{pageCount ? ` · ${pageCount} page(s)` : ''}</p>}
+      <ToolCard title="Import" wide={!pdfBytes}>
+        <label className={`dropzone${pdfName ? ' dropzone-done' : ''}`}>
+          <Icon name={pdfName ? 'check' : 'upload'} size={26} />
+          <strong>{pdfName ?? 'Choose a Polycam PDF'}</strong>
+          <span className="muted small">
+            {pdfName
+              ? `${pageCount ? `${pageCount} page${pageCount === 1 ? '' : 's'} · ` : ''}tap to replace`
+              : 'Export the floor plan from Polycam as PDF, then open it here.'}
+          </span>
+          <input
+            type="file"
+            accept="application/pdf,.pdf"
+            hidden
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) void onFile(f);
+              e.target.value = '';
+            }}
+          />
+        </label>
         {error && <p className="status-line" style={{ color: '#ff5c5c' }}>{error}</p>}
       </ToolCard>
 
       {pdfBytes && (
-        <ToolCard title="Tag fixtures">
-          <p className="muted">Tap the plan to drop a tag.</p>
+        <ToolCard title="Tag fixtures" wide>
+          <p className="muted small" style={{ margin: 0 }}>Tap the plan to drop a tag, then name it and pick its fixture below — assigned tags show the fixture’s plot symbol.</p>
           <div className="plot-wrap" style={{ position: 'relative', width: canvasSize.width || '100%' }}>
             <canvas ref={canvasRef} onClick={onCanvasTap} className="plot-canvas" />
-            {tags.map((t) => (
-              <span
-                key={t.id}
-                className="plot-tag"
-                style={{ left: `${t.x * 100}%`, top: `${t.y * 100}%` }}
-                title={t.label}
-              >
-                {t.label}
-              </span>
-            ))}
+            {tags.map((t) => {
+              const fx = t.fixtureId ? fixtures.find((f) => f.id === t.fixtureId) : undefined;
+              return (
+                <span
+                  key={t.id}
+                  className={`plot-tag${fx ? ' plot-tag-fx' : ''}`}
+                  style={{ left: `${t.x * 100}%`, top: `${t.y * 100}%` }}
+                  title={fx ? `${t.label} — ${fx.manufacturer} ${fx.model}` : t.label}
+                >
+                  {fx && <FixtureSymbol fixture={fx} size={18} />}
+                  {t.label}
+                </span>
+              );
+            })}
           </div>
         </ToolCard>
       )}

@@ -112,7 +112,7 @@ function NdStack() {
   const neededDensity = typeof targetStops === 'number' ? stopsToNdDensity(targetStops) : 0;
   return (
     <ToolCard title="ND filter stack">
-      <Field label="Filters (optical density)">
+      <Field label="Filters (optical density)" group>
         <div className="chip-row">
           {densities.map((d, i) => (
             <button key={i} className="chip" onClick={() => setDensities(densities.filter((_, j) => j !== i))}>

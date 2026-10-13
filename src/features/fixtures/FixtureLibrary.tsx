@@ -1,51 +1,71 @@
-import { useRef, useState } from 'react';
-import { Field, Result, Select, TextInput, ToolCard, ToolPage } from '@/components/ui';
+import { useMemo, useRef, useState } from 'react';
+import { EmptyState, Field, Select, ToolCard, ToolPage } from '@/components/ui';
+import { FixtureSymbol } from '@/components/FixtureSymbol';
+import { Icon } from '@/components/icons';
 import { useFixtures } from '@/hooks/useLibrary';
 import { useUnits } from '@/hooks/useUnits';
 import { fixtureRepo } from '@/db';
 import { parseGdtf } from '@/services/gdtf';
+import {
+  downloadFile,
+  SYMBOL_LABELS,
+  symbolFilename,
+  symbolKindFor,
+  symbolPng,
+  symbolSvg,
+  type SymbolKind,
+} from '@/services/symbols';
 import { DEFAULT_PHOTOMETRY_KEY, type Fixture, type FixtureMode } from '@/models/fixture';
 import type { Units } from '@/services/units';
 
+/**
+ * Master–detail library: a searchable, type-filterable list on the left and a
+ * sticky detail pane on the right (iPad and up). On phones the detail opens
+ * inline under the tapped row instead.
+ */
 export function FixtureLibrary() {
   const fixtures = useFixtures();
   const u = useUnits();
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [activeMode, setActiveMode] = useState<Record<string, string>>({});
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  const [kind, setKind] = useState<SymbolKind | 'all'>('all');
   const [a, setA] = useState('');
   const [b, setB] = useState('');
-  const fxA = fixtures.find((f) => f.id === a);
-  const fxB = fixtures.find((f) => f.id === b);
-
   const [importStatus, setImportStatus] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const filtered = search.trim()
-    ? fixtures.filter((f) => {
-        const q = search.trim().toLowerCase();
-        return (
-          f.manufacturer.toLowerCase().includes(q) ||
-          f.model.toLowerCase().includes(q) ||
-          (f.category ?? '').toLowerCase().includes(q)
-        );
-      })
-    : fixtures;
+  const kinds = useMemo(() => {
+    const counts = new Map<SymbolKind, number>();
+    for (const f of fixtures) counts.set(symbolKindFor(f), (counts.get(symbolKindFor(f)) ?? 0) + 1);
+    return [...counts.entries()].sort((x, y) => y[1] - x[1]);
+  }, [fixtures]);
+
+  const filtered = useMemo(() => {
+    const terms = search.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    return fixtures.filter((f) => {
+      if (kind !== 'all' && symbolKindFor(f) !== kind) return false;
+      if (!terms.length) return true;
+      const hay = `${f.manufacturer} ${f.model} ${f.category ?? ''}`.toLowerCase();
+      return terms.every((t) => hay.includes(t));
+    });
+  }, [fixtures, search, kind]);
 
   const grouped = groupByManufacturer(filtered);
+  const selected = fixtures.find((f) => f.id === selectedId) ?? null;
+  const brandCount = useMemo(() => new Set(fixtures.map((f) => f.manufacturer)).size, [fixtures]);
 
   const handleGdtfImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files?.length) return;
     let imported = 0;
-    let warnings: string[] = [];
+    const warnings: string[] = [];
     for (const file of Array.from(files)) {
       try {
-        const buf = await file.arrayBuffer();
-        const result = parseGdtf(buf);
+        const result = parseGdtf(await file.arrayBuffer());
         await fixtureRepo.put(result.fixture);
         imported++;
-        if (result.warnings.length) warnings.push(...result.warnings.map((w) => `${file.name}: ${w}`));
+        setSelectedId(result.fixture.id);
+        warnings.push(...result.warnings.map((w) => `${file.name}: ${w}`));
       } catch (err) {
         warnings.push(`${file.name}: ${err instanceof Error ? err.message : 'Unknown error'}`);
       }
@@ -61,161 +81,241 @@ export function FixtureLibrary() {
   const handleDelete = async (fx: Fixture) => {
     if (!confirm(`Delete "${fx.manufacturer} ${fx.model}" from the library?`)) return;
     await fixtureRepo.delete(fx.id);
-    if (expandedId === fx.id) setExpandedId(null);
+    setSelectedId(null);
   };
 
+  const compareWith = (fx: Fixture) => {
+    if (!a || a === fx.id) setA(fx.id);
+    else setB(fx.id);
+    document.getElementById('comparator')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const detail = (f: Fixture) => (
+    <FixtureDetail fixture={f} u={u} onDelete={() => handleDelete(f)} onCompare={() => compareWith(f)} />
+  );
+
   return (
-    <ToolPage
-      title="Fixture Library"
-      intro={`${fixtures.length} fixtures across ${groupByManufacturer(fixtures).length} brands.`}
-    >
-      <ToolCard title="Search & Import">
-        <TextInput value={search} onChange={setSearch} placeholder="Search by name, brand, or type..." />
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          <label className="btn" style={{ cursor: 'pointer' }}>
-            Import .gdtf
-            <input
-              ref={fileRef}
-              type="file"
-              accept=".gdtf,.zip"
-              multiple
-              style={{ display: 'none' }}
-              onChange={handleGdtfImport}
-            />
-          </label>
-          <span className="muted" style={{ fontSize: '0.82rem' }}>
-            Download .gdtf files from gdtf-share.com
+    <ToolPage title="Fixture Library" intro={`${fixtures.length} fixtures across ${brandCount} brands — cached for offline use.`}>
+      <div className="lib tool-card-wide">
+        <div className="lib-list">
+          <div className="lib-toolbar">
+            <div className="fp-search">
+              <Icon name="search" size={18} />
+              <input
+                type="search"
+                className="input"
+                value={search}
+                placeholder="Search model, brand or type…"
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+            <div className="chip-row chip-scroll">
+              <button className={`fp-tab${kind === 'all' ? ' fp-tab-active' : ''}`} onClick={() => setKind('all')}>
+                All <span className="fp-tab-count">{fixtures.length}</span>
+              </button>
+              {kinds.map(([k, n]) => (
+                <button key={k} className={`fp-tab${kind === k ? ' fp-tab-active' : ''}`} onClick={() => setKind(k)}>
+                  <FixtureSymbol kind={k} size={16} /> {SYMBOL_LABELS[k]} <span className="fp-tab-count">{n}</span>
+                </button>
+              ))}
+            </div>
+            <div className="btn-row">
+              <label className="btn btn-sm btn-secondary">
+                <Icon name="upload" size={16} /> Import .gdtf
+                <input ref={fileRef} type="file" accept=".gdtf,.zip" multiple hidden onChange={handleGdtfImport} />
+              </label>
+              <span className="muted small">Get exact profiles from gdtf-share.com</span>
+            </div>
+            {importStatus && <p className="status-line">{importStatus}</p>}
+          </div>
+
+          {grouped.length === 0 && (
+            <EmptyState icon={<Icon name="search" size={28} />} title="No fixtures match">
+              Try a model name like “Forza” or clear the type filter.
+            </EmptyState>
+          )}
+
+          {grouped.map(([brand, list]) => (
+            <section key={brand} className="lib-brand">
+              <h3 className="lib-brand-name">
+                {brand} <span className="muted">{list.length}</span>
+              </h3>
+              <ul className="fixture-list">
+                {list.map((f) => {
+                  const on = f.id === selectedId;
+                  return (
+                    <li key={f.id}>
+                      <button
+                        className={`fixture-row${on ? ' fixture-row-on' : ''}`}
+                        onClick={() => setSelectedId(on ? null : f.id)}
+                        aria-expanded={on}
+                      >
+                        <FixtureSymbol fixture={f} size={30} />
+                        <span className="fixture-meta">
+                          <strong>{f.model}</strong>
+                          <span className="muted small">
+                            {f.category} · {f.modes.length} mode{f.modes.length === 1 ? '' : 's'}
+                            {summarise(f, u) && ` · ${summarise(f, u)}`}
+                          </span>
+                        </span>
+                        {f.source.origin === 'gdtf-share' && <span className="badge">GDTF</span>}
+                      </button>
+                      {on && <div className="lib-inline">{detail(f)}</div>}
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          ))}
+        </div>
+
+        <aside className="lib-detail">
+          {selected ? (
+            detail(selected)
+          ) : (
+            <EmptyState icon={<FixtureSymbol kind="fresnel" size={44} />} title="Pick a fixture">
+              Its DMX modes, channel chart, plot symbol and specs show here.
+            </EmptyState>
+          )}
+        </aside>
+      </div>
+
+      <div id="comparator" className="tool-card-wide">
+        <ToolCard title="Compare">
+          <div className="row2">
+            <Select value={a} onChange={setA} options={pickOptions(fixtures)} />
+            <Select value={b} onChange={setB} options={pickOptions(fixtures)} />
+          </div>
+          {fxPair(fixtures, a, b) ? (
+            <Comparator a={fxPair(fixtures, a, b)![0]} b={fxPair(fixtures, a, b)![1]} u={u} />
+          ) : (
+            <p className="muted small">Choose two fixtures, or tap “Compare” on a fixture’s detail.</p>
+          )}
+        </ToolCard>
+      </div>
+    </ToolPage>
+  );
+}
+
+// --- Detail pane ------------------------------------------------------------
+
+function FixtureDetail({
+  fixture: f,
+  u,
+  onDelete,
+  onCompare,
+}: {
+  fixture: Fixture;
+  u: Units;
+  onDelete: () => void;
+  onCompare: () => void;
+}) {
+  const [modeName, setModeName] = useState(f.modes[0]?.name ?? '');
+  const mode = f.modes.find((m) => m.name === modeName) ?? f.modes[0];
+  const kind = symbolKindFor(f);
+
+  const saveSvg = () =>
+    downloadFile(symbolSvg(kind, { color: '#111111', label: f.model, size: 256 }), symbolFilename(f, 'svg'), 'image/svg+xml');
+  const savePng = async () => downloadFile(await symbolPng(kind, { label: f.model, size: 512 }), symbolFilename(f, 'png'));
+
+  return (
+    <div className="fx-detail" key={f.id}>
+      <header className="fx-detail-head">
+        <div className="fx-detail-symbol">
+          <FixtureSymbol fixture={f} size={60} />
+        </div>
+        <div>
+          <p className="eyebrow">{f.manufacturer}</p>
+          <h2 className="fx-detail-title">{f.model}</h2>
+          <span className="muted small">
+            {f.category} · {SYMBOL_LABELS[kind]} symbol{f.source.origin === 'gdtf-share' ? ' · GDTF profile' : ''}
           </span>
         </div>
-        {importStatus && <p className="status-line">{importStatus}</p>}
-        {search && filtered.length === 0 && (
-          <p className="muted">No fixtures match "{search}".</p>
-        )}
-      </ToolCard>
+      </header>
 
-      {grouped.map(([brand, brandFixtures]) => (
-        <ToolCard key={brand} title={`${brand} (${brandFixtures.length})`}>
-          <ul className="fixture-list">
-            {brandFixtures.map((f) => {
-              const isExpanded = expandedId === f.id;
-              const currentModeName = activeMode[f.id] ?? f.modes[0]?.name ?? '';
-              const currentMode = f.modes.find((m) => m.name === currentModeName) ?? f.modes[0];
+      <div className="spec-grid">
+        <Spec label="Output @ 1 m" value={fmtLux(f, u)} unit={u.lux.unit} />
+        <Spec label="Max power" value={maxPower(f)} unit="W" />
+        <Spec label="Beam" value={beam(f)} unit="°" />
+        <Spec
+          label={f.colour.hasColourMixing ? 'CCT · full colour' : 'CCT'}
+          value={cctText(f)}
+          unit={f.colour.cctRange || f.colour.nativeCct ? 'K' : ''}
+        />
+        <Spec label="CRI / TLCI" value={`${f.colour.cri ?? '—'} / ${f.colour.tlci ?? '—'}`} />
+        <Spec label="Weight" value={f.weightKg ? u.mass.format(f.weightKg) : '—'} unit={f.weightKg ? u.mass.unit : ''} />
+      </div>
 
-              return (
-                <li key={f.id}>
+      {mode && (
+        <>
+          <Field label={`DMX mode · ${f.modes.length} available`} group>
+            {f.modes.length > 6 ? (
+              <Select
+                value={mode.name}
+                onChange={setModeName}
+                options={f.modes.map((m) => ({ value: m.name, label: `${m.name} — ${m.channelCount} ch` }))}
+              />
+            ) : (
+              <div className="mode-tabs">
+                {f.modes.map((m) => (
                   <button
-                    className="fixture-row"
-                    style={{ width: '100%', textAlign: 'left', cursor: 'pointer' }}
-                    onClick={() => setExpandedId(isExpanded ? null : f.id)}
+                    key={m.name}
+                    className={`mode-tab${m.name === mode.name ? ' mode-tab-active' : ''}`}
+                    onClick={() => setModeName(m.name)}
                   >
-                    <span className="fixture-meta">
-                      <strong>{f.model}</strong>
-                      <span className="muted">
-                        {f.category} · {f.modes.length} mode{f.modes.length === 1 ? '' : 's'}
-                        {' · '}{summarise(f, u)}
-                      </span>
-                    </span>
-                    <span className="muted" style={{ fontSize: '1.1rem' }}>{isExpanded ? '−' : '+'}</span>
+                    {m.name} · {m.channelCount}ch
                   </button>
+                ))}
+              </div>
+            )}
+          </Field>
+          <div className="mode-summary">
+            <span><strong>{mode.channelCount}</strong> ch footprint</span>
+            {mode.powerW !== undefined && <span>{mode.powerW} W</span>}
+            <span>{mode.channels.length} mapped</span>
+            <span>{f.photometry[DEFAULT_PHOTOMETRY_KEY]?.dimmingCurve.type ?? 'linear'} dimming</span>
+          </div>
+          <div className="dmx-scroll">
+            <DmxChart mode={mode} />
+          </div>
+        </>
+      )}
 
-                  {isExpanded && currentMode && (
-                    <div style={{ padding: '12px 8px 4px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-                      {f.modes.length > 1 && (
-                        <Field label={`DMX mode (${f.modes.length} available)`}>
-                          {f.modes.length > 6 ? (
-                            <Select
-                              value={currentModeName}
-                              onChange={(name) => setActiveMode({ ...activeMode, [f.id]: name })}
-                              options={f.modes.map((m) => ({ value: m.name, label: `${m.name} — ${m.channelCount} ch` }))}
-                            />
-                          ) : (
-                            <div className="mode-tabs">
-                              {f.modes.map((m) => (
-                                <button
-                                  key={m.name}
-                                  className={`mode-tab${m.name === currentModeName ? ' mode-tab-active' : ''}`}
-                                  onClick={() => setActiveMode({ ...activeMode, [f.id]: m.name })}
-                                >
-                                  {m.name} ({m.channelCount}ch)
-                                </button>
-                              ))}
-                            </div>
-                          )}
-                        </Field>
-                      )}
-
-                      <div className="mode-summary">
-                        <span><strong>{currentMode.channelCount}</strong> ch footprint</span>
-                        {currentMode.powerW !== undefined && <span>{currentMode.powerW} W</span>}
-                        <span>{currentMode.channels.length} mapped</span>
-                      </div>
-
-                      <div className="dmx-scroll">
-                        <DmxChart mode={currentMode} />
-                      </div>
-
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                        <Result label="Output @ 1m" value={fmtLux(f, u)} unit={u.lux.unit} />
-                        <Result label="Max power" value={maxPower(f)} unit="W" />
-                        {f.weightKg && <Result label="Weight" value={u.mass.format(f.weightKg)} unit={u.mass.unit} />}
-                        {f.colour.cri && <Result label="CRI" value={f.colour.cri} />}
-                        {f.colour.tlci && <Result label="TLCI" value={f.colour.tlci} />}
-                        <Result label="Beam" value={beam(f)} unit="°" />
-                        {f.colour.cctRange && (
-                          <Result label="CCT range" value={`${f.colour.cctRange.minK}–${f.colour.cctRange.maxK}`} unit="K" />
-                        )}
-                        {f.colour.nativeCct && !f.colour.cctRange && (
-                          <Result label="CCT" value={f.colour.nativeCct} unit="K" />
-                        )}
-                        <Result label="Dimming curve" value={f.photometry[DEFAULT_PHOTOMETRY_KEY]?.dimmingCurve.type ?? '—'} />
-                        <Result label="Source" value={f.source.origin} />
-                      </div>
-
-                      <button
-                        className="chip"
-                        style={{ alignSelf: 'flex-start', color: '#ff5c5c', borderColor: '#ff5c5c40' }}
-                        onClick={() => handleDelete(f)}
-                      >
-                        Delete fixture
-                      </button>
-                    </div>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        </ToolCard>
-      ))}
-
-      <ToolCard title="Comparator">
-        <div className="row2">
-          <Select value={a} onChange={setA} options={pickOptions(fixtures)} />
-          <Select value={b} onChange={setB} options={pickOptions(fixtures)} />
+      <div className="symbol-export">
+        <FixtureSymbol fixture={f} size={44} label={f.model} />
+        <div>
+          <strong>Plot symbol</strong>
+          <span className="muted small">For CAD plots, the Polycam plot or a console image pool.</span>
+          <div className="btn-row">
+            <button className="btn btn-sm btn-secondary" onClick={saveSvg}><Icon name="download" size={16} /> SVG</button>
+            <button className="btn btn-sm btn-secondary" onClick={() => void savePng()}><Icon name="download" size={16} /> PNG</button>
+          </div>
         </div>
-        {fxA && fxB && (
-          <table className="compare-table">
-            <thead>
-              <tr><th /><th>{fxA.model}</th><th>{fxB.model}</th></tr>
-            </thead>
-            <tbody>
-              <CompareRow label={`Output @ 1 m (${u.lux.unit})`} a={lux(fxA)} b={lux(fxB)} format={(v) => u.lux.format(v)} />
-              <CompareRow label="Max power (W)" a={maxPower(fxA)} b={maxPower(fxB)} />
-              <CompareRow label={`Weight (${u.mass.unit})`} a={fxA.weightKg ?? '—'} b={fxB.weightKg ?? '—'} format={(v) => u.mass.format(v)} />
-              <CompareRow label="CRI" a={fxA.colour.cri ?? '—'} b={fxB.colour.cri ?? '—'} />
-              <CompareRow label="TLCI" a={fxA.colour.tlci ?? '—'} b={fxB.colour.tlci ?? '—'} />
-              <CompareRow label="Beam angle (°)" a={beam(fxA)} b={beam(fxB)} />
-            </tbody>
-          </table>
-        )}
-        {(!fxA || !fxB) && <Result label="Pick two fixtures" value="to compare side by side" />}
-      </ToolCard>
-    </ToolPage>
+      </div>
+
+      <div className="btn-row">
+        <button className="btn btn-sm btn-secondary" onClick={onCompare}>Compare</button>
+        <button className="btn btn-sm btn-danger" onClick={onDelete}>Delete</button>
+      </div>
+    </div>
+  );
+}
+
+function Spec({ label, value, unit }: { label: string; value: string | number; unit?: string }) {
+  return (
+    <div className="spec">
+      <span className="spec-label">{label}</span>
+      <span className="spec-value">
+        {value}
+        {unit && value !== '—' && <span className="spec-unit"> {unit}</span>}
+      </span>
+    </div>
   );
 }
 
 function DmxChart({ mode }: { mode: FixtureMode }) {
   if (mode.channels.length === 0) {
-    return <p className="muted" style={{ fontSize: '0.85rem' }}>No channel detail available for this mode.</p>;
+    return <p className="muted small" style={{ padding: 12 }}>No channel detail available for this mode.</p>;
   }
   return (
     <table className="dmx-table">
@@ -230,12 +330,37 @@ function DmxChart({ mode }: { mode: FixtureMode }) {
       <tbody>
         {mode.channels.map((ch) => (
           <tr key={ch.offset}>
-            <td>{ch.offset + 1}</td>
+            <td>{ch.offset + 1}{ch.resolution > 8 ? `–${ch.offset + ch.resolution / 8}` : ''}</td>
             <td>{ch.label}</td>
-            <td><span className="dmx-attr">{ch.attribute}</span></td>
-            <td className="muted">{ch.resolution}bit</td>
+            <td><span className={`dmx-attr attr-${ch.attribute}`}>{ch.attribute}</span></td>
+            <td className="muted">{ch.resolution}-bit</td>
           </tr>
         ))}
+      </tbody>
+    </table>
+  );
+}
+
+// --- Comparator ---------------------------------------------------------------
+
+function Comparator({ a, b, u }: { a: Fixture; b: Fixture; u: Units }) {
+  return (
+    <table className="compare-table">
+      <thead>
+        <tr>
+          <th />
+          <th><FixtureSymbol fixture={a} size={22} /> {a.model}</th>
+          <th><FixtureSymbol fixture={b} size={22} /> {b.model}</th>
+        </tr>
+      </thead>
+      <tbody>
+        <CompareRow label={`Output @ 1 m (${u.lux.unit})`} a={lux(a)} b={lux(b)} format={(v) => u.lux.format(v)} />
+        <CompareRow label="Max power (W)" a={maxPower(a)} b={maxPower(b)} lowerIsBetter />
+        <CompareRow label={`Weight (${u.mass.unit})`} a={a.weightKg ?? '—'} b={b.weightKg ?? '—'} format={(v) => u.mass.format(v)} lowerIsBetter />
+        <CompareRow label="CRI" a={a.colour.cri ?? '—'} b={b.colour.cri ?? '—'} />
+        <CompareRow label="TLCI" a={a.colour.tlci ?? '—'} b={b.colour.tlci ?? '—'} />
+        <CompareRow label="Beam angle (°)" a={beam(a)} b={beam(b)} neutral />
+        <CompareRow label="DMX modes" a={a.modes.length} b={b.modes.length} />
       </tbody>
     </table>
   );
@@ -246,13 +371,20 @@ function CompareRow({
   a,
   b,
   format,
+  lowerIsBetter,
+  neutral,
 }: {
   label: string;
   a: number | string;
   b: number | string;
   format?: (v: number) => string;
+  lowerIsBetter?: boolean;
+  neutral?: boolean;
 }) {
-  const better = typeof a === 'number' && typeof b === 'number' && a !== b ? (a > b ? 'a' : 'b') : null;
+  let better: 'a' | 'b' | null = null;
+  if (!neutral && typeof a === 'number' && typeof b === 'number' && a !== b) {
+    better = (a > b) !== !!lowerIsBetter ? 'a' : 'b';
+  }
   const show = (v: number | string) => (typeof v === 'number' && format ? format(v) : v);
   return (
     <tr>
@@ -263,6 +395,8 @@ function CompareRow({
   );
 }
 
+// --- Helpers --------------------------------------------------------------------
+
 function groupByManufacturer(fixtures: Fixture[]): [string, Fixture[]][] {
   const map = new Map<string, Fixture[]>();
   for (const f of fixtures) {
@@ -270,11 +404,17 @@ function groupByManufacturer(fixtures: Fixture[]): [string, Fixture[]][] {
     list.push(f);
     map.set(f.manufacturer, list);
   }
-  return [...map.entries()].sort(([a], [b]) => a.localeCompare(b));
+  return [...map.entries()].sort(([x], [y]) => x.localeCompare(y));
 }
 
+const fxPair = (fixtures: Fixture[], a: string, b: string): [Fixture, Fixture] | null => {
+  const fa = fixtures.find((f) => f.id === a);
+  const fb = fixtures.find((f) => f.id === b);
+  return fa && fb ? [fa, fb] : null;
+};
+
 const pickOptions = (fixtures: Fixture[]) => [
-  { value: '', label: 'Select...' },
+  { value: '', label: 'Select a fixture…' },
   ...fixtures.map((f) => ({ value: f.id, label: `${f.manufacturer} ${f.model}` })),
 ];
 
@@ -289,11 +429,16 @@ const maxPower = (f: Fixture): number | string => {
 };
 const beam = (f: Fixture): number | string =>
   f.beam.angleDeg ?? (f.beam.zoomRangeDeg ? `${f.beam.zoomRangeDeg.minDeg}–${f.beam.zoomRangeDeg.maxDeg}` : '—');
+const cctText = (f: Fixture): string =>
+  f.colour.cctRange
+    ? `${f.colour.cctRange.minK.toLocaleString()}–${f.colour.cctRange.maxK.toLocaleString()}`
+    : f.colour.nativeCct
+      ? String(f.colour.nativeCct)
+      : f.colour.hasColourMixing
+        ? 'RGB'
+        : '—';
 
 function summarise(f: Fixture, u: Units): string {
-  const parts: string[] = [];
   const l = f.photometry[DEFAULT_PHOTOMETRY_KEY]?.luxAt1m;
-  if (l) parts.push(`${u.lux.format(l)} ${u.lux.unit}@1m`);
-  if (f.colour.cri) parts.push(`CRI ${f.colour.cri}`);
-  return parts.join(' · ');
+  return l ? `${u.lux.format(l)} ${u.lux.unit}@1m` : '';
 }

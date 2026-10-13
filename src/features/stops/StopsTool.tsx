@@ -43,7 +43,7 @@ export function StopsTool() {
       intro="Pick a fixture or enter a curve, set the current DMX, read off ± stops."
     >
       <ToolCard>
-        <Field label="Fixture">
+        <Field label="Fixture" group>
           <FixturePicker
             value={isManual ? 'manual' as FixtureId : fixtureId}
             onChange={(id) => {

@@ -43,7 +43,7 @@ function InverseSquare() {
 
   return (
     <ToolCard title="Inverse square law">
-      <Field label="Fixture">
+      <Field label="Fixture" group>
         <FixturePicker
           value={isManual ? 'manual' as FixtureId : fixtureId}
           onChange={(id) => {
@@ -101,7 +101,7 @@ function BeamCoverage() {
 
   return (
     <ToolCard title="Beam coverage">
-      <Field label="Fixture">
+      <Field label="Fixture" group>
         <FixturePicker
           value={isManual ? 'manual' as FixtureId : fixtureId}
           onChange={(id) => {

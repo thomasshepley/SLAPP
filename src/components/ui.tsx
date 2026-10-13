@@ -6,21 +6,36 @@ import type { ReactNode } from 'react';
  * the tools are the product, not the chrome.
  */
 
+/**
+ * Labelled form row. Simple controls get a real <label> (tap the label to
+ * focus the input). Compound widgets — pickers, segmented controls, button
+ * groups — must pass `group`: a <label> re-dispatches clicks to its first
+ * control, so a click on one button inside it would also "click" another.
+ */
 export function Field({
   label,
   hint,
+  group,
   children,
 }: {
   label: string;
   hint?: string;
+  group?: boolean;
   children: ReactNode;
 }) {
-  return (
-    <label className="field">
+  const body = (
+    <>
       <span className="field-label">{label}</span>
       {children}
       {hint && <span className="field-hint">{hint}</span>}
-    </label>
+    </>
+  );
+  return group ? (
+    <div className="field" role="group" aria-label={label}>
+      {body}
+    </div>
+  ) : (
+    <label className="field">{body}</label>
   );
 }
 
@@ -126,12 +141,39 @@ export function Result({
   );
 }
 
-export function ToolCard({ title, children }: { title?: string; children: ReactNode }) {
+export function ToolCard({
+  title,
+  wide,
+  aside,
+  children,
+}: {
+  title?: string;
+  /** Span the full width of the tool grid (tables, long lists). */
+  wide?: boolean;
+  /** Optional element shown at the right of the title row. */
+  aside?: ReactNode;
+  children: ReactNode;
+}) {
   return (
-    <section className="tool-card">
-      {title && <h2 className="tool-card-title">{title}</h2>}
+    <section className={`tool-card${wide ? ' tool-card-wide' : ''}`}>
+      {(title || aside) && (
+        <div className="tool-card-head">
+          {title && <h2 className="tool-card-title">{title}</h2>}
+          {aside}
+        </div>
+      )}
       {children}
     </section>
+  );
+}
+
+export function EmptyState({ icon, title, children }: { icon?: ReactNode; title: string; children?: ReactNode }) {
+  return (
+    <div className="empty">
+      {icon && <span className="empty-icon">{icon}</span>}
+      <strong>{title}</strong>
+      {children && <span className="muted">{children}</span>}
+    </div>
   );
 }
 
