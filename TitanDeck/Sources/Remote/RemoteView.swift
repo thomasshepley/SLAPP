@@ -13,11 +13,20 @@ struct RemoteView: View {
                 Color.black
                 RDPView(session: session) { appState.mode = .settings }
                     .opacity(session.state == .connected ? 1 : 0.35)
-                if session.state != .connected {
+                if session.reconnectAttempt > 0 {
+                    // Keep the last frame visible (dimmed) while reconnecting.
+                    ReconnectBanner(session: session)
+                } else if session.state != .connected {
                     statusCard
                         .padding(24)
                         .frame(maxWidth: 520)
                 }
+            }
+            .overlay(alignment: .topTrailing) {
+                ConnectionPill(heartbeat: appState.heartbeat, session: session,
+                               network: appState.network, localNetwork: appState.localNetwork)
+                    .padding(.top, 12)
+                    .padding(.trailing, 16)
             }
             .ignoresSafeArea()
             .onAppear {
@@ -44,6 +53,14 @@ struct RemoteView: View {
                 Button("Cancel", role: .cancel) { session.disconnect() }
                     .buttonStyle(.glass)
             case .failed(let message):
+                if appState.localNetwork.status == .denied {
+                    Text(LocalNetworkHelp.message)
+                        .font(.callout.weight(.semibold))
+                        .foregroundStyle(.orange)
+                        .multilineTextAlignment(.center)
+                    Button("Open iPad Settings") { LocalNetworkHelp.openSettings() }
+                        .buttonStyle(.glass)
+                }
                 Image(systemName: "exclamationmark.triangle.fill")
                     .font(.largeTitle)
                     .foregroundStyle(.orange)

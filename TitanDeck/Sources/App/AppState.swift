@@ -35,6 +35,9 @@ final class AppState: ObservableObject {
     let titan: TitanClient
     let deck: DeckSessionController
     let rdp: RDPSession
+    let heartbeat: TitanHeartbeat
+    let network: NetworkMonitor
+    let localNetwork: LocalNetworkPermission
     private let store: ProfileStore
 
     private static let hostKey = "titanHost"
@@ -45,6 +48,9 @@ final class AppState: ObservableObject {
         titanHost = host
         rdpSettings = RDPSettings.load()
         rdp = RDPSession()
+        heartbeat = TitanHeartbeat()
+        network = NetworkMonitor()
+        localNetwork = LocalNetworkPermission()
         titan = TitanClient(host: host)
         let store = ProfileStore()
         self.store = store
@@ -64,6 +70,11 @@ final class AppState: ObservableObject {
     func start() {
         UIApplication.shared.isIdleTimerDisabled = true
         deck.start()
+        network.start()
+        localNetwork.check()
+        heartbeat.start(client: titan) { [weak self] in
+            !(self?.titanHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
+        }
     }
 
     func scenePhaseChanged(_ phase: ScenePhase) {
@@ -73,6 +84,7 @@ final class AppState: ObservableObject {
             Log.deck("App went to background - Stream Deck keys are inactive until it returns")
         case .active:
             UIApplication.shared.isIdleTimerDisabled = true
+            localNetwork.check()
         default:
             break
         }

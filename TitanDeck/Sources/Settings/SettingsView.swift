@@ -25,6 +25,13 @@ struct SettingsView: View {
 
     private var connectionSection: some View {
         Section {
+            if appState.localNetwork.status == .denied {
+                VStack(alignment: .leading, spacing: 8) {
+                    Label(LocalNetworkHelp.message, systemImage: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.orange)
+                    Button("Open iPad Settings") { LocalNetworkHelp.openSettings() }
+                }
+            }
             LabeledContent("Titan PC address") {
                 TextField("e.g. 192.168.1.20", text: $appState.titanHost)
                     .keyboardType(.numbersAndPunctuation)
