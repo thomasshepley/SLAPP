@@ -12,7 +12,9 @@ enum DeckRenderer {
         case failure
     }
 
-    static func image(for key: KeyDefinition?, size: CGSize, overlay: Overlay = .none) -> UIImage {
+    /// `isActive` draws a live-playback highlight: a bright frame and a bar
+    /// along the bottom, readable at a glance on set.
+    static func image(for key: KeyDefinition?, size: CGSize, overlay: Overlay = .none, isActive: Bool = false) -> UIImage {
         let format = UIGraphicsImageRendererFormat()
         format.scale = 1
         format.opaque = true
@@ -43,6 +45,16 @@ enum DeckRenderer {
             }
 
             drawLabel(key.label, in: textRect, maxFontSize: size.height * 0.24)
+
+            if isActive {
+                let line = max(size.width * 0.06, 3)
+                UIColor.white.setStroke()
+                let frame = UIBezierPath(rect: rect.insetBy(dx: line / 2, dy: line / 2))
+                frame.lineWidth = line
+                frame.stroke()
+                UIColor.white.setFill()
+                context.fill(CGRect(x: 0, y: size.height - line * 2, width: size.width, height: line * 2))
+            }
 
             if overlay == .pressed {
                 UIColor.white.withAlphaComponent(0.35).setFill()

@@ -41,6 +41,8 @@ final class AppState: ObservableObject {
     let localNetwork: LocalNetworkPermission
     /// Soak-test log of every drop-out and recovery (M7).
     let connectionLog: ConnectionLogStore
+    /// Lights deck keys for playbacks that are live in Titan (M8).
+    let playbackState: PlaybackStatePoller
     private var logSubscriptions = Set<AnyCancellable>()
     private let store: ProfileStore
 
@@ -56,6 +58,7 @@ final class AppState: ObservableObject {
         network = NetworkMonitor()
         localNetwork = LocalNetworkPermission()
         connectionLog = ConnectionLogStore()
+        playbackState = PlaybackStatePoller()
         titan = TitanClient(host: host)
         let store = ProfileStore()
         self.store = store
@@ -80,6 +83,12 @@ final class AppState: ObservableObject {
         localNetwork.check()
         heartbeat.start(client: titan) { [weak self] in
             !(self?.titanHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
+        }
+        playbackState.onChange = { [weak self] active in
+            self?.deck.setActivePlaybacks(active)
+        }
+        playbackState.start(client: titan) { [weak self] in
+            self?.heartbeat.health.isReachable ?? false
         }
     }
 
@@ -239,6 +248,14 @@ final class AppState: ObservableObject {
         let profile = DeckProfile.makeDefault(keyCount: keyCount)
         deck.replaceProfile(profile)
         save(profile)
+    }
+
+    /// Replaces the deck profile with an imported one.
+    func importProfile(from url: URL) throws {
+        let accessing = url.startAccessingSecurityScopedResource()
+        defer { if accessing { url.stopAccessingSecurityScopedResource() } }
+        let profile = try ProfileCoding.decode(Data(contentsOf: url))
+        updateProfile(profile)
     }
 
     private func save(_ profile: DeckProfile) {

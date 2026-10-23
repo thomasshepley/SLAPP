@@ -70,6 +70,14 @@ actor TitanClient {
         return text.isEmpty ? nil : text
     }
 
+    /// Playback handles with their Active flags, or nil if Titan didn't answer.
+    func playbackHandles() async -> [PlaybackHandleState]? {
+        guard let url = TitanEndpoints.handlesURL(group: "Playbacks", host: host, port: port),
+              let (data, response) = try? await session.data(from: url),
+              (response as? HTTPURLResponse)?.statusCode == 200 else { return nil }
+        return TitanHandlesParser.parse(data)
+    }
+
     private static func elapsed(since start: Date) -> Int {
         Int((Date().timeIntervalSince(start) * 1000).rounded())
     }
