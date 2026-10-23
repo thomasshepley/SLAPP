@@ -25,9 +25,16 @@ final class AppState: ObservableObject {
     @Published private(set) var isCheckingConnection = false
     /// Stream Deck Kit only gets key events while we're in the foreground.
     @Published private(set) var wasBackgrounded = false
+    @Published var rdpSettings: RDPSettings {
+        didSet { rdpSettings.save() }
+    }
+    /// Size of the remote view, so the RDP session can match it 1:1.
+    var remoteViewSize: CGSize = .zero
+    private var didAutoConnect = false
 
     let titan: TitanClient
     let deck: DeckSessionController
+    let rdp: RDPSession
     private let store: ProfileStore
 
     private static let hostKey = "titanHost"
@@ -36,6 +43,8 @@ final class AppState: ObservableObject {
     init() {
         let host = UserDefaults.standard.string(forKey: Self.hostKey) ?? ""
         titanHost = host
+        rdpSettings = RDPSettings.load()
+        rdp = RDPSession()
         titan = TitanClient(host: host)
         let store = ProfileStore()
         self.store = store
@@ -96,6 +105,42 @@ final class AppState: ObservableObject {
             titanVersion = await titan.softwareVersion()
             isCheckingConnection = false
         }
+    }
+
+    // MARK: - Remote desktop
+
+    var isRemoteConfigured: Bool {
+        rdpSettings.isComplete(titanHost: titanHost)
+    }
+
+    var remotePassword: String {
+        get { Keychain.password(for: rdpSettings.keychainAccount) ?? "" }
+        set {
+            Keychain.setPassword(newValue, for: rdpSettings.keychainAccount)
+            objectWillChange.send()
+        }
+    }
+
+    func connectRemote() {
+        guard isRemoteConfigured else { return }
+        rdp.connect(host: rdpSettings.effectiveHost(titanHost: titanHost),
+                    port: rdpSettings.port,
+                    username: rdpSettings.username.trimmingCharacters(in: .whitespacesAndNewlines),
+                    domain: rdpSettings.domain.trimmingCharacters(in: .whitespacesAndNewlines),
+                    password: remotePassword,
+                    viewSize: remoteViewSize)
+    }
+
+    /// Connects once at launch, if set up to. The app goes straight to the
+    /// Titan desktop with no taps needed.
+    func autoConnectRemote() {
+        guard !didAutoConnect, rdpSettings.autoConnect, isRemoteConfigured, rdp.state == .idle else { return }
+        didAutoConnect = true
+        connectRemote()
+    }
+
+    func forgetRemoteCertificates() {
+        CertificateTrustStore().forgetAll()
     }
 
     // MARK: - Profiles

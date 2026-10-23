@@ -8,7 +8,7 @@ struct RootView: View {
 
     var body: some View {
         TabView(selection: $appState.mode) {
-            RemotePlaceholderView()
+            RemoteView(session: appState.rdp)
                 .tabItem { Label("Remote", systemImage: "display") }
                 .tag(AppState.Mode.remote)
 
@@ -21,23 +21,6 @@ struct RootView: View {
             Button("OK", role: .cancel) {}
         } message: {
             Text("Stream Deck keys only work while TitanDeck is on screen. Check the deck is responding before carrying on.")
-        }
-    }
-}
-
-/// Stands in for the FreeRDP view until milestone M5.
-private struct RemotePlaceholderView: View {
-    @EnvironmentObject private var appState: AppState
-
-    var body: some View {
-        ZStack {
-            Color.black.ignoresSafeArea()
-            VStack(spacing: 12) {
-                Text("Remote view - M5")
-                    .font(.largeTitle.weight(.semibold))
-                    .foregroundStyle(.white.opacity(0.6))
-                DeckStatusLine(deck: appState.deck)
-            }
         }
     }
 }

@@ -14,7 +14,7 @@ Build plan: https://claude.ai/artifact/PXtiepzci194FMHiHaynGM
 | M2 - Project skeleton, Stream Deck Kit, deck draws keys | Done |
 | M3 - Titan client, keys fire playbacks, latency log | Done |
 | M4 - Profile editor UI | Built - needs testing on the iPad |
-| M5 - FreeRDP remote view | Next - stubs in `Sources/Remote/` |
+| M5 - FreeRDP remote view | Built - needs testing against the Titan PC |
 | M6 - Reconnect, overlay, settings gesture, Keychain, connection pill | Partly (idle timer, background warning) |
 | M7 - Show-day soak test | - |
 | M8 - Live key state, iCloud profile export | - |
@@ -32,8 +32,9 @@ There's no Xcode on iPad, so builds run on GitHub's macOS machines:
   TestFlight, once the one-off setup in
   [`docs/TESTFLIGHT_SETUP.md`](docs/TESTFLIGHT_SETUP.md) is done.
 
-On a Mac, if you ever want one: `brew install xcodegen && xcodegen generate`,
-then open `TitanDeck.xcodeproj`.
+On a Mac: `FreeRDP/fetch.sh` (downloads the prebuilt FreeRDP library), then
+`xcodegen generate`, then open `TitanDeck.xcodeproj`. Rerun both after pulling
+changes to `project.yml`, `FreeRDP/` or new files.
 
 ## Layout
 
