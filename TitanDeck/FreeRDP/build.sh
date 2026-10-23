@@ -82,6 +82,7 @@ build_freerdp() {
         -DPLATFORM="$platform" \
         -DDEPLOYMENT_TARGET="$DEPLOYMENT_TARGET" \
         -DENABLE_BITCODE=OFF \
+        -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=OFF \
         -DCMAKE_BUILD_TYPE=Release \
         -DCMAKE_INSTALL_PREFIX="$prefix" \
         -DCMAKE_INSTALL_LIBDIR=lib \
