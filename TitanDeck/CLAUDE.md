@@ -33,7 +33,8 @@ is regenerated, and CI regenerates it on every build.
 TitanDeck/
 ├── project.yml   XcodeGen spec - the real project settings
 ├── Sources/
-│   ├── App/        TitanDeckApp, AppState (the only place the layers meet), RootView
+│   ├── App/        TitanDeckApp, AppState (the only place the layers meet), RootView,
+│   │               TitanIntents (App Intents: Fire Playback, Run Macro)
 │   ├── Deck/       DeckSessionController (Stream Deck Kit), DeckRenderer, KeyDefinition,
 │   │               DeckProfile (+ default 32-key profile), DeckProfile+Editing (page/key
 │   │               edits, keeps page links valid), ActionDraft (form model), ProfileStore (JSON)
@@ -64,11 +65,13 @@ them together (e.g. `deck.onAction` -> `titan.perform`). Keep it that way.
 | M6 | RDP reconnect with backoff + dimmed last frame, always-visible connection pill (Titan heartbeat, RDP, network interface), Local Network permission check | Built - needs testing on set. Earlier: idle timer, background warning, three-finger settings gesture, Keychain password |
 | M7 | 8-hour show-day soak test + in-app connection log (Settings -> Soak test log: totals, events, CSV export) | Log built - the soak test itself is on set |
 | M8 | Light keys for live playbacks (polls /titan/handles/Playbacks every 1 s), profile export/import via Files / iCloud Drive | Built - check on the real Titan that handles report user numbers |
-| M9 | iPhone + iPhone Duo: on-screen deck drawn from the same profiles (Stream Deck Kit is iPad-only), adaptive layouts, App Intents (Shortcuts, Siri, Action button, Control Center) | - |
-| M10 | Apple Watch GO button: hold-to-fire or double-tap gesture, via the iPhone app or direct HTTP | - |
+| M9 | iPhone + iPhone Duo: on-screen deck drawn from the same profiles (Stream Deck Kit is iPad-only), adaptive layouts, App Intents (Shortcuts, Siri, Action button, Control Center) | Built - needs testing on an iPhone. iPhone Duo simulator needs Xcode 27.1 |
+| M10 | Apple Watch GO button: hold-to-fire or double-tap gesture, via the iPhone app or direct HTTP | **Next** |
 
 ## Platform and design decisions
 
+- **Universal app (iPhone + iPad).** Tabs: Remote, Deck (on-screen deck),
+  Settings. Compact width opens on Deck.
 - **Minimum OS is iOS/iPadOS 26.** Use iOS 26 APIs directly, without `#available` checks.
 - **Liquid Glass:** standard SwiftUI components get it automatically. Use
   `.glassEffect()` / `.buttonStyle(.glass)` for floating controls (connection

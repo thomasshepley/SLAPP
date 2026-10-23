@@ -25,9 +25,10 @@ final class DeckSessionController: ObservableObject {
     /// Called when the profile changes (e.g. re-flowed for a smaller deck) so it can be saved.
     var onProfileChanged: ((DeckProfile) -> Void)?
 
-    private var overlays: [Int: DeckRenderer.Overlay] = [:]
+    /// Per-key press/failure highlight. Published so the on-screen deck mirrors it.
+    @Published private(set) var overlays: [Int: DeckRenderer.Overlay] = [:]
     /// User numbers of playbacks Titan reports as active (M8).
-    private(set) var activePlaybacks: Set<Int> = []
+    @Published private(set) var activePlaybacks: Set<Int> = []
     private var started = false
     private var cancellables = Set<AnyCancellable>()
 
@@ -110,6 +111,12 @@ final class DeckSessionController: ObservableObject {
 
     // MARK: - Keys
 
+    /// Key press from the on-screen deck (iPhone, or iPad without hardware):
+    /// same paging, actions and feedback as a hardware key.
+    func pressOnScreenKey(_ index: Int, pressed: Bool) {
+        handleKey(index, pressed: pressed)
+    }
+
     private func handleKey(_ index: Int, pressed: Bool) {
         guard let key = currentPage?.key(at: index), let action = key.action else { return }
 
@@ -166,7 +173,7 @@ final class DeckSessionController: ObservableObject {
         }
     }
 
-    private func isActive(_ key: KeyDefinition?) -> Bool {
+    func isActive(_ key: KeyDefinition?) -> Bool {
         guard let number = key?.action?.playbackUserNumber else { return false }
         return activePlaybacks.contains(number)
     }
