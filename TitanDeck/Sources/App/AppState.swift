@@ -9,6 +9,7 @@ import UIKit
 final class AppState: ObservableObject {
     enum Mode: Hashable {
         case remote
+        case deck
         case settings
     }
 
@@ -16,7 +17,7 @@ final class AppState: ObservableObject {
     @Published var titanHost: String {
         didSet {
             let host = titanHost
-            UserDefaults.standard.set(host, forKey: Self.hostKey)
+            UserDefaults.standard.set(host, forKey: SettingsKeys.titanHost)
             Task { await titan.setHost(host) }
         }
     }
@@ -46,11 +47,10 @@ final class AppState: ObservableObject {
     private var logSubscriptions = Set<AnyCancellable>()
     private let store: ProfileStore
 
-    private static let hostKey = "titanHost"
     private static let maxResults = 25
 
     init() {
-        let host = UserDefaults.standard.string(forKey: Self.hostKey) ?? ""
+        let host = UserDefaults.standard.string(forKey: SettingsKeys.titanHost) ?? ""
         titanHost = host
         rdpSettings = RDPSettings.load()
         rdp = RDPSession()

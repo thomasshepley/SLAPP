@@ -13,7 +13,9 @@ settings:
     SWIFT_VERSION: "5.0"
     MARKETING_VERSION: "0.1.0"
     CURRENT_PROJECT_VERSION: "1"
-    TARGETED_DEVICE_FAMILY: "2"
+    # iPhone + iPad. Layout follows size classes (see CLAUDE.md), so iPhone
+    # Duo's inner display gets the full deck layout.
+    TARGETED_DEVICE_FAMILY: "1,2"
 
 packages:
   StreamDeckKit:
@@ -59,6 +61,12 @@ targets:
         UIRequiresFullScreen: true
         UIStatusBarHidden: true
         UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        # iPhone (outer display on iPhone Duo): upright for the deck, sideways
+        # for the remote desktop or propped up like a tent.
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
         UIApplicationSupportsIndirectInputEvents: true

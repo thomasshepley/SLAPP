@@ -18,7 +18,7 @@ Build plan: https://claude.ai/artifact/PXtiepzci194FMHiHaynGM
 | M6 - Reconnect, overlay, settings gesture, Keychain, connection pill | Built - needs testing on set |
 | M7 - Show-day soak test | Log built (Settings → Soak test log) - test on set |
 | M8 - Live key state, profile export/import | Built - test on the Titan PC |
-| M9 - iPhone + iPhone Duo on-screen deck, App Intents | - |
+| M9 - iPhone + iPhone Duo on-screen deck, App Intents | Built - test on an iPhone |
 | M10 - Apple Watch GO button | - |
 
 ## How it's built (no Mac needed)

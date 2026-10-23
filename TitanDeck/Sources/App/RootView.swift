@@ -5,6 +5,7 @@ import SwiftUI
 /// a deck key with the openSettings action.
 struct RootView: View {
     @EnvironmentObject private var appState: AppState
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     var body: some View {
         TabView(selection: $appState.mode) {
@@ -12,9 +13,19 @@ struct RootView: View {
                 .tabItem { Label("Remote", systemImage: "display") }
                 .tag(AppState.Mode.remote)
 
+            OnScreenDeckView(deck: appState.deck)
+                .tabItem { Label("Deck", systemImage: "square.grid.3x3.fill") }
+                .tag(AppState.Mode.deck)
+
             SettingsView()
                 .tabItem { Label("Settings", systemImage: "gearshape") }
                 .tag(AppState.Mode.settings)
+        }
+        .onAppear {
+            // On a phone-sized screen the deck is the main event, not the remote desktop.
+            if horizontalSizeClass == .compact, appState.mode == .remote {
+                appState.mode = .deck
+            }
         }
         .alert("TitanDeck was in the background",
                isPresented: Binding(get: { appState.wasBackgrounded }, set: { if !$0 { appState.dismissBackgroundWarning() } })) {
