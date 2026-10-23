@@ -47,6 +47,18 @@ enum TitanEndpoints {
         URL(string: "http://\(authority(host, port))/titan/get/System/SoftwareVersion")
     }
 
+    /// GET /titan/handles/<group> - every handle in a group, with its Active flag.
+    static func handlesURL(group: String, host: String, port: Int = defaultPort) -> URL? {
+        let cleanHost = host.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleanHost.isEmpty else { return nil }
+        var components = URLComponents()
+        components.scheme = "http"
+        components.host = cleanHost
+        components.port = port
+        components.path = "/titan/handles/" + group
+        return components.url
+    }
+
     /// Levels are clamped to 0-1 and sent without trailing zeros ("0.5", "1").
     static func format(level: Double) -> String {
         let clamped = min(max(level, 0), 1)

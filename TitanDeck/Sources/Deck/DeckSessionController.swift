@@ -26,6 +26,8 @@ final class DeckSessionController: ObservableObject {
     var onProfileChanged: ((DeckProfile) -> Void)?
 
     private var overlays: [Int: DeckRenderer.Overlay] = [:]
+    /// User numbers of playbacks Titan reports as active (M8).
+    private(set) var activePlaybacks: Set<Int> = []
     private var started = false
     private var cancellables = Set<AnyCancellable>()
 
@@ -153,6 +155,22 @@ final class DeckSessionController: ObservableObject {
         draw(keyIndex: index)
     }
 
+    /// Updates live playback state and redraws only the keys that changed.
+    func setActivePlaybacks(_ active: Set<Int>) {
+        guard active != activePlaybacks else { return }
+        let changed = active.symmetricDifference(activePlaybacks)
+        activePlaybacks = active
+        guard let page = currentPage else { return }
+        for key in page.keys where key.action?.playbackUserNumber.map({ changed.contains($0) }) == true {
+            draw(keyIndex: key.index)
+        }
+    }
+
+    private func isActive(_ key: KeyDefinition?) -> Bool {
+        guard let number = key?.action?.playbackUserNumber else { return false }
+        return activePlaybacks.contains(number)
+    }
+
     // MARK: - Drawing
 
     func redraw() {
@@ -165,8 +183,8 @@ final class DeckSessionController: ObservableObject {
     private func draw(keyIndex index: Int) {
         guard let device, index < device.capabilities.keyCount, device.supports(.setKeyImage) else { return }
         let size = device.capabilities.keySize ?? CGSize(width: 96, height: 96)
-        let image = DeckRenderer.image(for: currentPage?.key(at: index), size: size,
-                                       overlay: overlays[index] ?? .none)
+        let key = currentPage?.key(at: index)
+        let image = DeckRenderer.image(for: key, size: size, overlay: overlays[index] ?? .none, isActive: isActive(key))
         device.setKeyImage(image, at: index)
     }
 

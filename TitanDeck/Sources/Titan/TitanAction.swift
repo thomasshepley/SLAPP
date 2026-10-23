@@ -31,6 +31,14 @@ enum TitanAction: Codable, Hashable {
         }
     }
 
+    /// The playback this action controls, if any - used to light active keys.
+    var playbackUserNumber: Int? {
+        switch self {
+        case .playbackGo(let n), .playbackRelease(let n), .setFaderLevel(let n, _): return n
+        default: return nil
+        }
+    }
+
     /// Short human-readable description for logs and the settings screen.
     var summary: String {
         switch self {

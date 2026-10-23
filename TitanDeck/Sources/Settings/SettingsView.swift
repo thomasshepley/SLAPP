@@ -1,5 +1,6 @@
 // Settings/SettingsView.swift
 import SwiftUI
+import UniformTypeIdentifiers
 #if DEBUG
 import StreamDeckSimulator
 #endif
@@ -262,6 +263,8 @@ private struct DeckSection: View {
     @EnvironmentObject private var appState: AppState
     @ObservedObject var deck: DeckSessionController
     @State private var confirmReset = false
+    @State private var isImporting = false
+    @State private var importError: String?
 
     var body: some View {
         Section("Stream Deck") {
@@ -283,11 +286,50 @@ private struct DeckSection: View {
                 StreamDeckSimulator.show(defaultStreamDeck: .xl)
             }
             #endif
+            LiveKeyStateRow(poller: appState.playbackState)
+            ShareLink(item: ProfileFile(profile: deck.profile), preview: SharePreview("TitanDeck profile: \(deck.profile.name)")) {
+                Label("Export profile", systemImage: "square.and.arrow.up")
+            }
+            Button("Import profile...", systemImage: "square.and.arrow.down") { isImporting = true }
+                .fileImporter(isPresented: $isImporting, allowedContentTypes: [.json]) { result in
+                    do {
+                        try appState.importProfile(from: result.get())
+                    } catch {
+                        importError = error.localizedDescription
+                    }
+                }
+                .alert("Couldn't import", isPresented: Binding(get: { importError != nil }, set: { if !$0 { importError = nil } })) {
+                    Button("OK", role: .cancel) {}
+                } message: {
+                    Text(importError ?? "")
+                }
             Button("Reset to default profile", role: .destructive) { confirmReset = true }
                 .confirmationDialog("Replace the current deck profile with the default?",
                                     isPresented: $confirmReset, titleVisibility: .visible) {
                     Button("Reset", role: .destructive) { appState.resetProfileToDefault() }
                 }
+        }
+    }
+}
+
+/// M8: toggle for lighting keys of live playbacks, with whether Titan supports it.
+private struct LiveKeyStateRow: View {
+    @ObservedObject var poller: PlaybackStatePoller
+
+    var body: some View {
+        Toggle(isOn: $poller.isEnabled) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Light keys for live playbacks")
+                switch poller.support {
+                case .unknown:
+                    Text("Waiting for Titan").font(.caption).foregroundStyle(.secondary)
+                case .working:
+                    Text("Working").font(.caption).foregroundStyle(.green)
+                case .noUserNumbers:
+                    Text("This Titan version doesn't report playback user numbers, so keys can't be matched.")
+                        .font(.caption).foregroundStyle(.orange)
+                }
+            }
         }
     }
 }
