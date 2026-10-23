@@ -1,6 +1,6 @@
 # TitanDeck - notes for Claude
 
-A native SwiftUI iPad app (iPadOS 17+, landscape only, bundle id
+A native SwiftUI iPad app (iPadOS 26+, landscape only, bundle id
 `uk.co.elexproductions.titandeck`) for running an Avolites Titan lighting PC
 from a film/TV set. A physical Elgato Stream Deck on the iPad's USB-C hub fires
 Titan playbacks over the Titan WebAPI. From M5, a full-screen FreeRDP remote
@@ -56,9 +56,30 @@ them together (e.g. `deck.onAction` -> `titan.perform`). Keep it that way.
 | M3 | Titan client, keys fire playbacks, latency log | Done |
 | M4 | Profile editor UI: pages, labels, colours, action inspector (`Settings/DeckEditorView.swift`, `Settings/KeyInspectorView.swift`) | **Next** |
 | M5 | FreeRDP remote view in `Remote/`, touch-to-mouse mapping | Stubs only |
-| M6 | RDP reconnect + dimmed overlay, three-finger settings gesture, Keychain for the RDP password | Partly (idle timer, background warning) |
+| M6 | RDP reconnect + dimmed overlay, three-finger settings gesture, Keychain for the RDP password, always-visible connection pill (Titan heartbeat, network path, IP), Local Network permission check | Partly (idle timer, background warning) |
 | M7 | 8-hour show-day soak test | - |
 | M8 | Poll WebAPI to light active keys, iCloud profile export | - |
+| M9 | iPhone + iPhone Duo: on-screen deck drawn from the same profiles (Stream Deck Kit is iPad-only), adaptive layouts, App Intents (Shortcuts, Siri, Action button, Control Center) | - |
+| M10 | Apple Watch GO button: hold-to-fire or double-tap gesture, via the iPhone app or direct HTTP | - |
+
+## Platform and design decisions
+
+- **Minimum OS is iOS/iPadOS 26.** Use iOS 26 APIs directly, without `#available` checks.
+- **Liquid Glass:** standard SwiftUI components get it automatically. Use
+  `.glassEffect()` / `.buttonStyle(.glass)` for floating controls (connection
+  pill, reconnect overlay). Never put glass over the RDP framebuffer.
+- **Layout by size class, never by device idiom or orientation.** iPhone Duo's
+  inner display is regular x regular and ignores supported orientations. Avoid
+  `UIScreen.main`. Use the environment, trait collection or
+  `windowScene.screen`. Use `ConcentricRectangle` for corner-fitted shapes.
+  Testing on the iPhone Duo simulator needs Xcode 27.1.
+- **Network on set:** the iPad reaches the show network through the AirWire,
+  USB-C into the hub, so it appears as Ethernet. iPad Wi-Fi should be off on set.
+  Don't assume Wi-Fi APIs (SSID etc.) are meaningful on the iPad.
+- **Capabilities are added only when a feature needs them:** App Groups
+  (iPhone/Watch/widgets sharing), iCloud (M8), Access Wi-Fi Information (iPhone
+  only, given the iPad uses Ethernet). Add them in `project.yml` AND on the app ID
+  in the Apple Developer portal.
 
 Not yet verified on real hardware: Stream Deck behaviour and Titan calls have
 only run in the simulator/tests. Treat the first on-device run as a test.

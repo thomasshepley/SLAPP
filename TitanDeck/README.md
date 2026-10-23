@@ -15,9 +15,11 @@ Build plan: https://claude.ai/artifact/PXtiepzci194FMHiHaynGM
 | M3 - Titan client, keys fire playbacks, latency log | Done |
 | M4 - Profile editor UI | Next |
 | M5 - FreeRDP remote view | Stubs in `Sources/Remote/` |
-| M6 - Reconnect, overlay, settings gesture, Keychain | Partly (idle timer, background warning) |
+| M6 - Reconnect, overlay, settings gesture, Keychain, connection pill | Partly (idle timer, background warning) |
 | M7 - Show-day soak test | - |
 | M8 - Live key state, iCloud profile export | - |
+| M9 - iPhone + iPhone Duo on-screen deck, App Intents | - |
+| M10 - Apple Watch GO button | - |
 
 ## How it's built (no Mac needed)
 
