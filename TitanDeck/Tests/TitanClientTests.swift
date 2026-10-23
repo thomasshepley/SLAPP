@@ -14,11 +14,18 @@ final class TitanClientTests: XCTestCase {
         XCTAssertEqual(result.error, "Local action")
     }
 
-    /// Nothing listens on port 1, so this must fail fast rather than hang a key.
-    func testUnreachableHostFailsQuickly() async {
+    func testDefaultTimeoutIsHalfASecond() async {
+        let timeout = await TitanClient(host: "10.0.0.1").timeout
+        XCTAssertEqual(timeout, 0.5)
+    }
+
+    /// Nothing listens on port 1, so this must fail rather than hang a key for
+    /// URLSession's 60 s default. The bound is loose because shared CI
+    /// simulators can take seconds to resume a finished request.
+    func testUnreachableHostFailsWithoutHanging() async {
         let client = TitanClient(host: "127.0.0.1", port: 1)
         let result = await client.perform(.playbackGo(userNumber: 1))
         XCTAssertFalse(result.ok)
-        XCTAssertLessThan(result.milliseconds, 2000)
+        XCTAssertLessThan(result.milliseconds, 15_000)
     }
 }

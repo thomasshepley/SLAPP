@@ -20,11 +20,14 @@ struct TitanResult: Equatable {
 actor TitanClient {
     private(set) var host: String
     let port: Int
+    /// Per-request timeout in seconds (0.5 by default).
+    let timeout: TimeInterval
     private let session: URLSession
 
     init(host: String, port: Int = TitanEndpoints.defaultPort, timeout: TimeInterval = 0.5) {
         self.host = host
         self.port = port
+        self.timeout = timeout
         let config = URLSessionConfiguration.ephemeral
         config.timeoutIntervalForRequest = timeout
         config.timeoutIntervalForResource = timeout
