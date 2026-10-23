@@ -37,7 +37,22 @@ enum TitanEndpoints {
         case .raw(let path):
             let trimmed = path.hasPrefix("/") ? String(path.dropFirst()) : path
             return URL(string: "http://\(authority(host, port))\(scriptRoot)\(trimmed)")
-        case .switchPage, .openSettings, .nextPage, .previousPage:
+        case .keypadDigit(let digit):
+            return script(host, port, "Command/AppendStringAndPreview", [("text", "\(min(max(digit, 0), 9))")])
+        case .keypadAt:
+            return script(host, port, "Command/AppendStringAndPreview", [("text", "@")])
+        case .keypadExit:
+            return script(host, port, "Menu/ExitRootOrLatched", [])
+        case .adjustIntensity(let percent):
+            // Assumes IncrementDimmer takes percent, like SetDimmerLevel does - check on the console.
+            return script(host, port, "Programmer/Editor/Fixtures/IncrementDimmer", [
+                ("value", format(number: percent)),
+                ("timeDelta", "1"),
+                ("shiftEnabled", "false"),
+            ])
+        case .keypadEnter, .keypadClear:
+            return nil   // several requests - TitanClient runs them
+        case .switchPage, .openSettings, .nextPage, .previousPage, .mainMenu:
             return nil
         }
     }
@@ -45,6 +60,35 @@ enum TitanEndpoints {
     /// GET /titan/get/System/SoftwareVersion - a cheap "are you there" check.
     static func softwareVersionURL(host: String, port: Int = defaultPort) -> URL? {
         URL(string: "http://\(authority(host, port))/titan/get/System/SoftwareVersion")
+    }
+
+    // MARK: Command line (keypad Enter / Clear)
+
+    /// GET the text currently on Titan's command line.
+    static func commandLineTextURL(host: String, port: Int = defaultPort) -> URL? {
+        guard !host.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
+        return URL(string: "http://\(authority(host, port))/titan/get/2/Command/CommandLineText")
+    }
+
+    static func runCommandURL(_ command: String, host: String, port: Int = defaultPort) -> URL? {
+        script(host, port, "Command/RunCommand", [("command", command)])
+    }
+
+    static func startNewCommandURL(host: String, port: Int = defaultPort) -> URL? {
+        script(host, port, "Command/StartNewCommand", [])
+    }
+
+    /// Clears the programmer (this one only) and the selection.
+    static func clearProgrammerURL(host: String, port: Int = defaultPort) -> URL? {
+        script(host, port, "Playbacks/Editor/ClearAll", [("presets", "false"), ("allProgrammers", "false")])
+    }
+
+    /// Any number, without trailing zeros ("5", "-2.5").
+    static func format(number: Double) -> String {
+        if number == number.rounded() { return String(Int(number)) }
+        var text = String(format: "%.3f", number)
+        while text.hasSuffix("0") { text.removeLast() }
+        return text
     }
 
     /// GET /titan/handles/<group> - every handle in a group, with its Active flag.
@@ -81,7 +125,7 @@ enum TitanEndpoints {
         components.port = port
         components.path = scriptRoot + function
         // Encode by hand: Foundation versions disagree on escaping & = + in values.
-        components.percentEncodedQuery = params
+        components.percentEncodedQuery = params.isEmpty ? nil : params
             .map { "\(encode($0.0))=\(encode($0.1))" }
             .joined(separator: "&")
         return components.url

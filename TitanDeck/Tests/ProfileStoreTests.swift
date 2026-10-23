@@ -19,7 +19,7 @@ final class ProfileStoreTests: XCTestCase {
 
     func testSaveThenLoad() throws {
         let store = ProfileStore(directory: directory)
-        var profile = DeckProfile.makeDefault()
+        var profile = DeckProfile.makePlaybackWall()
         profile.name = "Show A"
         try store.save(profile)
         XCTAssertEqual(store.load(), profile)

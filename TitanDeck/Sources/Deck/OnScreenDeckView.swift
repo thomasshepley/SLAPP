@@ -11,12 +11,19 @@ struct OnScreenDeckView: View {
     @Environment(\.verticalSizeClass) private var verticalSizeClass
     @State private var pressedKey: Int?
     @State private var pressCount = 0
+    /// Titan's command line, shown while the deck is on screen.
+    @State private var commandLine: String?
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 16) {
-                    if deck.profile.pages.count > 1 {
+                    commandLineBar
+                    if deck.isShowingMenu {
+                        Text("Main menu - pick a layout")
+                            .font(.headline)
+                            .foregroundStyle(.secondary)
+                    } else if deck.profile.pages.count > 1 {
                         Picker("Page", selection: pageBinding) {
                             ForEach(deck.profile.pages.indices, id: \.self) { index in
                                 Text(deck.profile.pages[index].name).tag(index)
@@ -31,7 +38,7 @@ struct OnScreenDeckView: View {
                 .frame(maxWidth: .infinity)
             }
             .background(Color.black)
-            .navigationTitle(deck.currentPage?.name ?? "Deck")
+            .navigationTitle(deck.isShowingMenu ? "Main Menu" : (deck.currentPage?.name ?? "Deck"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -39,6 +46,32 @@ struct OnScreenDeckView: View {
                 }
             }
             .sensoryFeedback(.impact(weight: .medium), trigger: pressCount)
+            .task {
+                // Poll the command line twice a second while this tab is open.
+                while !Task.isCancelled {
+                    commandLine = await appState.titan.commandLineText()
+                    try? await Task.sleep(nanoseconds: 500_000_000)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var commandLineBar: some View {
+        if let commandLine {
+            HStack {
+                Image(systemName: "terminal")
+                    .foregroundStyle(.secondary)
+                Text(commandLine.isEmpty ? " " : commandLine)
+                    .font(.title3.monospaced())
+                    .lineLimit(1)
+                    .truncationMode(.head)
+                Spacer()
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .glassEffect(.regular, in: .rect(cornerRadius: 14))
+            .accessibilityLabel("Titan command line: \(commandLine)")
         }
     }
 

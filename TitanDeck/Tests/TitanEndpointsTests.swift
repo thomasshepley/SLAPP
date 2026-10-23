@@ -56,4 +56,40 @@ final class TitanEndpointsTests: XCTestCase {
         XCTAssertEqual(TitanEndpoints.format(level: 1.7), "1")
         XCTAssertEqual(TitanEndpoints.format(level: -0.2), "0")
     }
+
+    // MARK: - Keypad and intensity
+
+    func testKeypadDigitsAndAt() {
+        XCTAssertEqual(TitanEndpoints.url(for: .keypadDigit(7), host: host)?.absoluteString,
+                       "http://10.0.0.1:4430/titan/script/2/Command/AppendStringAndPreview?text=7")
+        XCTAssertEqual(TitanEndpoints.url(for: .keypadAt, host: host)?.absoluteString,
+                       "http://10.0.0.1:4430/titan/script/2/Command/AppendStringAndPreview?text=%40")
+    }
+
+    func testKeypadExitHasNoQuery() {
+        XCTAssertEqual(TitanEndpoints.url(for: .keypadExit, host: host)?.absoluteString,
+                       "http://10.0.0.1:4430/titan/script/2/Menu/ExitRootOrLatched")
+    }
+
+    func testIntensityNudge() {
+        XCTAssertEqual(TitanEndpoints.url(for: .adjustIntensity(percent: -5), host: host)?.absoluteString,
+                       "http://10.0.0.1:4430/titan/script/2/Programmer/Editor/Fixtures/IncrementDimmer?value=-5&timeDelta=1&shiftEnabled=false")
+    }
+
+    func testMultiStepAndLocalActionsHaveNoSingleURL() {
+        XCTAssertNil(TitanEndpoints.url(for: .keypadEnter, host: host))
+        XCTAssertNil(TitanEndpoints.url(for: .keypadClear, host: host))
+        XCTAssertNil(TitanEndpoints.url(for: .mainMenu, host: host))
+    }
+
+    func testCommandLineURLs() {
+        XCTAssertEqual(TitanEndpoints.commandLineTextURL(host: host)?.absoluteString,
+                       "http://10.0.0.1:4430/titan/get/2/Command/CommandLineText")
+        XCTAssertEqual(TitanEndpoints.runCommandURL("1 @ 5", host: host)?.absoluteString,
+                       "http://10.0.0.1:4430/titan/script/2/Command/RunCommand?command=1%20%40%205")
+        XCTAssertEqual(TitanEndpoints.startNewCommandURL(host: host)?.absoluteString,
+                       "http://10.0.0.1:4430/titan/script/2/Command/StartNewCommand")
+        XCTAssertEqual(TitanEndpoints.clearProgrammerURL(host: host)?.absoluteString,
+                       "http://10.0.0.1:4430/titan/script/2/Playbacks/Editor/ClearAll?presets=false&allProgrammers=false")
+    }
 }

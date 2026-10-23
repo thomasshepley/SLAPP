@@ -3,7 +3,7 @@ import XCTest
 
 final class ProfileCodingTests: XCTestCase {
     func testRoundTripMarksProfileAsHandMade() throws {
-        var profile = DeckProfile.makeDefault()
+        var profile = DeckProfile.makePlaybackWall()
         profile.name = "Show A"
         let decoded = try ProfileCoding.decode(ProfileCoding.encode(profile))
         XCTAssertEqual(decoded.name, "Show A")
@@ -13,13 +13,13 @@ final class ProfileCodingTests: XCTestCase {
 
     func testRejectsGarbageAndEmptyProfiles() throws {
         XCTAssertThrowsError(try ProfileCoding.decode(Data("{}".utf8)))
-        var profile = DeckProfile.makeDefault()
+        var profile = DeckProfile.makePlaybackWall()
         profile.pages = []
         XCTAssertThrowsError(try ProfileCoding.decode(ProfileCoding.encode(profile)))
     }
 
     func testDropsKeysOutsideTheDeck() throws {
-        var profile = DeckProfile.makeDefault(keyCount: 15)
+        var profile = DeckProfile.makePlaybackWall(keyCount: 15)
         profile.pages[0].keys.append(KeyDefinition(index: 40, label: "Ghost"))
         let decoded = try ProfileCoding.decode(ProfileCoding.encode(profile))
         XCTAssertNil(decoded.pages[0].key(at: 40))

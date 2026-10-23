@@ -19,7 +19,10 @@ Build plan: https://claude.ai/artifact/PXtiepzci194FMHiHaynGM
 | M7 - Show-day soak test | Log built (Settings → Soak test log) - test on set |
 | M8 - Live key state, profile export/import | Built - test on the Titan PC |
 | M9 - iPhone + iPhone Duo on-screen deck, App Intents | Built - test on an iPhone |
+| M11 - Default 15-key portrait keypad / intensity deck, hold-for-menu | Built - test on Titan |
 | M10 - Apple Watch GO button | Built - test on a Watch |
+
+Testing everything at home: see [`docs/TEST_PLAN.md`](docs/TEST_PLAN.md).
 
 ## How it's built (no Mac needed)
 

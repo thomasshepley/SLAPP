@@ -259,8 +259,8 @@ final class AppState: ObservableObject {
     }
 
     func resetProfileToDefault() {
-        let keyCount = deck.device?.capabilities.keyCount ?? 32
-        let profile = DeckProfile.makeDefault(keyCount: keyCount)
+        let keyCount = deck.device?.capabilities.keyCount ?? 15
+        let profile = DeckProfile.makeDefault(keyCount: keyCount, orientation: deck.profile.orientation)
         deck.replaceProfile(profile)
         save(profile)
     }

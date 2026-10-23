@@ -14,6 +14,23 @@ enum DeckRenderer {
 
     /// `isActive` draws a live-playback highlight: a bright frame and a bar
     /// along the bottom, readable at a glance on set.
+    /// `quarterTurns` rotates the finished image (positive = clockwise) for a
+    /// deck mounted in portrait.
+    static func image(for key: KeyDefinition?, size: CGSize, overlay: Overlay = .none, isActive: Bool = false,
+                      quarterTurns: Int) -> UIImage {
+        let upright = image(for: key, size: size, overlay: overlay, isActive: isActive)
+        guard quarterTurns % 4 != 0 else { return upright }
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        format.opaque = true
+        return UIGraphicsImageRenderer(size: size, format: format).image { context in
+            let cg = context.cgContext
+            cg.translateBy(x: size.width / 2, y: size.height / 2)
+            cg.rotate(by: CGFloat(quarterTurns) * .pi / 2)
+            upright.draw(in: CGRect(x: -size.width / 2, y: -size.height / 2, width: size.width, height: size.height))
+        }
+    }
+
     static func image(for key: KeyDefinition?, size: CGSize, overlay: Overlay = .none, isActive: Bool = false) -> UIImage {
         let format = UIGraphicsImageRendererFormat()
         format.scale = 1

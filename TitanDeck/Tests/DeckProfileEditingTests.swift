@@ -11,7 +11,7 @@ final class DeckProfileEditingTests: XCTestCase {
     }
 
     func testAddPageHasNextPageKeyAndClearsDefaultFlag() {
-        var profile = DeckProfile.makeDefault()
+        var profile = DeckProfile.makePlaybackWall()
         let index = profile.addPage()
         XCTAssertEqual(index, 2)
         XCTAssertEqual(profile.pages[2].name, "Page 3")
@@ -20,7 +20,7 @@ final class DeckProfileEditingTests: XCTestCase {
     }
 
     func testRemovePageRemapsLinks() {
-        var profile = DeckProfile.makeDefault()   // page 0 -> 1, page 1 -> 0
+        var profile = DeckProfile.makePlaybackWall()   // page 0 -> 1, page 1 -> 0
         profile.addPage()                          // page 2
         profile.setKey(KeyDefinition(index: 0, label: "To 3", action: .switchPage(2)), onPage: 0)
         profile.removePage(at: 1)
@@ -33,14 +33,14 @@ final class DeckProfileEditingTests: XCTestCase {
     }
 
     func testLastPageCannotBeRemoved() {
-        var profile = DeckProfile.makeDefault()
+        var profile = DeckProfile.makePlaybackWall()
         profile.removePage(at: 1)
         profile.removePage(at: 0)
         XCTAssertEqual(profile.pages.count, 1)
     }
 
     func testMovePageKeepsLinksPointingAtSamePages() {
-        var profile = DeckProfile.makeDefault()
+        var profile = DeckProfile.makePlaybackWall()
         profile.addPage(named: "Third")
         let releaseID = profile.pages[1].id
         profile.movePage(from: 1, to: 2)   // Go, Third, Release
@@ -54,7 +54,7 @@ final class DeckProfileEditingTests: XCTestCase {
     }
 
     func testDuplicatePageGetsFreshIDsAndShiftsLinks() {
-        var profile = DeckProfile.makeDefault()
+        var profile = DeckProfile.makePlaybackWall()
         let copyIndex = profile.duplicatePage(at: 0)
         XCTAssertEqual(copyIndex, 1)
         XCTAssertEqual(profile.pages.count, 3)
@@ -67,7 +67,7 @@ final class DeckProfileEditingTests: XCTestCase {
     }
 
     func testSetKeyReplacesAndSorts() {
-        var profile = DeckProfile.makeDefault()
+        var profile = DeckProfile.makePlaybackWall()
         profile.setKey(KeyDefinition(index: 20, label: "New"), onPage: 0)
         profile.setKey(KeyDefinition(index: 0, label: "Replaced", action: .playbackGo(userNumber: 40)), onPage: 0)
         let keys = profile.pages[0].keys
@@ -78,20 +78,20 @@ final class DeckProfileEditingTests: XCTestCase {
     }
 
     func testSetKeyOutsideDeckIsIgnored() {
-        var profile = DeckProfile.makeDefault()
+        var profile = DeckProfile.makePlaybackWall()
         let before = profile
         profile.setKey(KeyDefinition(index: 32, label: "Off the edge"), onPage: 0)
         XCTAssertEqual(profile.pages, before.pages)
     }
 
     func testClearKey() {
-        var profile = DeckProfile.makeDefault()
+        var profile = DeckProfile.makePlaybackWall()
         profile.clearKey(at: 0, onPage: 0)
         XCTAssertNil(profile.pages[0].key(at: 0))
     }
 
     func testRenameIgnoresBlank() {
-        var profile = DeckProfile.makeDefault()
+        var profile = DeckProfile.makePlaybackWall()
         profile.renamePage(at: 0, to: "  Act 1 ")
         XCTAssertEqual(profile.pages[0].name, "Act 1")
         profile.renamePage(at: 0, to: "   ")
