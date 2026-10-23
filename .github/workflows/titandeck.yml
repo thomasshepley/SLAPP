@@ -1,0 +1,163 @@
+name: TitanDeck
+
+# Builds and tests TitanDeck on a GitHub macOS runner (there's no Xcode on
+# iPad), then optionally signs it and uploads it to TestFlight.
+# Setup for the TestFlight half: TitanDeck/docs/TESTFLIGHT_SETUP.md
+on:
+  push:
+    paths:
+      - 'TitanDeck/**'
+      - '.github/workflows/titandeck.yml'
+  workflow_dispatch:
+    inputs:
+      testflight:
+        description: Upload this build to TestFlight
+        type: boolean
+        default: true
+
+concurrency:
+  group: titandeck-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: Build and test (iPad Simulator)
+    runs-on: macos-15
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: TitanDeck
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Generate Xcode project
+        run: |
+          brew install xcodegen
+          xcodegen generate
+
+      - name: Pick an iPad simulator
+        id: sim
+        run: |
+          UDID=$(xcrun simctl list devices available -j | python3 -c '
+          import json, sys
+          devices = json.load(sys.stdin)["devices"]
+          print(next(d["udid"] for runtime, ds in sorted(devices.items(), reverse=True)
+                     if "iOS" in runtime for d in ds if "iPad" in d["name"]))')
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+          xcrun simctl list devices available | grep "$UDID"
+
+      - name: Build and run unit tests
+        run: |
+          xcodebuild test \
+            -project TitanDeck.xcodeproj \
+            -scheme TitanDeck \
+            -destination "id=${{ steps.sim.outputs.udid }}" \
+            -resultBundlePath "$RUNNER_TEMP/TitanDeckTests.xcresult" \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Keep test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: TitanDeckTests.xcresult
+          path: ${{ runner.temp }}/TitanDeckTests.xcresult
+
+  testflight:
+    name: Upload to TestFlight
+    needs: build-and-test
+    if: >-
+      (github.event_name == 'workflow_dispatch' && inputs.testflight) ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    runs-on: macos-15
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: TitanDeck
+    env:
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+      ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+    steps:
+      - name: Check signing secrets
+        id: secrets
+        working-directory: .
+        run: |
+          if [ -n "$ASC_KEY_ID" ] && [ -n "$ASC_ISSUER_ID" ] && [ -n "$ASC_KEY_P8" ] && [ -n "$APPLE_TEAM_ID" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::TestFlight upload skipped - signing secrets not set yet. See TitanDeck/docs/TESTFLIGHT_SETUP.md"
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.secrets.outputs.ready == 'true'
+
+      - uses: maxim-lobanov/setup-xcode@v1
+        if: steps.secrets.outputs.ready == 'true'
+        with:
+          xcode-version: latest-stable
+
+      - name: Generate Xcode project
+        if: steps.secrets.outputs.ready == 'true'
+        run: |
+          brew install xcodegen
+          xcodegen generate
+
+      - name: Write App Store Connect key
+        if: steps.secrets.outputs.ready == 'true'
+        run: |
+          KEY_PATH="$RUNNER_TEMP/AuthKey_$ASC_KEY_ID.p8"
+          printf '%s\n' "$ASC_KEY_P8" > "$KEY_PATH"
+          echo "ASC_KEY_PATH=$KEY_PATH" >> "$GITHUB_ENV"
+
+      - name: Archive
+        if: steps.secrets.outputs.ready == 'true'
+        run: |
+          xcodebuild archive \
+            -project TitanDeck.xcodeproj \
+            -scheme TitanDeck \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$RUNNER_TEMP/TitanDeck.xcarchive" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$ASC_KEY_PATH" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
+            CURRENT_PROJECT_VERSION="${{ github.run_number }}"
+
+      - name: Export and upload to TestFlight
+        if: steps.secrets.outputs.ready == 'true'
+        run: |
+          cat > "$RUNNER_TEMP/ExportOptions.plist" <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>destination</key><string>upload</string>
+            <key>teamID</key><string>$APPLE_TEAM_ID</string>
+            <key>signingStyle</key><string>automatic</string>
+            <key>manageAppVersionAndBuildNumber</key><false/>
+          </dict>
+          </plist>
+          PLIST
+          xcodebuild -exportArchive \
+            -archivePath "$RUNNER_TEMP/TitanDeck.xcarchive" \
+            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" \
+            -exportPath "$RUNNER_TEMP/export" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$ASC_KEY_PATH" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+          echo "::notice::Build ${{ github.run_number }} uploaded. It appears in TestFlight after Apple finishes processing (usually 5-20 minutes)."
+
+      - name: Remove key
+        if: always()
+        working-directory: .
+        run: rm -f "$RUNNER_TEMP"/AuthKey_*.p8

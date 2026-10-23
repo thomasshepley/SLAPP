@@ -1,8 +1,14 @@
-name: Deploy to GitHub Pages
+name: Deploy lighting companion to GitHub Pages
 
+# The lighting companion is sidelined while TitanDeck is built. It still
+# deploys from main, but only when something under lighting-companion/ changes.
 on:
   push:
-    branches: [main, claude/shepley-lighting-companion-x4klzb]
+    branches: [main]
+    paths:
+      - 'lighting-companion/**'
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -16,12 +22,16 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: lighting-companion
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
+          cache-dependency-path: lighting-companion/package-lock.json
       - run: npm ci
       - run: npm run build
         env:
@@ -29,7 +39,7 @@ jobs:
       - run: cp dist/index.html dist/404.html
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: dist
+          path: lighting-companion/dist
 
   deploy:
     needs: build
