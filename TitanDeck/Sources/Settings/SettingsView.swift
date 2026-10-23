@@ -1,5 +1,8 @@
 // Settings/SettingsView.swift
 import SwiftUI
+#if DEBUG
+import StreamDeckSimulator
+#endif
 
 /// M3 settings: Titan host, connection test, test fire buttons and a latency
 /// log. The deck editor (DeckEditorView / KeyInspectorView) arrives in M4.
@@ -97,6 +100,16 @@ private struct DeckSection: View {
                 LabeledContent("Device", value: "None attached")
             }
             LabeledContent("Profile", value: "\(deck.profile.name) - \(deck.profile.pages.count) pages")
+            NavigationLink {
+                DeckEditorView(deck: deck)
+            } label: {
+                Label("Edit deck profile", systemImage: "square.grid.3x3.fill")
+            }
+            #if DEBUG
+            Button("Show on-screen Stream Deck (debug)", systemImage: "rectangle.grid.2x2") {
+                StreamDeckSimulator.show(defaultStreamDeck: .xl)
+            }
+            #endif
             Button("Reset to default profile", role: .destructive) { confirmReset = true }
                 .confirmationDialog("Replace the current deck profile with the default?",
                                     isPresented: $confirmReset, titleVisibility: .visible) {

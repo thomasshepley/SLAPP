@@ -13,8 +13,8 @@ Build plan: https://claude.ai/artifact/PXtiepzci194FMHiHaynGM
 | M1 - PC prep (RDP Wrapper, WebAPI, static IP) | On the Titan PC - not code |
 | M2 - Project skeleton, Stream Deck Kit, deck draws keys | Done |
 | M3 - Titan client, keys fire playbacks, latency log | Done |
-| M4 - Profile editor UI | Next |
-| M5 - FreeRDP remote view | Stubs in `Sources/Remote/` |
+| M4 - Profile editor UI | Built - needs testing on the iPad |
+| M5 - FreeRDP remote view | Next - stubs in `Sources/Remote/` |
 | M6 - Reconnect, overlay, settings gesture, Keychain, connection pill | Partly (idle timer, background warning) |
 | M7 - Show-day soak test | - |
 | M8 - Live key state, iCloud profile export | - |
@@ -79,6 +79,12 @@ TitanDeck/
 2. **Fire test playback 1** / **Release playback 1** check the WebAPI end to
    end. Each call is listed under **Recent calls** with its round-trip time in
    ms. That's the M3 latency measurement.
-3. Plug in the Stream Deck. Page 1 shows GO 1-16 (green) and page 2 shows
+3. Settings → **Edit deck profile** lays the keys out like the deck. Tap a key
+   to set its label, colour, icon and action (Go, Release, fader level, macro,
+   page changes, custom WebAPI path). The page menu adds, duplicates, renames,
+   moves and deletes pages. Edits save straight away and show on the deck.
+4. No Stream Deck to hand, or running in the iPad Simulator? Debug builds have
+   Settings → **Show on-screen Stream Deck (debug)**.
+5. Plug in the Stream Deck. Page 1 shows GO 1-16 (green) and page 2 shows
    REL 1-16 (red). The last key flips between pages. A key flashes red if
    Titan doesn't answer within 500 ms.

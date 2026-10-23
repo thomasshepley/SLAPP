@@ -18,11 +18,15 @@ enum TitanAction: Codable, Hashable {
     case openSettings
     /// Anything else: a path appended to /titan/script/2/, query string included.
     case raw(path: String)
+    /// Next deck page, wrapping round - handled locally.
+    case nextPage
+    /// Previous deck page, wrapping round - handled locally.
+    case previousPage
 
     /// True for actions that go over the network to Titan.
     var isRemote: Bool {
         switch self {
-        case .switchPage, .openSettings: return false
+        case .switchPage, .openSettings, .nextPage, .previousPage: return false
         default: return true
         }
     }
@@ -37,6 +41,8 @@ enum TitanAction: Codable, Hashable {
         case .switchPage(let p): return "Deck page \(p + 1)"
         case .openSettings: return "Open settings"
         case .raw(let p): return "Raw \(p)"
+        case .nextPage: return "Next deck page"
+        case .previousPage: return "Previous deck page"
         }
     }
 }
