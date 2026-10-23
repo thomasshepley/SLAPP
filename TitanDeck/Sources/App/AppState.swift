@@ -19,6 +19,7 @@ final class AppState: ObservableObject {
             let host = titanHost
             UserDefaults.standard.set(host, forKey: SettingsKeys.titanHost)
             Task { await titan.setHost(host) }
+            watch.shareHost(host)
         }
     }
     /// Newest first, capped - shown on the Settings screen as a latency log.
@@ -44,6 +45,8 @@ final class AppState: ObservableObject {
     let connectionLog: ConnectionLogStore
     /// Lights deck keys for playbacks that are live in Titan (M8).
     let playbackState: PlaybackStatePoller
+    /// Apple Watch GO button, iPhone side (M10).
+    let watch: WatchBridge
     private var logSubscriptions = Set<AnyCancellable>()
     private let store: ProfileStore
 
@@ -59,6 +62,7 @@ final class AppState: ObservableObject {
         localNetwork = LocalNetworkPermission()
         connectionLog = ConnectionLogStore()
         playbackState = PlaybackStatePoller()
+        watch = WatchBridge()
         titan = TitanClient(host: host)
         let store = ProfileStore()
         self.store = store
@@ -90,6 +94,17 @@ final class AppState: ObservableObject {
         playbackState.start(client: titan) { [weak self] in
             self?.heartbeat.health.isReachable ?? false
         }
+        watch.start(titan: titan) { [weak self] command, result in
+            guard let self else { return }
+            self.recentResults.insert(result, at: 0)
+            if self.recentResults.count > Self.maxResults {
+                self.recentResults.removeLast(self.recentResults.count - Self.maxResults)
+            }
+            if !result.ok {
+                self.connectionLog.record(.key, .info, "Watch \(command.action.summary) failed: \(result.error ?? "no reply")")
+            }
+        }
+        watch.shareHost(titanHost)
     }
 
     func scenePhaseChanged(_ phase: ScenePhase) {
