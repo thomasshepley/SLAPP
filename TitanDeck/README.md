@@ -22,6 +22,8 @@ Build plan: https://claude.ai/artifact/PXtiepzci194FMHiHaynGM
 | M11 - Default 15-key portrait keypad / intensity deck, hold-for-menu | Built - test on Titan |
 | M10 - Apple Watch GO button | Built - test on a Watch |
 
+Testing everything at home: see [`docs/TEST_PLAN.md`](docs/TEST_PLAN.md).
+
 ## How it's built (no Mac needed)
 
 There's no Xcode on iPad, so builds run on GitHub's macOS machines:
