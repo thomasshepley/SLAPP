@@ -13,6 +13,7 @@ struct SettingsView: View {
         NavigationStack {
             Form {
                 connectionSection
+                RemoteDesktopSection(session: appState.rdp)
                 testSection
                 DeckSection(deck: appState.deck)
                 logSection
@@ -81,6 +82,89 @@ struct SettingsView: View {
     private var aboutSection: some View {
         Section("About") {
             LabeledContent("Version", value: Bundle.main.versionString)
+        }
+    }
+}
+
+private struct RemoteDesktopSection: View {
+    @EnvironmentObject private var appState: AppState
+    @ObservedObject var session: RDPSession
+    @State private var password = ""
+    @State private var confirmForget = false
+
+    var body: some View {
+        Section {
+            LabeledContent("PC address") {
+                TextField(appState.titanHost.isEmpty ? "e.g. 192.168.1.20" : "Same as Titan (\(appState.titanHost))",
+                          text: $appState.rdpSettings.host)
+                    .keyboardType(.numbersAndPunctuation)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .multilineTextAlignment(.trailing)
+                    .frame(maxWidth: 300)
+            }
+            LabeledContent("Windows user") {
+                TextField("Username", text: $appState.rdpSettings.username)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .multilineTextAlignment(.trailing)
+                    .frame(maxWidth: 300)
+            }
+            LabeledContent("Password") {
+                SecureField("Saved in the Keychain", text: $password)
+                    .multilineTextAlignment(.trailing)
+                    .frame(maxWidth: 300)
+                    .onSubmit { appState.remotePassword = password }
+            }
+            LabeledContent("Domain") {
+                TextField("Optional", text: $appState.rdpSettings.domain)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .multilineTextAlignment(.trailing)
+                    .frame(maxWidth: 300)
+            }
+            Toggle("Connect when TitanDeck opens", isOn: $appState.rdpSettings.autoConnect)
+            HStack {
+                switch session.state {
+                case .connected, .connecting:
+                    Button("Disconnect", role: .destructive) { session.disconnect() }
+                default:
+                    Button("Connect") {
+                        appState.remotePassword = password
+                        appState.connectRemote()
+                        appState.mode = .remote
+                    }
+                    .disabled(!appState.isRemoteConfigured)
+                }
+                Spacer()
+                Text(statusText)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.trailing)
+            }
+            Button("Forget saved PC certificates", role: .destructive) { confirmForget = true }
+                .confirmationDialog("Forget the remembered certificates?", isPresented: $confirmForget,
+                                    titleVisibility: .visible) {
+                    Button("Forget", role: .destructive) { appState.forgetRemoteCertificates() }
+                } message: {
+                    Text("The next connection will trust whichever certificate the PC presents. Only do this if you know why it changed.")
+                }
+        } header: {
+            Text("Remote desktop")
+        } footer: {
+            Text("The PC needs RDP enabled (RDP Wrapper on Windows Home) and TCP 3389 allowed through its firewall. Three-finger long press on the desktop opens Settings.")
+        }
+        .onAppear { password = appState.remotePassword }
+        .onDisappear { appState.remotePassword = password }
+    }
+
+    private var statusText: String {
+        switch session.state {
+        case .idle: return "Not connected"
+        case .connecting: return "Connecting..."
+        case .connected: return "Connected to \(session.host)"
+        case .failed(let message): return message
         }
     }
 }

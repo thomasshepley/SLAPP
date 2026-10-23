@@ -3,6 +3,9 @@ name: TitanDeck
 # Builds and tests TitanDeck on a GitHub macOS runner (there's no Xcode on
 # iPad), then optionally signs it and uploads it to TestFlight.
 # Setup for the TestFlight half: TitanDeck/docs/TESTFLIGHT_SETUP.md
+#
+# FreeRDP (the RDP library) is built once per recipe in TitanDeck/FreeRDP and
+# published as a GitHub release asset, so normal builds just download it.
 on:
   push:
     paths:
@@ -17,11 +20,60 @@ on:
 
 concurrency:
   group: titandeck-${{ github.ref }}
-  cancel-in-progress: true
+  # Don't cancel: a half-finished FreeRDPKit build would just start again.
+  cancel-in-progress: false
 
 jobs:
+  freerdp:
+    name: FreeRDPKit (built once per recipe)
+    runs-on: macos-15
+    timeout-minutes: 150
+    permissions:
+      contents: write
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Work out package tag
+        id: tag
+        run: echo "tag=$(TitanDeck/FreeRDP/package-tag.sh)" >> "$GITHUB_OUTPUT"
+
+      - name: Check for a published package
+        id: exists
+        run: |
+          if gh release view "${{ steps.tag.outputs.tag }}" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::FreeRDPKit ${{ steps.tag.outputs.tag }} already published - skipping build."
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: maxim-lobanov/setup-xcode@v1
+        if: steps.exists.outputs.found == 'false'
+        with:
+          xcode-version: latest-stable
+
+      - name: Build FreeRDPKit
+        if: steps.exists.outputs.found == 'false'
+        run: TitanDeck/FreeRDP/build.sh "$RUNNER_TEMP/freerdpkit"
+
+      - name: Publish FreeRDPKit
+        if: steps.exists.outputs.found == 'false'
+        run: |
+          TAG="${{ steps.tag.outputs.tag }}"
+          cd "$RUNNER_TEMP/freerdpkit"
+          zip -qry FreeRDPKit.zip FreeRDPKit.xcframework FreeRDPHeaders FreeRDPKit.versions.env
+          gh release create "$TAG" FreeRDPKit.zip \
+            --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease \
+            --title "FreeRDPKit $TAG" \
+            --notes "Prebuilt FreeRDP + OpenSSL static libraries for TitanDeck (iPad + iOS Simulator). Built by CI from TitanDeck/FreeRDP. Not an app release."
+
   build-and-test:
     name: Build and test (iPad Simulator)
+    needs: freerdp
     runs-on: macos-15
     timeout-minutes: 45
     defaults:
@@ -33,6 +85,9 @@ jobs:
       - uses: maxim-lobanov/setup-xcode@v1
         with:
           xcode-version: latest-stable
+
+      - name: Fetch FreeRDPKit
+        run: FreeRDP/fetch.sh
 
       - name: Generate Xcode project
         run: |
@@ -101,6 +156,10 @@ jobs:
         if: steps.secrets.outputs.ready == 'true'
         with:
           xcode-version: latest-stable
+
+      - name: Fetch FreeRDPKit
+        if: steps.secrets.outputs.ready == 'true'
+        run: FreeRDP/fetch.sh
 
       - name: Generate Xcode project
         if: steps.secrets.outputs.ready == 'true'

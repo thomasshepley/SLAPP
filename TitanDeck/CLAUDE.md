@@ -38,9 +38,13 @@ TitanDeck/
 │   │               DeckProfile (+ default 32-key profile), DeckProfile+Editing (page/key
 │   │               edits, keeps page links valid), ActionDraft (form model), ProfileStore (JSON)
 │   ├── Titan/      TitanAction, TitanEndpoints (URL builders), TitanClient (actor)
-│   ├── Remote/     RDPSession, RDPView, RDPSettings - stubs until M5
+│   ├── Remote/     RDPSession (Swift side), RDPView (canvas + touch mapping), RemoteView,
+│   │               RDPSettings, RDPGeometry, CertificateTrustStore (trust on first use)
+│   │   └── Bridge/ titan_rdp.c/.h - the only code that touches FreeRDP's C API
 │   ├── Settings/   SettingsView, DeckEditorView (M4), KeyInspectorView (M4)
 │   └── Support/    Logger (Log.titan / Log.deck), HexColor
+├── FreeRDP/        build.sh (FreeRDP + OpenSSL -> FreeRDPKit.xcframework), fetch.sh, versions.env
+├── Vendor/         downloaded FreeRDPKit (gitignored) - never edit or commit
 ├── Tests/          XCTest unit tests (endpoints, profiles, editing, store, client)
 └── docs/           TESTFLIGHT_SETUP.md
 ```
@@ -56,8 +60,8 @@ them together (e.g. `deck.onAction` -> `titan.perform`). Keep it that way.
 | M2 | Project skeleton, Stream Deck Kit, deck draws keys | Done |
 | M3 | Titan client, keys fire playbacks, latency log | Done |
 | M4 | Profile editor UI: pages, labels, colours, action inspector (`Settings/DeckEditorView.swift`, `Settings/KeyInspectorView.swift`) | Built - needs testing on the iPad |
-| M5 | FreeRDP remote view in `Remote/`, touch-to-mouse mapping | **Next** - stubs only |
-| M6 | RDP reconnect + dimmed overlay, three-finger settings gesture, Keychain for the RDP password, always-visible connection pill (Titan heartbeat, network path, IP), Local Network permission check | Partly (idle timer, background warning) |
+| M5 | FreeRDP remote view in `Remote/`, touch-to-mouse mapping | Built - needs testing against the Titan PC |
+| M6 | RDP reconnect + dimmed overlay, always-visible connection pill (Titan heartbeat, network path, IP), Local Network permission check | **Next**. Done early in M5: idle timer, background warning, three-finger settings gesture, Keychain password |
 | M7 | 8-hour show-day soak test | - |
 | M8 | Poll WebAPI to light active keys, iCloud profile export | - |
 | M9 | iPhone + iPhone Duo: on-screen deck drawn from the same profiles (Stream Deck Kit is iPad-only), adaptive layouts, App Intents (Shortcuts, Siri, Action button, Control Center) | - |
@@ -121,6 +125,18 @@ JSON.
   the app is in the foreground.
 - Check the package source before trusting any other method name. The API has
   changed between versions.
+
+## FreeRDP
+
+- `FreeRDP/fetch.sh` must run before `xcodegen generate` on a fresh clone: it
+  downloads the prebuilt FreeRDPKit matching `FreeRDP/versions.env` + `build.sh`
+  into `Vendor/`. CI builds and publishes a package (GitHub release
+  `freerdpkit-<version>-<hash>`) whenever that recipe changes. That build takes
+  30-60 minutes.
+- Swift never calls FreeRDP directly - only through `Remote/Bridge/titan_rdp.h`.
+  The bridge runs FreeRDP on its own thread, queues input, and copies frames
+  under a lock. Keep it that way.
+- Static builds need `CHANNEL_REMDESK=OFF` (FreeRDP 3.32 link bug).
 
 ## Build, test, ship
 
