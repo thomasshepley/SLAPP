@@ -28,3 +28,4 @@ TitanDeck/Resources/TitanDeck.entitlements
 # FreeRDPKit (downloaded by TitanDeck/FreeRDP/fetch.sh, built by CI)
 TitanDeck/Vendor/
 TitanDeck/FreeRDP/.build/
+TitanDeck/Watch/Info.plist

@@ -46,6 +46,7 @@ TitanDeck/
 │   └── Support/    Logger (Log.titan / Log.deck), HexColor
 ├── FreeRDP/        build.sh (FreeRDP + OpenSSL -> FreeRDPKit.xcframework), fetch.sh, versions.env
 ├── Vendor/         downloaded FreeRDPKit (gitignored) - never edit or commit
+├── Watch/          watchOS app (GoView, WatchModel). Shares Titan/ + WatchCommand with the phone app
 ├── Tests/          XCTest unit tests (endpoints, profiles, editing, store, client)
 └── docs/           TESTFLIGHT_SETUP.md
 ```
@@ -66,7 +67,7 @@ them together (e.g. `deck.onAction` -> `titan.perform`). Keep it that way.
 | M7 | 8-hour show-day soak test + in-app connection log (Settings -> Soak test log: totals, events, CSV export) | Log built - the soak test itself is on set |
 | M8 | Light keys for live playbacks (polls /titan/handles/Playbacks every 1 s), profile export/import via Files / iCloud Drive | Built - check on the real Titan that handles report user numbers |
 | M9 | iPhone + iPhone Duo: on-screen deck drawn from the same profiles (Stream Deck Kit is iPad-only), adaptive layouts, App Intents (Shortcuts, Siri, Action button, Control Center) | Built - needs testing on an iPhone. iPhone Duo simulator needs Xcode 27.1 |
-| M10 | Apple Watch GO button: hold-to-fire or double-tap gesture, via the iPhone app or direct HTTP | **Next** |
+| M10 | Apple Watch GO button: hold-to-fire or double-tap gesture, via the iPhone app or direct HTTP | Built - needs testing on a Watch |
 
 ## Platform and design decisions
 

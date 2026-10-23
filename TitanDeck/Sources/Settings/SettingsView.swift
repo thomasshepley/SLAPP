@@ -18,6 +18,7 @@ struct SettingsView: View {
                 testSection
                 DeckSection(deck: appState.deck)
                 SoakLogSection(store: appState.connectionLog)
+                WatchSection(watch: appState.watch)
                 logSection
                 aboutSection
             }
@@ -308,6 +309,26 @@ private struct DeckSection: View {
                                     isPresented: $confirmReset, titleVisibility: .visible) {
                     Button("Reset", role: .destructive) { appState.resetProfileToDefault() }
                 }
+        }
+    }
+}
+
+/// M10: Apple Watch status. Hidden on devices with no paired Watch.
+private struct WatchSection: View {
+    @ObservedObject var watch: WatchBridge
+
+    var body: some View {
+        if watch.isPaired {
+            Section {
+                LabeledContent("Watch app", value: watch.isWatchAppInstalled ? "Installed" : "Not installed")
+                if let last = watch.lastCommand {
+                    LabeledContent("Last from Watch", value: last)
+                }
+            } header: {
+                Text("Apple Watch")
+            } footer: {
+                Text("Install TitanDeck on the Watch from the Watch app on this iPhone. Turn the Digital Crown to pick a playback, then hold GO (or double tap) to fire. The Watch goes through this iPhone when it's nearby, or straight to Titan over Wi-Fi when it isn't.")
+            }
         }
     }
 }
