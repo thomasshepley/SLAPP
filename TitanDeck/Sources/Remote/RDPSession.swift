@@ -24,6 +24,10 @@ final class RDPSession: ObservableObject {
     @Published private(set) var desktopSize: CGSize = .zero
     /// The host the current/last connection went to.
     @Published private(set) var host = ""
+    /// Reconnect attempt in progress after a dropped session (0 = not reconnecting).
+    @Published private(set) var reconnectAttempt = 0
+    /// When the next reconnect attempt starts, while waiting between attempts.
+    @Published private(set) var nextReconnect: Date?
 
     /// Receives each new frame. Kept off @Published so 30-60 frames a second
     /// don't re-render SwiftUI; the canvas view sets this.
@@ -33,6 +37,23 @@ final class RDPSession: ObservableObject {
     private var handle: OpaquePointer?
     private var buffer = [UInt8]()
     private var certificateRejected = false
+
+    private struct Request {
+        var host: String
+        var port: UInt16
+        var username: String
+        var domain: String
+        var password: String
+        var viewSize: CGSize
+    }
+
+    private let policy = ReconnectPolicy()
+    private var lastRequest: Request?
+    /// True once a session has been up; a later failure then means "dropped",
+    /// which reconnects, rather than "couldn't connect", which waits for the user.
+    private var hasBeenConnected = false
+    private var userDisconnected = false
+    private var reconnectTask: Task<Void, Never>?
 
     init(trust: CertificateTrustStore = CertificateTrustStore()) {
         box = CallbackBox(trust: trust)
@@ -69,6 +90,16 @@ final class RDPSession: ObservableObject {
     // MARK: - Connection
 
     func connect(host: String, port: UInt16, username: String, domain: String, password: String, viewSize: CGSize) {
+        cancelReconnect()
+        userDisconnected = false
+        hasBeenConnected = false
+        start(Request(host: host, port: port, username: username, domain: domain, password: password, viewSize: viewSize))
+    }
+
+    private func start(_ request: Request) {
+        lastRequest = request
+        let host = request.host, port = request.port, username = request.username
+        let domain = request.domain, password = request.password, viewSize = request.viewSize
         guard let handle else {
             state = .failed("Remote desktop couldn't start")
             return
@@ -90,11 +121,43 @@ final class RDPSession: ObservableObject {
             }
         }
         state = result == 0 ? .connecting : .failed("Couldn't start the connection")
+        if result != 0, hasBeenConnected, !userDisconnected {
+            scheduleReconnect()
+        }
         Log.deck("RDP connect to \(host):\(port) at \(size.width)x\(size.height) -> \(result == 0 ? "started" : "refused")")
     }
 
     func disconnect() {
+        userDisconnected = true
+        let wasWaiting = reconnectTask != nil
+        cancelReconnect()
+        if wasWaiting, state != .connecting, state != .connected {
+            state = .idle   // nothing running between attempts - just stop
+        }
         titan_rdp_disconnect(handle)
+    }
+
+    private func cancelReconnect() {
+        reconnectTask?.cancel()
+        reconnectTask = nil
+        nextReconnect = nil
+        reconnectAttempt = 0
+    }
+
+    /// Schedules the next attempt after a dropped session.
+    private func scheduleReconnect() {
+        guard let request = lastRequest else { return }
+        reconnectAttempt += 1
+        let delay = policy.delay(forAttempt: reconnectAttempt)
+        nextReconnect = Date().addingTimeInterval(delay)
+        Log.deck("RDP dropped - reconnect attempt \(reconnectAttempt) in \(delay) s")
+        reconnectTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+            guard !Task.isCancelled, let self, !self.userDisconnected else { return }
+            self.reconnectTask = nil
+            self.nextReconnect = nil
+            self.start(request)
+        }
     }
 
     // MARK: - Input (desktop pixel coordinates)
@@ -133,7 +196,15 @@ final class RDPSession: ObservableObject {
             state = .connecting
         } else if raw == TITAN_RDP_STATE_CONNECTED {
             state = .connected
+            hasBeenConnected = true
+            cancelReconnect()
         } else if raw == TITAN_RDP_STATE_FAILED {
+            if hasBeenConnected, !userDisconnected, !certificateRejected {
+                state = .failed(message ?? "Connection lost")
+                scheduleReconnect()
+                Log.deck("RDP state: \(state)")
+                return
+            }
             state = .failed(certificateRejected
                 ? "The PC's security certificate has changed. If that's expected (e.g. Windows was reinstalled), forget it in Settings."
                 : (message ?? "Connection failed"))

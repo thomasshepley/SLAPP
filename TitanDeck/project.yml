@@ -63,6 +63,9 @@ targets:
           - UIInterfaceOrientationLandscapeRight
         UIApplicationSupportsIndirectInputEvents: true
         NSLocalNetworkUsageDescription: TitanDeck talks to the Titan PC on your show network to fire playbacks and show its screen.
+        # Browsed only to detect whether Local Network access is allowed.
+        NSBonjourServices:
+          - _titandeck._tcp
         NSAppTransportSecurity:
           # Titan's WebAPI is plain HTTP on the local network.
           NSAllowsLocalNetworking: true
