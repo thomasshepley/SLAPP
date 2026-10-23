@@ -1,4 +1,5 @@
 // Deck/DeckSessionController.swift
+import Combine
 import StreamDeckKit
 import SwiftUI
 
@@ -26,6 +27,7 @@ final class DeckSessionController: ObservableObject {
 
     private var overlays: [Int: DeckRenderer.Overlay] = [:]
     private var started = false
+    private var cancellables = Set<AnyCancellable>()
 
     init(profile: DeckProfile) {
         self.profile = profile
@@ -48,6 +50,24 @@ final class DeckSessionController: ObservableObject {
                 self?.attach(device)
             }
         )
+        // Catch detaches that don't fire onClose (e.g. the on-screen simulator closing).
+        StreamDeckSession.instance.$devices
+            .receive(on: RunLoop.main)
+            .sink { [weak self] devices in
+                guard let self, let current = self.device, !devices.contains(current) else { return }
+                self.device = devices.last
+                self.redraw()
+            }
+            .store(in: &cancellables)
+    }
+
+    /// Shows a page on the deck - used by the editor so the hardware mirrors the
+    /// page being edited.
+    func showPage(_ index: Int) {
+        guard profile.pages.indices.contains(index), index != currentPageIndex else { return }
+        currentPageIndex = index
+        overlays.removeAll()
+        redraw()
     }
 
     func replaceProfile(_ newProfile: DeckProfile) {
@@ -99,9 +119,12 @@ final class DeckSessionController: ObservableObject {
 
         switch action {
         case .switchPage(let page):
-            currentPageIndex = min(max(page, 0), max(profile.pages.count - 1, 0))
-            overlays.removeAll()
-            redraw()
+            showPage(min(max(page, 0), max(profile.pages.count - 1, 0)))
+        case .nextPage:
+            showPage((currentPageIndex + 1) % max(profile.pages.count, 1))
+        case .previousPage:
+            let count = max(profile.pages.count, 1)
+            showPage((currentPageIndex - 1 + count) % count)
         case .openSettings:
             onOpenSettings?()
         default:

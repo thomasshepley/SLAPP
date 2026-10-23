@@ -35,12 +35,13 @@ TitanDeck/
 ├── Sources/
 │   ├── App/        TitanDeckApp, AppState (the only place the layers meet), RootView
 │   ├── Deck/       DeckSessionController (Stream Deck Kit), DeckRenderer, KeyDefinition,
-│   │               DeckProfile (+ default 32-key profile), ProfileStore (JSON)
+│   │               DeckProfile (+ default 32-key profile), DeckProfile+Editing (page/key
+│   │               edits, keeps page links valid), ActionDraft (form model), ProfileStore (JSON)
 │   ├── Titan/      TitanAction, TitanEndpoints (URL builders), TitanClient (actor)
 │   ├── Remote/     RDPSession, RDPView, RDPSettings - stubs until M5
-│   ├── Settings/   SettingsView
+│   ├── Settings/   SettingsView, DeckEditorView (M4), KeyInspectorView (M4)
 │   └── Support/    Logger (Log.titan / Log.deck), HexColor
-├── Tests/          XCTest unit tests (endpoints, profiles, store, client)
+├── Tests/          XCTest unit tests (endpoints, profiles, editing, store, client)
 └── docs/           TESTFLIGHT_SETUP.md
 ```
 
@@ -54,8 +55,8 @@ them together (e.g. `deck.onAction` -> `titan.perform`). Keep it that way.
 | M1 | PC prep: RDP Wrapper, WebAPI enabled, static IP | On the Titan PC, not code |
 | M2 | Project skeleton, Stream Deck Kit, deck draws keys | Done |
 | M3 | Titan client, keys fire playbacks, latency log | Done |
-| M4 | Profile editor UI: pages, labels, colours, action inspector (`Settings/DeckEditorView.swift`, `Settings/KeyInspectorView.swift`) | **Next** |
-| M5 | FreeRDP remote view in `Remote/`, touch-to-mouse mapping | Stubs only |
+| M4 | Profile editor UI: pages, labels, colours, action inspector (`Settings/DeckEditorView.swift`, `Settings/KeyInspectorView.swift`) | Built - needs testing on the iPad |
+| M5 | FreeRDP remote view in `Remote/`, touch-to-mouse mapping | **Next** - stubs only |
 | M6 | RDP reconnect + dimmed overlay, three-finger settings gesture, Keychain for the RDP password, always-visible connection pill (Titan heartbeat, network path, IP), Local Network permission check | Partly (idle timer, background warning) |
 | M7 | 8-hour show-day soak test | - |
 | M8 | Poll WebAPI to light active keys, iCloud profile export | - |
@@ -122,6 +123,10 @@ JSON.
   changed between versions.
 
 ## Build, test, ship
+
+- No Stream Deck in the iPad Simulator? Debug builds have Settings -> "Show
+  on-screen Stream Deck (debug)", Stream Deck Kit's virtual deck. It goes through
+  the same code path as real hardware.
 
 - Unit tests: run the `TitanDeck` scheme's tests (Cmd-U) on an iPad simulator.
 - GitHub Actions (`.github/workflows/titandeck.yml`) regenerates the project,

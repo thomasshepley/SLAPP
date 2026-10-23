@@ -30,6 +30,9 @@ targets:
     dependencies:
       - package: StreamDeckKit
         product: StreamDeckKit
+      # On-screen virtual deck, shown from Settings in Debug builds only.
+      - package: StreamDeckKit
+        product: StreamDeckSimulator
     entitlements:
       path: Resources/TitanDeck.entitlements
       properties:

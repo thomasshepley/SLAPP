@@ -37,7 +37,7 @@ enum TitanEndpoints {
         case .raw(let path):
             let trimmed = path.hasPrefix("/") ? String(path.dropFirst()) : path
             return URL(string: "http://\(authority(host, port))\(scriptRoot)\(trimmed)")
-        case .switchPage, .openSettings:
+        case .switchPage, .openSettings, .nextPage, .previousPage:
             return nil
         }
     }

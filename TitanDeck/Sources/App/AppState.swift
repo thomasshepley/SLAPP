@@ -100,6 +100,12 @@ final class AppState: ObservableObject {
 
     // MARK: - Profiles
 
+    /// Saves an edited profile and pushes it to the deck.
+    func updateProfile(_ profile: DeckProfile) {
+        deck.replaceProfile(profile)
+        save(profile)
+    }
+
     func resetProfileToDefault() {
         let keyCount = deck.device?.capabilities.keyCount ?? 32
         let profile = DeckProfile.makeDefault(keyCount: keyCount)
