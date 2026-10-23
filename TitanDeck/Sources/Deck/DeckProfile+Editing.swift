@@ -16,8 +16,9 @@ extension DeckProfile {
         }
     }
 
+    /// Columns as you look at the deck (portrait decks are narrower).
     var gridColumns: Int {
-        Self.gridColumns(forKeyCount: keyCount)
+        geometry.logicalColumns
     }
 
     /// Appends a blank page with a "next page" key in the last position, so the

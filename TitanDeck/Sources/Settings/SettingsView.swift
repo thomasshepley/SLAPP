@@ -284,9 +284,18 @@ private struct DeckSection: View {
             }
             #if DEBUG
             Button("Show on-screen Stream Deck (debug)", systemImage: "rectangle.grid.2x2") {
-                StreamDeckSimulator.show(defaultStreamDeck: .xl)
+                StreamDeckSimulator.show(defaultStreamDeck: .regular)
             }
             #endif
+            Picker("Deck mounted", selection: Binding(
+                get: { deck.profile.orientation },
+                set: { newValue in
+                    var profile = deck.profile
+                    profile.orientation = newValue
+                    appState.updateProfile(profile)
+                })) {
+                ForEach(DeckOrientation.allCases) { Text($0.title).tag($0) }
+            }
             LiveKeyStateRow(poller: appState.playbackState)
             ShareLink(item: ProfileFile(profile: deck.profile), preview: SharePreview("TitanDeck profile: \(deck.profile.name)")) {
                 Label("Export profile", systemImage: "square.and.arrow.up")

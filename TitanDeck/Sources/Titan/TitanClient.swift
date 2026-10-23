@@ -41,6 +41,11 @@ actor TitanClient {
     }
 
     func perform(_ action: TitanAction) async -> TitanResult {
+        switch action {
+        case .keypadEnter: return await runEnter()
+        case .keypadClear: return await runClear()
+        default: break
+        }
         let start = Date()
         guard let url = TitanEndpoints.url(for: action, host: host, port: port) else {
             let reason = action.isRemote ? "No Titan host set" : "Local action"
@@ -57,6 +62,65 @@ actor TitanClient {
                                  milliseconds: Self.elapsed(since: start), error: error.localizedDescription, date: start)
         }
         Log.titan("\(action.summary) -> \(result.ok ? "OK" : "FAIL") \(result.statusCode.map(String.init) ?? "-") in \(result.milliseconds) ms \(url.absoluteString)")
+        return result
+    }
+
+    // MARK: - Keypad Enter / Clear (several requests)
+
+    /// The text currently on Titan's command line, or nil if Titan didn't answer.
+    func commandLineText() async -> String? {
+        guard let url = TitanEndpoints.commandLineTextURL(host: host, port: port),
+              let (data, response) = try? await session.data(from: url),
+              (response as? HTTPURLResponse)?.statusCode == 200 else { return nil }
+        if let decoded = try? JSONDecoder().decode(String.self, from: data) {
+            return decoded.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        return String(decoding: data, as: UTF8.self)
+            .trimmingCharacters(in: CharacterSet(charactersIn: "\" \n\r"))
+    }
+
+    /// Enter: run what's on the command line, then start a fresh one.
+    private func runEnter() async -> TitanResult {
+        let start = Date()
+        guard let text = await commandLineText() else {
+            return finish(.keypadEnter, start, ok: false, status: nil, error: "Couldn't read the command line")
+        }
+        guard !text.isEmpty else {
+            return finish(.keypadEnter, start, ok: true, status: 200, error: nil)   // nothing typed
+        }
+        let run = await get(TitanEndpoints.runCommandURL(text, host: host, port: port))
+        _ = await get(TitanEndpoints.startNewCommandURL(host: host, port: port))
+        return finish(.keypadEnter, start, ok: run.ok, status: run.status, error: run.error, detail: "ran \"\(text)\"")
+    }
+
+    /// Clear: like the console - clears what's typed first, then the programmer.
+    private func runClear() async -> TitanResult {
+        let start = Date()
+        let text = await commandLineText()
+        let url = (text?.isEmpty == false)
+            ? TitanEndpoints.startNewCommandURL(host: host, port: port)
+            : TitanEndpoints.clearProgrammerURL(host: host, port: port)
+        let result = await get(url)
+        return finish(.keypadClear, start, ok: result.ok, status: result.status, error: result.error,
+                      detail: text?.isEmpty == false ? "cleared command line" : "cleared programmer")
+    }
+
+    private func get(_ url: URL?) async -> (ok: Bool, status: Int?, error: String?) {
+        guard let url else { return (false, nil, "No Titan host set") }
+        do {
+            let (_, response) = try await session.data(from: url)
+            let status = (response as? HTTPURLResponse)?.statusCode
+            return (status == 200, status, nil)
+        } catch {
+            return (false, nil, error.localizedDescription)
+        }
+    }
+
+    private func finish(_ action: TitanAction, _ start: Date, ok: Bool, status: Int?, error: String?,
+                        detail: String? = nil) -> TitanResult {
+        let result = TitanResult(action: action, ok: ok, statusCode: status,
+                                 milliseconds: Self.elapsed(since: start), error: error, date: start)
+        Log.titan("\(action.summary)\(detail.map { " (\($0))" } ?? "") -> \(ok ? "OK" : "FAIL") in \(result.milliseconds) ms")
         return result
     }
 

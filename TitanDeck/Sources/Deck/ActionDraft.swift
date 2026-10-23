@@ -16,6 +16,13 @@ struct ActionDraft: Equatable {
         case goToPage
         case openSettings
         case raw
+        case keypadDigit
+        case keypadAt
+        case keypadEnter
+        case keypadExit
+        case keypadClear
+        case intensity
+        case mainMenu
 
         var id: String { rawValue }
 
@@ -31,6 +38,13 @@ struct ActionDraft: Equatable {
             case .goToPage: return "Go to deck page"
             case .openSettings: return "Open settings"
             case .raw: return "Custom WebAPI path"
+            case .keypadDigit: return "Keypad digit"
+            case .keypadAt: return "Keypad @"
+            case .keypadEnter: return "Keypad Enter"
+            case .keypadExit: return "Keypad Exit"
+            case .keypadClear: return "Keypad Clear"
+            case .intensity: return "Intensity +/- %"
+            case .mainMenu: return "Main menu (hold 2 s)"
             }
         }
     }
@@ -41,6 +55,8 @@ struct ActionDraft: Equatable {
     var macroId = ""
     var page = 0
     var rawPath = ""
+    var digit = 0
+    var percent = 5.0
 
     init(action: TitanAction?) {
         switch action {
@@ -54,6 +70,13 @@ struct ActionDraft: Equatable {
         case .previousPage: kind = .previousPage
         case .openSettings: kind = .openSettings
         case .raw(let p): kind = .raw; rawPath = p
+        case .keypadDigit(let d): kind = .keypadDigit; digit = d
+        case .keypadAt: kind = .keypadAt
+        case .keypadEnter: kind = .keypadEnter
+        case .keypadExit: kind = .keypadExit
+        case .keypadClear: kind = .keypadClear
+        case .adjustIntensity(let p): kind = .intensity; percent = p
+        case .mainMenu: kind = .mainMenu
         }
     }
 
@@ -76,6 +99,13 @@ struct ActionDraft: Equatable {
         case .raw:
             let path = rawPath.trimmingCharacters(in: .whitespacesAndNewlines)
             return path.isEmpty ? nil : .raw(path: path)
+        case .keypadDigit: return .keypadDigit(min(max(digit, 0), 9))
+        case .keypadAt: return .keypadAt
+        case .keypadEnter: return .keypadEnter
+        case .keypadExit: return .keypadExit
+        case .keypadClear: return .keypadClear
+        case .intensity: return percent == 0 ? nil : .adjustIntensity(percent: min(max(percent, -100), 100))
+        case .mainMenu: return .mainMenu
         }
     }
 }

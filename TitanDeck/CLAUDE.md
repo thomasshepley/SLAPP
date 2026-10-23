@@ -36,7 +36,7 @@ TitanDeck/
 │   ├── App/        TitanDeckApp, AppState (the only place the layers meet), RootView,
 │   │               TitanIntents (App Intents: Fire Playback, Run Macro)
 │   ├── Deck/       DeckSessionController (Stream Deck Kit), DeckRenderer, KeyDefinition,
-│   │               DeckProfile (+ default 32-key profile), DeckProfile+Editing (page/key
+│   │               DeckProfile (+ default 15-key portrait profile), DeckProfile+Editing (page/key
 │   │               edits, keeps page links valid), ActionDraft (form model), ProfileStore (JSON)
 │   ├── Titan/      TitanAction, TitanEndpoints (URL builders), TitanClient (actor)
 │   ├── Remote/     RDPSession (Swift side), RDPView (canvas + touch mapping), RemoteView,
@@ -68,6 +68,7 @@ them together (e.g. `deck.onAction` -> `titan.perform`). Keep it that way.
 | M8 | Light keys for live playbacks (polls /titan/handles/Playbacks every 1 s), profile export/import via Files / iCloud Drive | Built - check on the real Titan that handles report user numbers |
 | M9 | iPhone + iPhone Duo: on-screen deck drawn from the same profiles (Stream Deck Kit is iPad-only), adaptive layouts, App Intents (Shortcuts, Siri, Action button, Control Center) | Built - needs testing on an iPhone. iPhone Duo simulator needs Xcode 27.1 |
 | M10 | Apple Watch GO button: hold-to-fire or double-tap gesture, via the iPhone app or direct HTTP | Built - needs testing on a Watch |
+| M11 | Default deck: 15-key Stream Deck in portrait - Avolites keypad (digits, Exit, Enter, Clear, @), Intensity +/-1/5/10%, Playbacks; Menu key (hold 2 s) opens a menu of layouts; Titan command line shown on the Deck tab | Built - test on Titan |
 
 ## Platform and design decisions
 
@@ -108,6 +109,11 @@ parameter is named `srcHandle`). Levels are `level_level=` (absolute, 0-1).
 | Release | `Playbacks/ReleasePlayback?handle_userNumber=N&fadeTime=0&useMasterReleaseTime=true` |
 | Fader level | `Playbacks/SetPlaybackLevel?srcHandle_userNumber=N&level_level=0.5` |
 | Macro | `Macros/Run?macroId=<id string>` |
+| Keypad digit / @ | `Command/AppendStringAndPreview?text=7` (or `@`) |
+| Keypad Enter | GET `/titan/get/2/Command/CommandLineText`, then `Command/RunCommand?command=<text>`, then `Command/StartNewCommand` |
+| Keypad Clear | `Command/StartNewCommand` if something's typed, else `Playbacks/Editor/ClearAll?presets=false&allProgrammers=false` |
+| Keypad Exit | `Menu/ExitRootOrLatched` |
+| Intensity +/- | `Programmer/Editor/Fixtures/IncrementDimmer?value=5&timeDelta=1&shiftEnabled=false` (value assumed to be percent - unconfirmed) |
 | Version check | `GET /titan/get/System/SoftwareVersion` |
 
 The original build plan had wrong parameter names (`userNumber=`, `level=`,
@@ -115,6 +121,12 @@ The original build plan had wrong parameter names (`userNumber=`, `level=`,
 syntax. Add new actions as new `TitanAction` cases plus a `TitanEndpoints`
 mapping and a test, and never rename existing cases: they're saved in profile
 JSON.
+
+## Deck orientation
+
+Profiles store keys by *logical* index - as you look at the deck. `DeckGeometry`
+maps those to the hardware's landscape key numbers and says how far to turn
+key images. Never index hardware keys with profile indices directly.
 
 ## Stream Deck Kit (streamdeck-kit-ipad 1.3.x)
 

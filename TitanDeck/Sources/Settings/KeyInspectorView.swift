@@ -199,7 +199,16 @@ struct KeyInspectorView: View {
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
                 .font(.body.monospaced())
-        case .none, .nextPage, .previousPage, .openSettings:
+        case .keypadDigit:
+            Picker("Digit", selection: $draft.digit) {
+                ForEach(0...9, id: \.self) { Text("\($0)").tag($0) }
+            }
+        case .intensity:
+            Stepper(value: $draft.percent, in: -100...100, step: 1) {
+                LabeledContent("Change", value: "\(draft.percent > 0 ? "+" : "")\(Int(draft.percent))%")
+            }
+        case .none, .nextPage, .previousPage, .openSettings, .keypadAt, .keypadEnter, .keypadExit,
+             .keypadClear, .mainMenu:
             EmptyView()
         }
     }
@@ -213,6 +222,12 @@ struct KeyInspectorView: View {
             Text("Titan's macro id string, not its user number.")
         case .raw:
             Text("Sent as http://<Titan>:4430/titan/script/2/<path>. See api.avolites.com for functions.")
+        case .keypadDigit, .keypadAt, .keypadEnter, .keypadClear:
+            Text("Works on Titan's command line, like the console keypad.")
+        case .intensity:
+            Text("Nudges the selected fixtures' intensity. Negative numbers bring it down.")
+        case .mainMenu:
+            Text("Hold for 2 seconds to open the menu of deck layouts.")
         default:
             EmptyView()
         }

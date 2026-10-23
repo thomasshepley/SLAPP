@@ -22,11 +22,25 @@ enum TitanAction: Codable, Hashable {
     case nextPage
     /// Previous deck page, wrapping round - handled locally.
     case previousPage
+    /// Avolites keypad digit 0-9, typed onto Titan's command line.
+    case keypadDigit(Int)
+    /// Keypad @.
+    case keypadAt
+    /// Keypad Enter: runs the command line.
+    case keypadEnter
+    /// Keypad Exit: leaves the current menu.
+    case keypadExit
+    /// Keypad Clear: clears the command line, or the programmer if it's empty.
+    case keypadClear
+    /// Nudges the selected fixtures' intensity up or down by a percentage.
+    case adjustIntensity(percent: Double)
+    /// Opens the main menu of deck layouts - only after a 2 s hold. Local.
+    case mainMenu
 
     /// True for actions that go over the network to Titan.
     var isRemote: Bool {
         switch self {
-        case .switchPage, .openSettings, .nextPage, .previousPage: return false
+        case .switchPage, .openSettings, .nextPage, .previousPage, .mainMenu: return false
         default: return true
         }
     }
@@ -50,6 +64,13 @@ enum TitanAction: Codable, Hashable {
         case .openSettings: return "Open settings"
         case .raw(let p): return "Raw \(p)"
         case .nextPage: return "Next deck page"
+        case .keypadDigit(let d): return "Keypad \(d)"
+        case .keypadAt: return "Keypad @"
+        case .keypadEnter: return "Keypad Enter"
+        case .keypadExit: return "Keypad Exit"
+        case .keypadClear: return "Keypad Clear"
+        case .adjustIntensity(let p): return "Intensity \(p >= 0 ? "+" : "")\(TitanEndpoints.format(number: p))%"
+        case .mainMenu: return "Main menu"
         case .previousPage: return "Previous deck page"
         }
     }

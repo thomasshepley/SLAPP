@@ -13,6 +13,13 @@ final class ActionDraftTests: XCTestCase {
             .previousPage,
             .openSettings,
             .raw(path: "Playbacks/KillAllPlaybacks"),
+            .keypadDigit(7),
+            .keypadAt,
+            .keypadEnter,
+            .keypadExit,
+            .keypadClear,
+            .adjustIntensity(percent: -10),
+            .mainMenu,
         ]
         for action in actions {
             XCTAssertEqual(ActionDraft(action: action).action, action)
