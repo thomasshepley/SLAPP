@@ -62,8 +62,8 @@ them together (e.g. `deck.onAction` -> `titan.perform`). Keep it that way.
 | M4 | Profile editor UI: pages, labels, colours, action inspector (`Settings/DeckEditorView.swift`, `Settings/KeyInspectorView.swift`) | Built - needs testing on the iPad |
 | M5 | FreeRDP remote view in `Remote/`, touch-to-mouse mapping | Built - needs testing against the Titan PC |
 | M6 | RDP reconnect with backoff + dimmed last frame, always-visible connection pill (Titan heartbeat, RDP, network interface), Local Network permission check | Built - needs testing on set. Earlier: idle timer, background warning, three-finger settings gesture, Keychain password |
-| M7 | 8-hour show-day soak test + in-app connection log to export afterwards | **Next** |
-| M8 | Poll WebAPI to light active keys, iCloud profile export | - |
+| M7 | 8-hour show-day soak test + in-app connection log (Settings -> Soak test log: totals, events, CSV export) | Log built - the soak test itself is on set |
+| M8 | Poll WebAPI to light active keys, iCloud profile export | **Next** |
 | M9 | iPhone + iPhone Duo: on-screen deck drawn from the same profiles (Stream Deck Kit is iPad-only), adaptive layouts, App Intents (Shortcuts, Siri, Action button, Control Center) | - |
 | M10 | Apple Watch GO button: hold-to-fire or double-tap gesture, via the iPhone app or direct HTTP | - |
 

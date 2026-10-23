@@ -1,4 +1,5 @@
 // App/AppState.swift
+import Combine
 import SwiftUI
 import UIKit
 
@@ -38,6 +39,9 @@ final class AppState: ObservableObject {
     let heartbeat: TitanHeartbeat
     let network: NetworkMonitor
     let localNetwork: LocalNetworkPermission
+    /// Soak-test log of every drop-out and recovery (M7).
+    let connectionLog: ConnectionLogStore
+    private var logSubscriptions = Set<AnyCancellable>()
     private let store: ProfileStore
 
     private static let hostKey = "titanHost"
@@ -51,6 +55,7 @@ final class AppState: ObservableObject {
         heartbeat = TitanHeartbeat()
         network = NetworkMonitor()
         localNetwork = LocalNetworkPermission()
+        connectionLog = ConnectionLogStore()
         titan = TitanClient(host: host)
         let store = ProfileStore()
         self.store = store
@@ -68,6 +73,7 @@ final class AppState: ObservableObject {
     }
 
     func start() {
+        startConnectionLog()
         UIApplication.shared.isIdleTimerDisabled = true
         deck.start()
         network.start()
@@ -81,8 +87,12 @@ final class AppState: ObservableObject {
         switch phase {
         case .background:
             wasBackgrounded = true
+            connectionLog.record(.app, .info, "Went to background - Stream Deck inactive")
             Log.deck("App went to background - Stream Deck keys are inactive until it returns")
         case .active:
+            if wasBackgrounded {
+                connectionLog.record(.app, .info, "Back in foreground")
+            }
             UIApplication.shared.isIdleTimerDisabled = true
             localNetwork.check()
         default:
@@ -107,6 +117,9 @@ final class AppState: ObservableObject {
             }
             if let keyIndex {
                 deck.report(success: result.ok, forKey: keyIndex)
+                if !result.ok {
+                    connectionLog.record(.key, .info, "Key \(keyIndex + 1) \(action.summary) failed: \(result.error ?? "HTTP \(result.statusCode ?? 0)")")
+                }
             }
         }
     }
@@ -117,6 +130,64 @@ final class AppState: ObservableObject {
             titanVersion = await titan.softwareVersion()
             isCheckingConnection = false
         }
+    }
+
+    // MARK: - Connection log
+
+    /// Feeds the soak-test log from every link's published state.
+    private func startConnectionLog() {
+        guard logSubscriptions.isEmpty else { return }
+        let log = connectionLog
+        log.record(.app, .info, "TitanDeck started")
+
+        heartbeat.$health
+            .removeDuplicates()
+            .sink { health in
+                switch health {
+                case .ok(let ms), .slow(let ms): log.record(.titan, .up, "Answering (\(ms) ms)")
+                case .down: log.record(.titan, .down, "No reply")
+                case .unknown: break
+                }
+            }
+            .store(in: &logSubscriptions)
+
+        rdp.$state
+            .removeDuplicates()
+            .sink { [weak self] state in
+                let host = self?.rdp.host ?? ""
+                switch state {
+                case .connected: log.record(.rdp, .up, "Connected to \(host)")
+                case .failed(let message): log.record(.rdp, .down, message)
+                case .idle: log.record(.rdp, .info, "Disconnected")
+                case .connecting: break
+                }
+            }
+            .store(in: &logSubscriptions)
+
+        network.$interface
+            .removeDuplicates()
+            .dropFirst()   // the starting value isn't news
+            .sink { interface in
+                if interface == .none {
+                    log.record(.network, .down, interface.rawValue)
+                } else {
+                    log.record(.network, .up, interface.rawValue)
+                }
+            }
+            .store(in: &logSubscriptions)
+
+        deck.$device
+            .map { $0?.info.productName }
+            .removeDuplicates()
+            .dropFirst()
+            .sink { name in
+                if let name {
+                    log.record(.deck, .up, "\(name) attached")
+                } else {
+                    log.record(.deck, .down, "Detached")
+                }
+            }
+            .store(in: &logSubscriptions)
     }
 
     // MARK: - Remote desktop

@@ -16,6 +16,7 @@ struct SettingsView: View {
                 RemoteDesktopSection(session: appState.rdp)
                 testSection
                 DeckSection(deck: appState.deck)
+                SoakLogSection(store: appState.connectionLog)
                 logSection
                 aboutSection
             }
@@ -89,6 +90,87 @@ struct SettingsView: View {
     private var aboutSection: some View {
         Section("About") {
             LabeledContent("Version", value: Bundle.main.versionString)
+        }
+    }
+}
+
+/// M7: the soak-test log - drop-out totals per link, recent events, export.
+private struct SoakLogSection: View {
+    @ObservedObject var store: ConnectionLogStore
+    @State private var confirmClear = false
+
+    var body: some View {
+        Section {
+            let summaries = store.log.summaries()
+            if summaries.isEmpty {
+                Text("Nothing logged yet").foregroundStyle(.secondary)
+            }
+            ForEach(summaries, id: \.source) { summary in
+                LabeledContent(summary.source.rawValue) {
+                    Text(describe(summary))
+                        .foregroundStyle(summary.stillDown ? .red : (summary.dropouts == 0 ? .green : .orange))
+                        .multilineTextAlignment(.trailing)
+                }
+            }
+            DisclosureGroup("Recent events (\(store.log.events.count))") {
+                ForEach(store.log.events.suffix(30).reversed()) { event in
+                    HStack(alignment: .firstTextBaseline) {
+                        Text(event.date, format: .dateTime.hour().minute().second())
+                            .font(.caption.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                        Image(systemName: icon(for: event.status))
+                            .foregroundStyle(color(for: event.status))
+                        Text("\(event.source.rawValue): \(event.detail)")
+                            .font(.callout)
+                    }
+                }
+            }
+            ShareLink(item: store.export, preview: SharePreview("TitanDeck connection log")) {
+                Label("Export log as CSV", systemImage: "square.and.arrow.up")
+            }
+            .disabled(store.log.events.isEmpty)
+            Button("Clear log", role: .destructive) { confirmClear = true }
+                .disabled(store.log.events.isEmpty)
+                .confirmationDialog("Clear the connection log?", isPresented: $confirmClear, titleVisibility: .visible) {
+                    Button("Clear", role: .destructive) { store.clear() }
+                } message: {
+                    Text("Export it first if you need it - this can't be undone.")
+                }
+        } header: {
+            Text("Soak test log")
+        } footer: {
+            Text("Every drop-out and recovery is logged, even while this screen is closed. For the 8-hour soak test: clear the log at the start, then export it at the end.")
+        }
+    }
+
+    private func describe(_ summary: OutageSummary) -> String {
+        if summary.dropouts == 0 { return "No drop-outs" }
+        let plural = summary.dropouts == 1 ? "drop-out" : "drop-outs"
+        var text = "\(summary.dropouts) \(plural), longest \(Self.duration(summary.longestOutage)), total \(Self.duration(summary.totalDowntime))"
+        if summary.stillDown { text += " - down now" }
+        return text
+    }
+
+    static func duration(_ seconds: TimeInterval) -> String {
+        let formatter = DateComponentsFormatter()
+        formatter.allowedUnits = seconds >= 3600 ? [.hour, .minute] : (seconds >= 60 ? [.minute, .second] : [.second])
+        formatter.unitsStyle = .abbreviated
+        return formatter.string(from: max(seconds, 0).rounded()) ?? "\(Int(seconds)) s"
+    }
+
+    private func icon(for status: ConnectionEvent.Status) -> String {
+        switch status {
+        case .up: return "arrow.up.circle.fill"
+        case .down: return "arrow.down.circle.fill"
+        case .info: return "info.circle"
+        }
+    }
+
+    private func color(for status: ConnectionEvent.Status) -> Color {
+        switch status {
+        case .up: return .green
+        case .down: return .red
+        case .info: return .secondary
         }
     }
 }
