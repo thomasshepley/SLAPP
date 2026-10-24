@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Platform-neutral logic, unit tested on any OS: pairing, rdpwrap.ini,
+       diagnosis, file names and the API's message shapes. -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>TitanDeckHost.Core</RootNamespace>
+  </PropertyGroup>
+</Project>
