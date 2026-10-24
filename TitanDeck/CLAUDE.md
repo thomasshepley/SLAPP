@@ -48,7 +48,8 @@ TitanDeck/
 ├── Vendor/         downloaded FreeRDPKit (gitignored) - never edit or commit
 ├── Watch/          watchOS app (GoView, WatchModel). Shares Titan/ + WatchCommand with the phone app
 ├── Tests/          XCTest unit tests (endpoints, profiles, editing, store, client)
-└── docs/           TESTFLIGHT_SETUP.md
+├── Tools/          fake_titan.py - pretend Titan WebAPI for testing without an AvoKey
+└── docs/           TESTFLIGHT_SETUP.md, TEST_PLAN.md
 ```
 
 The Deck, Titan and Remote layers never reference each other. `AppState` wires
@@ -159,6 +160,10 @@ key images. Never index hardware keys with profile indices directly.
 - No Stream Deck in the iPad Simulator? Settings -> "Show virtual Stream Deck"
   (every build, TestFlight included) opens Stream Deck Kit's virtual deck. It
   goes through the same code path as real hardware.
+
+- No Titan (or no AvoKey)? `python3 Tools/fake_titan.py` on any computer on the
+  same network answers every call TitanDeck makes and prints them. Add new
+  actions to it when you add them to `TitanEndpoints`.
 
 - Unit tests: run the `TitanDeck` scheme's tests (Cmd-U) on an iPad simulator.
 - GitHub Actions (`.github/workflows/titandeck.yml`) regenerates the project,
