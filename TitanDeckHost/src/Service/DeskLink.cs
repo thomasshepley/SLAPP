@@ -108,10 +108,14 @@ public sealed class DeskLink(ILogger<DeskLink> log)
         }
         try
         {
-            using var response = await Titan.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, http.RequestAborted);
+            using var response = await Titan.SendAsync(request, http.RequestAborted);
+            // Titan's answers are small: send them whole, with a length, not
+            // chunked (some HTTP clients time out on chunked replies).
+            var body = await response.Content.ReadAsByteArrayAsync(http.RequestAborted);
             http.Response.StatusCode = (int)response.StatusCode;
             if (response.Content.Headers.ContentType is { } contentType) http.Response.ContentType = contentType.ToString();
-            await response.Content.CopyToAsync(http.Response.Body, http.RequestAborted);
+            http.Response.ContentLength = body.Length;
+            await http.Response.Body.WriteAsync(body, http.RequestAborted);
         }
         catch (Exception error) when (error is HttpRequestException or TaskCanceledException)
         {
