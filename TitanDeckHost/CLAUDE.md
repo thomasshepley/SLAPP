@@ -13,11 +13,13 @@ TitanDeckHost/
 ├── src/Core/      net8.0, platform-neutral, unit tested on any OS:
 │                  PairingStore, RdpWrapIni, RdpDiagnosis (facts -> plain-English checks
 │                  with fixes), SafeFileName, API messages (Api/Messages.cs),
-│                  sACN (Sacn/: E1.31 packet parser + DmxUniverses merge store)
+│                  sACN (Sacn/: E1.31 packet parser + DmxUniverses merge store),
+│                  TitanUiConfig (Titan's UI WebAPI config, checklist line, proxy allowlist)
 ├── src/Service/   net8.0-windows Windows service (LocalSystem): Kestrel API on
 │                  0.0.0.0:4431 (paired iPad) and 127.0.0.1:4432 (the Host window),
 │                  WindowsProbe (reads the PC), Fixer (applies fixes), Advertiser (mDNS),
-│                  SacnListener (joins sACN multicast on every adapter, port shared)
+│                  SacnListener (joins sACN multicast on every adapter, port shared),
+│                  DeskLink (finds/edits Titan's .exe.config, /titan proxy on 0.0.0.0:4434)
 ├── src/App/       net8.0-windows WPF tray app + dashboard; talks only to 127.0.0.1:4432
 ├── tests/Core.Tests/  xunit
 └── installer/     Inno Setup script
@@ -51,6 +53,15 @@ TitanDeckHost/
   Paired endpoints: `GET /api/v1/dmx` (summary) and
   `GET /api/v1/dmx/{universe}?start=&count=` (levels 0-255). Asking for a
   universe starts listening to it.
+- **Desk link:** Titan's WebAPI on 4430 is its own user (own programmer and
+  selection). `webapi.enabled` in Titan's .exe.config starts a second WebAPI in
+  Titan's UI that shares the operator's selection; TitanDeck uses port 4433 for
+  it (4431 is ours) and the Host proxies `/titan/...` on 4434 to
+  127.0.0.1:4433. `TitanUiConfig.ProxyAllows` is an allowlist and refuses
+  anything with Patch in it: never let the iPad drive the operator's Patch
+  menu. Enabling edits Titan's file, so it's PC-only (not in
+  `Fixer.AllowedFromIPad`); only files that already contain `webapi.enabled`
+  are touched, each backed up as `*.titandeck-backup` first.
 - Same house rules as the repo: regular hyphens, branch + PR, no secrets in git.
 
 ## Build, test
