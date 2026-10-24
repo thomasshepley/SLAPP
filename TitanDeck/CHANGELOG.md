@@ -7,6 +7,15 @@ the GitHub Actions run that built it. The top entry is shown in the app
 so add an entry - and bump `MARKETING_VERSION` in `project.yml` to match -
 with every change that goes to `main`.
 
+## 0.16.0 - 2026-10-24 - Desk link and live intensity
+
+- **Follow the desk's selection:** select fixtures in Layouts, the Fixtures window or on the desk and the deck brings up its intensity keys, just like typing "101 Enter". Currently Selected on the Remote screen shows them ("101-110"). Clear the selection on the desk and the keys go away.
+- **The deck acts on the desk's own programmer** while it's linked, so the intensity keys change what you selected on the desk.
+- **Set up once on the Titan PC:** TitanDeck Host (0.4) > Desk selection for TitanDeck > Turn on, then restart Titan. This uses Titan's experimental UI WebAPI; if it ever stops answering, the deck quietly goes back to its own WebAPI user.
+- **Live intensity on the flash key:** it reads the selected fixture's real level from Titan's sACN, through TitanDeck Host (0.3). The first time you nudge or flash a fixture from the deck, TitanDeck learns which channels are its intensity; after that the key shows "60%".
+- **Flash puts it back exactly:** a flash with no fade now uses Titan's own Flash Out and Clear Flash, so the fixture returns to precisely where it was.
+- **Everything can be switched off** in Settings > Desk link: following the desk, live intensity, and the experimental "Find addresses with Patch" (off to start with; it never touches your desk's Patch window).
+
 ## 0.15.0 - 2026-10-24 - Currently Selected, and tidier keys
 
 - **Currently Selected:** the Remote screen shows the fixture in the programmer in its top left corner, styled like the Menu button and status pill, after "101 Enter" or "101 @ 50 Enter" (Titan keeps 101 selected after setting its level).

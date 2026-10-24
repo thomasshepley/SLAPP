@@ -48,9 +48,24 @@ final class DeckSessionController: ObservableObject {
     @Published private(set) var latchedKeys: Set<UUID> = []
     /// What's been typed on the deck's keypad, to spot "102 Enter".
     private var keypad = DeckFlow.KeypadBuffer()
-    /// The fixture the deck's keypad left selected in Titan ("102 Enter",
-    /// "102 @ 50 Enter"), or nil after a Clear. Shown on the Remote screen.
-    @Published private(set) var selectedFixture: Int?
+    /// What's selected in Titan, as far as the deck knows: from the desk
+    /// itself while the desk link is up, else what the deck's keypad left
+    /// selected ("102 Enter", "102 @ 50 Enter"), empty after a Clear. Shown
+    /// on the Remote screen.
+    @Published private(set) var selectedFixtures: [Int] = []
+    /// The first selected fixture's live level (0...1), for the flash key.
+    @Published private(set) var liveLevel: Double?
+    /// The desk link is up: the desk's selection is the one that counts.
+    var deskLinked = false {
+        didSet { if deskLinked != oldValue { refreshSelection() } }
+    }
+    /// Called whenever `selectedFixtures` changes.
+    var onSelectionChanged: (([Int]) -> Void)?
+    private var deskSelection: [Int] = []
+    private var follower = DeckFlow.SelectionFollower()
+
+    /// "101-110" for the Remote screen, or nil with nothing selected.
+    var selectionLabel: String? { DeckFlow.selectionLabel(selectedFixtures) }
     private var started = false
     /// Running while the Menu key is held; opens the menu after 2 s.
     private var menuHoldTask: Task<Void, Never>?
@@ -91,6 +106,46 @@ final class DeckSessionController: ObservableObject {
     func displayedKey(at index: Int) -> KeyDefinition? {
         DeckFlow.displayed(currentPage?.key(at: index), onPage: currentPage?.name, workspaceNames: workspaceNames)
             .map { DeckCues.displayed($0, slots: profile.cueSlots) }
+            .map { key in
+                // The flash key carries the selected fixture's live level.
+                guard key.action == .flashSelection, liveLevel != nil || key.label == DeckFlow.flashLabel(level: nil)
+                else { return key }
+                var shown = key
+                shown.label = DeckFlow.flashLabel(level: liveLevel)
+                return shown
+            }
+    }
+
+    /// The desk's selection, from the desk link. Something new selected
+    /// brings up the intensity keys (as if typed on the keypad); an empty
+    /// selection puts them away again.
+    func setDeskSelection(_ fixtures: [Int]) {
+        deskSelection = fixtures
+        guard deskLinked else { return }
+        refreshSelection()
+        switch follower.update(fixtures) {
+        case .show:
+            if flowOverlay == nil { show(.selection(returnTo: currentPageIndex)) }
+        case .hide:
+            if case .selection(let home)? = flowOverlay { showPage(home) }
+        case .none:
+            break
+        }
+    }
+
+    /// The live level of the first selected fixture, or nil.
+    func setLiveLevel(_ level: Double?) {
+        guard level != liveLevel else { return }
+        liveLevel = level
+        guard let page = currentPage else { return }
+        for key in page.keys where key.action == .flashSelection { draw(logicalIndex: key.index) }
+    }
+
+    private func refreshSelection() {
+        let current = deskLinked ? deskSelection : keypad.selection.map { [$0] } ?? []
+        guard current != selectedFixtures else { return }
+        selectedFixtures = current
+        onSelectionChanged?(current)
     }
 
     func showMenu() {
@@ -260,7 +315,7 @@ final class DeckSessionController: ObservableObject {
             setOverlay(.pressed, at: index)
             onAction?(action, index)
             let event = keypad.apply(action)
-            if selectedFixture != keypad.selection { selectedFixture = keypad.selection }
+            refreshSelection()
             switch event {
             case .selected where flowOverlay == nil:
                 // "102 Enter" selected fixtures: bring up the intensity keys.
@@ -277,7 +332,7 @@ final class DeckSessionController: ObservableObject {
     /// The fade for the flash key: from the rule covering the fixture last
     /// selected on the keypad, else none.
     private var flashFade: Double? {
-        DeckCues.flashFade(forFixture: keypad.selection, rules: flashFadeRules)
+        DeckCues.flashFade(forFixture: selectedFixtures.first, rules: flashFadeRules)
     }
 
     /// A press on one of the Connect Cue / fade pickers.

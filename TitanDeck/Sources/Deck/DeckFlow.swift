@@ -81,6 +81,50 @@ enum DeckFlow {
         }
     }
 
+    // MARK: Following the desk's selection
+
+    /// Decides when the desk's selection (desk link) should bring the
+    /// intensity keys up, or put them away: up when something new is
+    /// selected, away when the selection is emptied.
+    struct SelectionFollower: Equatable {
+        private(set) var last: [Int] = []
+
+        enum Change: Equatable { case none, show, hide }
+
+        mutating func update(_ selection: [Int]) -> Change {
+            defer { last = selection }
+            if selection.isEmpty { return last.isEmpty ? .none : .hide }
+            return selection == last ? .none : .show
+        }
+    }
+
+    /// Short text for a selection, for "Currently Selected": "101",
+    /// "101-110", "101, 105, 107", or the first two runs and how many more.
+    static func selectionLabel(_ fixtures: [Int]) -> String? {
+        guard !fixtures.isEmpty else { return nil }
+        var runs: [ClosedRange<Int>] = []
+        for number in fixtures {
+            if let last = runs.last, number == last.upperBound + 1 {
+                runs[runs.count - 1] = last.lowerBound ... number
+            } else {
+                runs.append(number ... number)
+            }
+        }
+        let text = { (run: ClosedRange<Int>) in
+            run.count == 1 ? "\(run.lowerBound)" : "\(run.lowerBound)-\(run.upperBound)"
+        }
+        guard runs.count > 3 else { return runs.map(text).joined(separator: ", ") }
+        let shown = runs.prefix(2)
+        let more = fixtures.count - shown.reduce(0) { $0 + $1.count }
+        return shown.map(text).joined(separator: ", ") + " +\(more)"
+    }
+
+    /// The flash key's label: the fixture's live level when it's known.
+    static func flashLabel(level: Double?) -> String {
+        guard let level else { return "HOLD\nFOR 0%" }
+        return "\(Int((min(max(level, 0), 1) * 100).rounded()))%\nHOLD 0%"
+    }
+
     // MARK: Pages
 
     /// Shown after a selection: the profile's Intensity page (or, failing

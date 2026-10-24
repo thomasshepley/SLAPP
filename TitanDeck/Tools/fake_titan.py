@@ -21,6 +21,15 @@ Options:
                          the example in Avolites' docs, to test the app's warning
     --fixtures 12        how many fake fixtures are patched
     --playbacks 20       how many fake playbacks exist (10 per page, like Titan)
+    --ui-port 4433       also be Titan's UI WebAPI (the desk link) on this port:
+                         the operator's own selection and command line. 0 = off
+    --sacn               send fixture levels as sACN (universe 1) so TitanDeck
+                         Host can read them; fixture n is patched at
+                         (n-1)*4+1 as Red, Green, Blue, Dimmer
+
+Pretend to select fixtures on the desk (as if clicked in Layouts):
+
+    curl "http://localhost:4430/fake/desk-select?fixtures=3,4"
 
 Standard library only. Ctrl-C to stop.
 """
@@ -29,6 +38,8 @@ import argparse
 import json
 import re
 import socket
+import struct
+import uuid
 import sys
 import threading
 import time
@@ -70,13 +81,39 @@ class FakeTitan:
 
     def __init__(self, fixtures, playbacks):
         self.lock = threading.Lock()
-        self.command_line = ""
+        # Two users, like Titan: the WebAPI's own (port 4430) and the desk's
+        # (the UI WebAPI). Each has its own command line and selection; levels
+        # are shared, like one show.
+        self.users = {"api": {"line": "", "selected": []}, "desk": {"line": "", "selected": []}}
+        self.user = "api"
         self.levels = {n: 0.0 for n in range(1, fixtures + 1)}   # fixture -> percent
-        self.selected = []
+        self.flashed = {}       # fixture -> level saved by FlashOut
+        self.patch_current = None   # what Patch/Repatch copied into the patch editor
         self.playbacks = {n: 0.0 for n in range(1, playbacks + 1)}   # user number -> 0-1
         self.cue_times = {}     # user number -> {"CueFadeInTime": s, "CueFadeOutTime": s}
         self.editing = None     # the playback SelectCueByNumber picked
         self.held = {}          # fixture -> level saved by a flash, for the release
+
+    @property
+    def command_line(self):
+        return self.users[self.user]["line"]
+
+    @command_line.setter
+    def command_line(self, text):
+        self.users[self.user]["line"] = text
+
+    @property
+    def selected(self):
+        return self.users[self.user]["selected"]
+
+    @selected.setter
+    def selected(self, fixtures):
+        self.users[self.user]["selected"] = fixtures
+
+    @staticmethod
+    def address(n):
+        """Fake patch: 4 channels each (R, G, B, Dimmer) on universe 1."""
+        return 1, (n - 1) * 4 + 1
 
     # --- Command line -----------------------------------------------------
 
@@ -107,9 +144,25 @@ class FakeTitan:
 
     # --- Requests ---------------------------------------------------------
 
-    def handle(self, path, query):
+    def handle(self, path, query, user="api"):
         """Returns (status, body, note). body is JSON-encoded unless it's None."""
+        self.user = user
         q = {k: v[0] for k, v in parse_qs(query, keep_blank_values=True).items()}
+
+        if path == "/fake/desk-select":
+            numbers = [int(x) for x in q.get("fixtures", "").replace(" ", "").split(",") if x.isdigit()]
+            self.users["desk"]["selected"] = [n for n in numbers if n in self.levels]
+            return 200, None, f"desk selection now {self.users['desk']['selected'] or 'empty'} (as if from Layouts)"
+        if path == "/titan/handles/Fixtures":
+            return 200, [{
+                "handleLocation": {"group": "Fixtures", "index": n - 1, "page": 0},
+                "properties": [{"Key": "userNumber", "Value": n}],
+                "titanId": 5000 + n, "type": "fixtureHandle", "Active": False, "Legend": f"Fixture {n}",
+            } for n in sorted(self.levels)], None
+        if path == "/titan/get/2/Patch/CurrentDmxAssignment":
+            if self.patch_current is None:
+                return 200, "", "nothing copied into the patch editor"
+            return 200, "%d.%d" % self.patch_current, None
 
         if path == "/titan/get/System/SoftwareVersion":
             return 200, VERSION, None
@@ -155,6 +208,31 @@ class FakeTitan:
                 return 404, None, f"no playback with titanId {q.get('handle_titanId')}"
             self.editing = n
             return 200, None, f"editing playback {n}, cue {q.get('cueNumber', '1')}"
+
+        if re.fullmatch(r"Selection/Context/(Global|Programmer)/Get(All)?SelectedFixtureIds", function):
+            return 200, [5000 + n for n in self.selected], None
+        if function == "Selection/Context/Global/SelectFixturesFromHandles":
+            numbers = [int(x) for x in q.get("handleList_userNumberList", "").split(",") if x.isdigit()]
+            self.selected = [n for n in numbers if n in self.levels]
+            return 200, None, f"selected {self.selected} ({user} user)"
+        if function == "Programmer/Editor/Fixtures/FlashOut":
+            for n in self.selected:
+                self.flashed.setdefault(n, self.levels[n])
+                self.levels[n] = 0.0
+            return 200, None, f"flashed {self.selected} to zero"
+        if function == "Programmer/Editor/Fixtures/ClearFlash":
+            for n in self.selected:
+                if n in self.flashed:
+                    self.levels[n] = self.flashed.pop(n)
+            return 200, None, f"flash cleared on {self.selected}"
+        if function == "Patch/Repatch/SetDmxAddressesFromSelectedFixture":
+            if user == "desk":
+                # TitanDeck must never drive Patch on the operator's own UI.
+                return 200, None, red("PATCH CALLED ON THE DESK'S UI - TitanDeck shouldn't do this")
+            if not self.selected:
+                return 200, None, "patch: nothing selected"
+            self.patch_current = self.address(self.selected[0])
+            return 200, None, "patch editor now holds fixture %d's address %d.%d" % ((self.selected[0],) + self.patch_current)
 
         if function in ("Playbacks/FirePlaybackAtLevel", "Playbacks/ReleasePlayback",
                         "Playbacks/SetPlaybackLevel"):
@@ -294,22 +372,27 @@ class FakeTitan:
     def status_line(self):
         live = [str(n) for n, level in sorted(self.playbacks.items()) if level > 0]
         lit = [f"{n}:{level:g}%" for n, level in sorted(self.levels.items()) if level > 0]
-        sel = ",".join(map(str, self.selected)) or "-"
-        return dim(f"    line '{self.command_line}' | selected {sel} | "
+        sel = ",".join(map(str, self.users["api"]["selected"])) or "-"
+        if ARGS.ui_port:
+            desk = ",".join(map(str, self.users["desk"]["selected"])) or "-"
+            sel += f" | desk line '{self.users['desk']['line']}' desk selected {desk}"
+        return dim(f"    line '{self.users['api']['line']}' | selected {sel} | "
                    f"levels {' '.join(lit) or '-'} | live playbacks {' '.join(live) or '-'}")
 
 
 class Handler(BaseHTTPRequestHandler):
     server_version = "FakeTitan/1"
     quiet = {"/titan/get/2/Command/CommandLineText", "/titan/handles/Playbacks",
-             "/titan/get/System/SoftwareVersion"}
+             "/titan/get/System/SoftwareVersion", "/titan/handles/Fixtures",
+             "/titan/script/2/Selection/Context/Global/GetAllSelectedFixtureIds"}
 
     def do_GET(self):
         if ARGS.latency:
             time.sleep(ARGS.latency / 1000)
         url = urlparse(self.path)
+        user = "desk" if ARGS.ui_port and self.server.server_address[1] == ARGS.ui_port else "api"
         with TITAN.lock:
-            status, body, note = TITAN.handle(url.path, url.query)
+            status, body, note = TITAN.handle(url.path, url.query, user)
             status_line = TITAN.status_line()
 
         payload = b"" if body is None else json.dumps(body).encode()
@@ -346,6 +429,7 @@ class Handler(BaseHTTPRequestHandler):
         url = urlparse(self.path)
         body = self.rfile.read(int(self.headers.get("Content-Length") or 0))
         with TITAN.lock:
+            TITAN.user = "desk" if ARGS.ui_port and self.server.server_address[1] == ARGS.ui_port else "api"
             status, _, note = TITAN.set_property(url.path, body)
             status_line = TITAN.status_line()
         try:
@@ -364,6 +448,45 @@ class Handler(BaseHTTPRequestHandler):
 
     def log_message(self, format, *args):   # the default logging is too noisy
         pass
+
+
+def sacn_packet(universe, levels, sequence):
+    """One E1.31 data packet (what Titan sends over sACN)."""
+    body = bytes(levels)
+    p = bytearray(126 + len(body))
+    struct.pack_into(">HH12s", p, 0, 0x10, 0, b"ASC-E1.17\0\0\0")
+    struct.pack_into(">HI", p, 16, 0x7000 | (len(p) - 16), 4)
+    p[22:38] = uuid.UUID("6d1b2c3a-0000-4000-8000-0000000fa4e0").bytes
+    struct.pack_into(">HI", p, 38, 0x7000 | (len(p) - 38), 2)
+    name = b"Fake Titan"
+    p[44:44 + len(name)] = name
+    p[108] = 100
+    p[111] = sequence & 255
+    struct.pack_into(">H", p, 113, universe)
+    struct.pack_into(">HBBHHH", p, 115, 0x7000 | (len(p) - 115), 2, 0xA1, 0, 1, len(body) + 1)
+    p[126:] = body
+    return bytes(p)
+
+
+def send_sacn():
+    """Universe 1, ten times a second: each fixture as Red, Green, Blue, Dimmer."""
+    out = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+    out.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_LOOP, 1)
+    out.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 1)
+    sequence = 0
+    while True:
+        levels = [0] * 512
+        with TITAN.lock:
+            for n, level in TITAN.levels.items():
+                _, start = FakeTitan.address(n)
+                if start + 3 <= 512:
+                    levels[start - 1:start + 3] = [255, 180, 120, round(level * 2.55)]
+        try:
+            out.sendto(sacn_packet(1, levels, sequence), ("239.255.0.1", 5568))
+        except OSError:
+            pass
+        sequence += 1
+        time.sleep(0.1)
 
 
 def stamp():
@@ -391,6 +514,8 @@ def main():
                         help="leave user numbers out of the playback handles")
     parser.add_argument("--fixtures", type=int, default=12)
     parser.add_argument("--playbacks", type=int, default=20)
+    parser.add_argument("--ui-port", type=int, default=4433, help="the desk's UI WebAPI; 0 = off")
+    parser.add_argument("--sacn", action="store_true", help="send fixture levels as sACN universe 1")
     ARGS = parser.parse_args()
     TITAN = FakeTitan(ARGS.fixtures, ARGS.playbacks)
 
@@ -400,7 +525,18 @@ def main():
         sys.exit(f"Can't listen on port {ARGS.port}: {error}. Is real Titan (or another "
                  f"Fake Titan) already running?")
 
-    print(bold(f"Fake Titan {VERSION} listening on port {ARGS.port}"))
+    if ARGS.ui_port:
+        try:
+            desk = ThreadingHTTPServer(("0.0.0.0", ARGS.ui_port), Handler)
+        except OSError as error:
+            sys.exit(f"Can't listen on port {ARGS.ui_port} for the desk's UI WebAPI: {error}. Use --ui-port 0.")
+        threading.Thread(target=desk.serve_forever, daemon=True).start()
+    if ARGS.sacn:
+        threading.Thread(target=send_sacn, daemon=True).start()
+
+    print(bold(f"Fake Titan {VERSION} listening on port {ARGS.port}"
+               f"{f', desk UI WebAPI on {ARGS.ui_port}' if ARGS.ui_port else ''}"
+               f"{', sending sACN universe 1' if ARGS.sacn else ''}"))
     ip = local_ip()
     if ip:
         print("In TitanDeck, set Titan PC address to: " + bold(ip))

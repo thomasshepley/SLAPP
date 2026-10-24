@@ -16,6 +16,7 @@ struct SettingsView: View {
                 connectionSection
                 RemoteDesktopSection(session: appState.rdp)
                 HostSection(host: appState.host)
+                DeskLinkSection(desk: appState.deskLink, intensity: appState.intensity, host: appState.host)
                 FileDropSection(store: appState.fileDrop, host: appState.host)
                 testSection
                 DeckSection(deck: appState.deck)

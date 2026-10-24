@@ -96,6 +96,43 @@ enum TitanEndpoints {
         script(host, port, "Programmer/Editor/Fixtures/SetDimmerLevel", [("level", format(number: percent))])
     }
 
+    /// Titan's own flash to zero for the selected fixtures, and the end of it:
+    /// ClearFlash puts them back exactly as they were (nothing is released).
+    static func flashOutURL(host: String, port: Int = defaultPort) -> URL? {
+        script(host, port, "Programmer/Editor/Fixtures/FlashOut", [])
+    }
+
+    static func clearFlashURL(host: String, port: Int = defaultPort) -> URL? {
+        script(host, port, "Programmer/Editor/Fixtures/ClearFlash", [])
+    }
+
+    /// Every selected fixture (as Titan ids), ignoring pattern select. On the
+    /// UI WebAPI (desk link) this is the operator's selection; on 4430 it's
+    /// the WebAPI user's own.
+    static func selectedFixtureIdsURL(context: String = "Global", host: String, port: Int = defaultPort) -> URL? {
+        script(host, port, "Selection/Context/\(context)/GetAllSelectedFixtureIds", [])
+    }
+
+    /// Selects fixtures by user number in that WebAPI user's own selection.
+    static func selectFixturesURL(userNumbers: [Int], host: String, port: Int = defaultPort) -> URL? {
+        guard !userNumbers.isEmpty else { return nil }
+        return script(host, port, "Selection/Context/Global/SelectFixturesFromHandles",
+                      [("handleList_userNumberList", userNumbers.map(String.init).joined(separator: ","))])
+    }
+
+    /// Patch route to a fixture's DMX address: copy the selected fixture's
+    /// address into the patch editor's properties, then read them. Only ever
+    /// sent to the separate WebAPI user (4430), never the operator's UI.
+    static func addressFromSelectionURL(host: String, port: Int = defaultPort) -> URL? {
+        script(host, port, "Patch/Repatch/SetDmxAddressesFromSelectedFixture", [])
+    }
+
+    static func currentDmxAssignmentURL(host: String, port: Int = defaultPort) -> URL? {
+        let cleanHost = host.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleanHost.isEmpty else { return nil }
+        return URL(string: "http://\(authority(host, port))/titan/get/2/Patch/CurrentDmxAssignment")
+    }
+
     /// Releases the selection's edited controls from the programmer, over a time.
     static func releaseSelectionURL(seconds: Double, host: String, port: Int = defaultPort) -> URL? {
         script(host, port, "Programmer/Editor/Fixtures/ClearSelectedControls", [

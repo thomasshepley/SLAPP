@@ -23,6 +23,7 @@ final class AppState: ObservableObject {
             let host = titanHost
             UserDefaults.standard.set(host, forKey: SettingsKeys.titanHost)
             Task { await titan.setHost(host) }
+            deskLink.setHost(host)
             watch.shareHost(host)
         }
     }
@@ -59,6 +60,11 @@ final class AppState: ObservableObject {
     let host: HostStore
     /// What's typed on the deck keypad, shown under the remote desktop.
     let keypad: KeypadReadoutStore
+    /// Titan's UI WebAPI: follows the desk's selection, and takes the deck's
+    /// commands while it's up so they land in the desk's own programmer.
+    let deskLink: DeskLink
+    /// The selected fixture's live level from sACN, through the Host.
+    let intensity: IntensityReader
     private var logSubscriptions = Set<AnyCancellable>()
     private let store: ProfileStore
 
@@ -77,9 +83,15 @@ final class AppState: ObservableObject {
         watch = WatchBridge()
         fileDrop = FileDropStore()
         unifi = UniFiStore()
-        self.host = HostStore()
+        let hostStore = HostStore()
+        self.host = hostStore
         keypad = KeypadReadoutStore()
-        titan = TitanClient(host: host)
+        let titan = TitanClient(host: host)
+        self.titan = titan
+        let deskLink = DeskLink(api: titan)
+        self.deskLink = deskLink
+        intensity = IntensityReader(api: titan, host: { [weak hostStore] in hostStore?.client },
+                                    deskLinked: { [weak deskLink] in deskLink?.isLinked ?? false })
         let store = ProfileStore()
         self.store = store
         deck = DeckSessionController(profile: DeckProfile.starting(from: store.load()))
@@ -122,6 +134,23 @@ final class AppState: ObservableObject {
             }
         }
         deck.flashFadeRules = flashFadeRules
+        deskLink.onSelection = { [weak self] fixtures in
+            self?.deck.setDeskSelection(fixtures)
+        }
+        deskLink.onLinkChange = { [weak self] linked in
+            guard let self else { return }
+            self.deck.deskLinked = linked
+            self.connectionLog.record(.app, .info, linked
+                ? "Desk link up: following the desk's selection, deck commands go to the desk's programmer"
+                : "Desk link down: deck commands go to Titan's WebAPI user (4430)")
+        }
+        deck.onSelectionChanged = { [weak self] fixtures in
+            self?.intensity.setFixture(fixtures.first)
+        }
+        intensity.onLevel = { [weak self] level in
+            self?.deck.setLiveLevel(level)
+        }
+        deskLink.setHost(titanHost)
         playbackState.start(client: titan) { [weak self] in
             self?.heartbeat.health.isReachable ?? false
         }
@@ -165,8 +194,11 @@ final class AppState: ObservableObject {
     /// so a failure can flash that key red.
     func fire(_ action: TitanAction, fromKey keyIndex: Int? = nil) {
         let keypadLine = keypad.press(action)
+        intensity.deckWillSend(action)
+        // Linked to the desk, commands act on the desk's own programmer.
+        let client = deskLink.commandClient ?? titan
         Task {
-            let result = await titan.perform(action)
+            let result = await client.perform(action)
             if let keypadLine { keypad.markAnswered(keypadLine, ok: result.ok) }
             recentResults.insert(result, at: 0)
             if recentResults.count > Self.maxResults {
