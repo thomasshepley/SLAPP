@@ -216,6 +216,13 @@ jobs:
             -authenticationKeyIssuerID "$ASC_ISSUER_ID"
           echo "::notice::Build ${{ github.run_number }} uploaded. It appears in TestFlight after Apple finishes processing (usually 5-20 minutes)."
 
+      - name: Set TestFlight notes from CHANGELOG.md
+        if: steps.secrets.outputs.ready == 'true'
+        # Nice to have: a hiccup here shouldn't mark a good upload as failed.
+        continue-on-error: true
+        timeout-minutes: 20
+        run: python3 Tools/testflight_notes.py --build "${{ github.run_number }}"
+
       - name: Remove key
         if: always()
         working-directory: .

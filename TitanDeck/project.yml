@@ -11,7 +11,8 @@ options:
 settings:
   base:
     SWIFT_VERSION: "5.0"
-    MARKETING_VERSION: "0.1.0"
+    # Keep in step with the top entry of CHANGELOG.md (a unit test checks).
+    MARKETING_VERSION: "0.3.0"
     CURRENT_PROJECT_VERSION: "1"
     # iPhone + iPad. Layout follows size classes (see CLAUDE.md), so iPhone
     # Duo's inner display gets the full deck layout.
@@ -31,6 +32,9 @@ targets:
       - Resources/Assets.xcassets
       # Companion fixture library and gels (Tools/export_companion_data.ts).
       - Resources/Companion
+      # Shown in Settings > About > What's New, and as TestFlight notes.
+      - path: CHANGELOG.md
+        buildPhase: resources
     dependencies:
       - package: StreamDeckKit
         product: StreamDeckKit
