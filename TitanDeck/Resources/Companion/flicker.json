@@ -263,17 +263,6 @@
   "selectableHz": [],
   "source": "https://help.aputure.com/en/infinibar-pb12-pb6-pb3"
  },
- "fx-aputure-ls-1200d": {
-  "confidence": "family",
-  "defaultHz": null,
-  "flickerFreeUpToFps": 2000,
-  "highSpeedMode": null,
-  "kind": "pwm",
-  "notes": "Same fixture family as LS 1200d Pro: Frequency Selection in 100 Hz steps; Aputure lists est. max flicker-free 2,000 fps, help centre says 250 fps native plus High Speed mode (min 20%).",
-  "pwmBelowPercent": null,
-  "selectableHz": [],
-  "source": "https://www.aputure.com/en-US/products/ls-1200d-pro"
- },
  "fx-aputure-ls-1200d-pro": {
   "confidence": "published",
   "defaultHz": null,
@@ -295,28 +284,6 @@
   "pwmBelowPercent": null,
   "selectableHz": [],
   "source": ""
- },
- "fx-aputure-ls-300x-ii": {
-  "confidence": "none",
-  "defaultHz": null,
-  "flickerFreeUpToFps": null,
-  "highSpeedMode": null,
-  "kind": "unknown",
-  "notes": "No PWM Hz, frequency menu or fps rating found in Aputure's help centre or specs; test at your frame rate and shutter.",
-  "pwmBelowPercent": null,
-  "selectableHz": [],
-  "source": ""
- },
- "fx-aputure-ls-600c": {
-  "confidence": "family",
-  "defaultHz": null,
-  "flickerFreeUpToFps": null,
-  "highSpeedMode": null,
-  "kind": "pwm",
-  "notes": "Frequency Selection menu shifts PWM by +0 to +2000 Hz in 100 Hz steps to tune out flicker; base PWM Hz not published. (assumed same as LS 600c Pro; the Pro II is rated good to 750 fps).",
-  "pwmBelowPercent": null,
-  "selectableHz": [],
-  "source": "https://help.aputure.com/en/ls600c-pro/lighting-configuration-settings"
  },
  "fx-aputure-ls-600c-pro": {
   "confidence": "published",
@@ -826,17 +793,6 @@
   "source": "https://www.arri.com/resource/blob/31208/543a6389cd832f0c90b769793e2b984e/l5-0019845-arri-skypanel-user-manual-en-data.pdf"
  },
  "fx-arri-skypanel-x21": {
-  "confidence": "published",
-  "defaultHz": null,
-  "flickerFreeUpToFps": null,
-  "highSpeedMode": null,
-  "kind": "unknown",
-  "notes": "ARRI datasheet only says 'Flicker free, high-res low end dimming'; no PWM Hz, frequency menu or high-speed figure published.",
-  "pwmBelowPercent": null,
-  "selectableHz": [],
-  "source": "https://nacinc.jp/wp-content/uploads/2025/01/ARRI_SkyPanel-X_Data-Sheet_EN_Jun2024.pdf"
- },
- "fx-arri-skypanel-x61": {
   "confidence": "published",
   "defaultHz": null,
   "flickerFreeUpToFps": null,
@@ -1773,28 +1729,6 @@
   "selectableHz": [],
   "source": ""
  },
- "fx-godox-knowled-m400bi": {
-  "confidence": "none",
-  "defaultHz": null,
-  "flickerFreeUpToFps": null,
-  "highSpeedMode": null,
-  "kind": "unknown",
-  "notes": "No PWM Hz, frequency menu or fps rating found from Godox; generally marketed as flicker-free - test at your frame rate.",
-  "pwmBelowPercent": null,
-  "selectableHz": [],
-  "source": ""
- },
- "fx-godox-knowled-m400d": {
-  "confidence": "none",
-  "defaultHz": null,
-  "flickerFreeUpToFps": null,
-  "highSpeedMode": null,
-  "kind": "unknown",
-  "notes": "No PWM Hz, frequency menu or fps rating found from Godox; generally marketed as flicker-free - test at your frame rate.",
-  "pwmBelowPercent": null,
-  "selectableHz": [],
-  "source": ""
- },
  "fx-godox-knowled-m600bi": {
   "confidence": "published",
   "defaultHz": null,
@@ -2506,17 +2440,6 @@
   "selectableHz": [],
   "source": ""
  },
- "fx-nanlite-forza-300c": {
-  "confidence": "none",
-  "defaultHz": null,
-  "flickerFreeUpToFps": null,
-  "highSpeedMode": null,
-  "kind": "unknown",
-  "notes": "Nanlite markets its fixtures as flicker-free at high frame rates but publishes no PWM Hz, frequency menu or fps rating (manuals checked); test at your frame rate.",
-  "pwmBelowPercent": null,
-  "selectableHz": [],
-  "source": ""
- },
  "fx-nanlite-forza-500-ii": {
   "confidence": "none",
   "defaultHz": null,
@@ -2726,29 +2649,7 @@
   "selectableHz": [],
   "source": ""
  },
- "fx-nanlux-dyno-1200b": {
-  "confidence": "none",
-  "defaultHz": null,
-  "flickerFreeUpToFps": null,
-  "highSpeedMode": null,
-  "kind": "unknown",
-  "notes": "Marketed as flicker-free but Nanlux publishes no PWM Hz, frequency menu or fps rating; test at your frame rate.",
-  "pwmBelowPercent": null,
-  "selectableHz": [],
-  "source": ""
- },
  "fx-nanlux-dyno-1200c": {
-  "confidence": "none",
-  "defaultHz": null,
-  "flickerFreeUpToFps": null,
-  "highSpeedMode": null,
-  "kind": "unknown",
-  "notes": "Marketed as flicker-free but Nanlux publishes no PWM Hz, frequency menu or fps rating; test at your frame rate.",
-  "pwmBelowPercent": null,
-  "selectableHz": [],
-  "source": ""
- },
- "fx-nanlux-dyno-300c": {
   "confidence": "none",
   "defaultHz": null,
   "flickerFreeUpToFps": null,
@@ -2803,61 +2704,6 @@
   "selectableHz": [],
   "source": "https://www.abelcine.com/buy/lighting/led/nanlux-evoke-2400b-bi-color-led-monolight-kit-with-45-reflector-and-light-only-flight-case"
  },
- "fx-nanlux-evoke-300": {
-  "confidence": "none",
-  "defaultHz": null,
-  "flickerFreeUpToFps": null,
-  "highSpeedMode": null,
-  "kind": "unknown",
-  "notes": "Marketed as flicker-free but Nanlux publishes no PWM Hz, frequency menu or fps rating; test at your frame rate.",
-  "pwmBelowPercent": null,
-  "selectableHz": [],
-  "source": ""
- },
- "fx-nanlux-evoke-300b": {
-  "confidence": "none",
-  "defaultHz": null,
-  "flickerFreeUpToFps": null,
-  "highSpeedMode": null,
-  "kind": "unknown",
-  "notes": "Marketed as flicker-free but Nanlux publishes no PWM Hz, frequency menu or fps rating; test at your frame rate.",
-  "pwmBelowPercent": null,
-  "selectableHz": [],
-  "source": ""
- },
- "fx-nanlux-evoke-600": {
-  "confidence": "none",
-  "defaultHz": null,
-  "flickerFreeUpToFps": null,
-  "highSpeedMode": null,
-  "kind": "unknown",
-  "notes": "Marketed as flicker-free but Nanlux publishes no PWM Hz, frequency menu or fps rating; test at your frame rate.",
-  "pwmBelowPercent": null,
-  "selectableHz": [],
-  "source": ""
- },
- "fx-nanlux-evoke-600b": {
-  "confidence": "none",
-  "defaultHz": null,
-  "flickerFreeUpToFps": null,
-  "highSpeedMode": null,
-  "kind": "unknown",
-  "notes": "Marketed as flicker-free but Nanlux publishes no PWM Hz, frequency menu or fps rating; test at your frame rate.",
-  "pwmBelowPercent": null,
-  "selectableHz": [],
-  "source": ""
- },
- "fx-nanlux-evoke-900": {
-  "confidence": "none",
-  "defaultHz": null,
-  "flickerFreeUpToFps": null,
-  "highSpeedMode": null,
-  "kind": "unknown",
-  "notes": "Marketed as flicker-free but Nanlux publishes no PWM Hz, frequency menu or fps rating; test at your frame rate.",
-  "pwmBelowPercent": null,
-  "selectableHz": [],
-  "source": ""
- },
  "fx-nanlux-evoke-900c": {
   "confidence": "none",
   "defaultHz": null,
@@ -2870,50 +2716,6 @@
   "source": ""
  },
  "fx-nanlux-tk-200": {
-  "confidence": "none",
-  "defaultHz": null,
-  "flickerFreeUpToFps": null,
-  "highSpeedMode": null,
-  "kind": "unknown",
-  "notes": "Marketed as flicker-free but Nanlux publishes no PWM Hz, frequency menu or fps rating; test at your frame rate.",
-  "pwmBelowPercent": null,
-  "selectableHz": [],
-  "source": ""
- },
- "fx-nanlux-tk-200b": {
-  "confidence": "none",
-  "defaultHz": null,
-  "flickerFreeUpToFps": null,
-  "highSpeedMode": null,
-  "kind": "unknown",
-  "notes": "Marketed as flicker-free but Nanlux publishes no PWM Hz, frequency menu or fps rating; test at your frame rate.",
-  "pwmBelowPercent": null,
-  "selectableHz": [],
-  "source": ""
- },
- "fx-nanlux-tk-300": {
-  "confidence": "none",
-  "defaultHz": null,
-  "flickerFreeUpToFps": null,
-  "highSpeedMode": null,
-  "kind": "unknown",
-  "notes": "Marketed as flicker-free but Nanlux publishes no PWM Hz, frequency menu or fps rating; test at your frame rate.",
-  "pwmBelowPercent": null,
-  "selectableHz": [],
-  "source": ""
- },
- "fx-nanlux-tk-450b": {
-  "confidence": "none",
-  "defaultHz": null,
-  "flickerFreeUpToFps": null,
-  "highSpeedMode": null,
-  "kind": "unknown",
-  "notes": "Marketed as flicker-free but Nanlux publishes no PWM Hz, frequency menu or fps rating; test at your frame rate.",
-  "pwmBelowPercent": null,
-  "selectableHz": [],
-  "source": ""
- },
- "fx-nanlux-tk-600": {
   "confidence": "none",
   "defaultHz": null,
   "flickerFreeUpToFps": null,
@@ -2980,17 +2782,6 @@
   "source": ""
  },
  "fx-quasar-q-lion": {
-  "confidence": "none",
-  "defaultHz": null,
-  "flickerFreeUpToFps": null,
-  "highSpeedMode": null,
-  "kind": "unknown",
-  "notes": "Retailers list 'flicker-free' dimming but Quasar publishes no PWM Hz or fps rating (Rainbow 2 guide checked); test at your frame rate.",
-  "pwmBelowPercent": null,
-  "selectableHz": [],
-  "source": ""
- },
- "fx-quasar-q50": {
   "confidence": "none",
   "defaultHz": null,
   "flickerFreeUpToFps": null,

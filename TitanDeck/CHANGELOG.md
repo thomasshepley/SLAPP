@@ -7,6 +7,11 @@ the GitHub Actions run that built it. The top entry is shown in the app
 so add an entry - and bump `MARKETING_VERSION` in `project.yml` to match -
 with every change that goes to `main`.
 
+## 0.10.1 - 2026-10-24 - Fixture library tidy-up
+
+- Removed 19 library entries for lights that don't exist, so you won't patch a fixture that isn't real: Nanlux Evoke 300, 300B, 600, 600B and 900, Dyno 300C and 1200B, TK-200B, TK-300, TK-450B and TK-600; Nanlite Forza 300C; Knowled M400D and M400Bi; Aputure LS 300x II, LS 1200d and LS 600c (only the Pro versions exist); ARRI SkyPanel X61; Quasar Q50.
+- The real models are all still there, with their DMX modes and flicker data.
+
 ## 0.10.0 - 2026-10-24 - Every DMX mode
 
 - **DMX modes from the manufacturers' own charts:** over 5,000 modes across 179 fixtures (Astera, ARRI, Aputure and amaran, Nanlite, Nanlux, Godox/Knowled, Creamsource, Kino Flo, Litepanels, Quasar, DMG, ETC, Robe, Martin, Claypaky, Chauvet, GLP and more), transcribed from each maker's DMX chart or manual and checked so every footprint adds up.
