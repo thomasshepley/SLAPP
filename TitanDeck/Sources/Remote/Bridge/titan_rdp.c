@@ -247,7 +247,30 @@ static BOOL titan_pre_connect(freerdp *instance) {
     if (PubSub_SubscribeChannelDisconnected(context->pubSub,
                                             freerdp_client_OnChannelDisconnectedEventHandler) < 0)
         return FALSE;
-    return freerdp_client_load_addins(context->channels, context->settings);
+    // Channels are loaded by titan_load_channels, which FreeRDP calls after this.
+    return TRUE;
+}
+
+// FreeRDPKit leaves out device redirection (rdpdr). freerdp_client_load_addins
+// asks for rdpdr whenever network auto-detect, heartbeats or multitransport are
+// on, and fails pre-connect when it isn't there ("A configuration error
+// prevented a connection..."). Those features don't need rdpdr to work, so
+// hide them while the add-ins load, then put them back.
+static BOOL titan_load_channels(freerdp *instance) {
+    rdpSettings *settings = instance->context->settings;
+    const FreeRDP_Settings_Keys_Bool keys[] = { FreeRDP_NetworkAutoDetect,
+                                                FreeRDP_SupportHeartbeatPdu,
+                                                FreeRDP_SupportMultitransport };
+    BOOL saved[ARRAYSIZE(keys)];
+    for (size_t i = 0; i < ARRAYSIZE(keys); i++) {
+        saved[i] = freerdp_settings_get_bool(settings, keys[i]);
+        if (!freerdp_settings_set_bool(settings, keys[i], FALSE))
+            return FALSE;
+    }
+    BOOL ok = freerdp_client_load_addins(instance->context->channels, settings);
+    for (size_t i = 0; i < ARRAYSIZE(keys); i++)
+        ok = freerdp_settings_set_bool(settings, keys[i], saved[i]) && ok;
+    return ok;
 }
 
 static BOOL titan_post_connect(freerdp *instance) {
@@ -291,6 +314,7 @@ static BOOL titan_client_new(freerdp *instance, rdpContext *context) {
     instance->PreConnect = titan_pre_connect;
     instance->PostConnect = titan_post_connect;
     instance->PostDisconnect = titan_post_disconnect;
+    instance->LoadChannels = titan_load_channels;
     instance->VerifyCertificateEx = titan_verify_certificate;
     instance->VerifyChangedCertificateEx = titan_verify_changed_certificate;
     return TRUE;
