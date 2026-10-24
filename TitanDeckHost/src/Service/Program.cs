@@ -3,6 +3,7 @@ using TitanDeckHost.Core.Api;
 using TitanDeckHost.Core.Files;
 using TitanDeckHost.Core.Pairing;
 using TitanDeckHost.Core.Rdp;
+using TitanDeckHost.Core.Sacn;
 using TitanDeckHost.Service;
 
 var builder = WebApplication.CreateBuilder(new WebApplicationOptions
@@ -25,6 +26,9 @@ builder.Services.AddSingleton(new PairingStore(paths.PairingFile));
 builder.Services.AddSingleton<WindowsProbe>();
 builder.Services.AddSingleton<Fixer>();
 builder.Services.AddHostedService<Advertiser>();
+builder.Services.AddSingleton<DmxUniverses>();
+builder.Services.AddSingleton<SacnListener>();
+builder.Services.AddHostedService(services => services.GetRequiredService<SacnListener>());
 
 var app = builder.Build();
 var pairing = app.Services.GetRequiredService<PairingStore>();
@@ -127,6 +131,12 @@ network.MapPost("/rdp/quality", (RdpQualityRequest request) => SetQuality(reques
 
 network.MapGet("/outbox", () => Outbox(paths));
 
+// Live sACN levels, for showing a fixture's intensity on the deck.
+network.MapGet("/dmx", (DmxUniverses store, SacnListener listener) => DmxSummary(store, listener));
+
+network.MapGet("/dmx/{universe:int}", (int universe, int? start, int? count, DmxUniverses store, SacnListener listener) =>
+    DmxLevels(universe, start ?? 1, count ?? 512, store, listener));
+
 network.MapGet("/outbox/{name}", (string name) =>
 {
     // Full path, so it's always served from disk, never as a "virtual" web path.
@@ -177,6 +187,8 @@ local.MapGet("/rdp/quality", () => QualityResult(RdpQualitySettings.Read));
 
 local.MapPost("/rdp/quality", (RdpQualityRequest request) => SetQuality(request));
 
+local.MapGet("/dmx", (DmxUniverses store, SacnListener listener) => DmxSummary(store, listener));
+
 local.MapGet("/folders", () => new { toPC = paths.ToPC, toIPad = paths.ToIPad, data = paths.Data });
 
 // Keep last-seen times on disk without writing on every request.
@@ -188,6 +200,23 @@ app.Lifetime.ApplicationStopping.Register(() =>
 });
 
 app.Run();
+
+static DmxSummaryDto DmxSummary(DmxUniverses store, SacnListener listener) =>
+    new(store.Known(DateTimeOffset.UtcNow), listener.Listening, listener.Problem);
+
+static IResult DmxLevels(int universe, int start, int count, DmxUniverses store, SacnListener listener)
+{
+    if (universe is < 1 or > SacnPacket.MaxUniverse)
+        return Results.BadRequest(new { error = $"sACN universes are 1-{SacnPacket.MaxUniverse}." });
+    listener.Want(universe);   // so the next ask has levels, if Titan sends it
+    var levels = store.Get(universe, DateTimeOffset.UtcNow);
+    if (levels is null)
+        return Results.Json(new { error = $"Nothing is sending sACN universe {universe}.", problem = listener.Problem },
+            statusCode: StatusCodes.Status404NotFound);
+    var first = Math.Clamp(start, 1, 512);
+    return Results.Ok(new DmxLevelsDto(universe, first, levels.Slice(first, count).Select(b => (int)b).ToList(),
+        levels.Priority, levels.Sources, (int)levels.Age.TotalMilliseconds));
+}
 
 static StatusResponse Status(WindowsProbe probe, HostPaths paths)
 {
