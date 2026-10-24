@@ -12,10 +12,12 @@ TitanDeckHost/
 ├── Directory.Build.props   version (keep in step with CHANGELOG.md) + shared settings
 ├── src/Core/      net8.0, platform-neutral, unit tested on any OS:
 │                  PairingStore, RdpWrapIni, RdpDiagnosis (facts -> plain-English checks
-│                  with fixes), SafeFileName, API messages (Api/Messages.cs)
+│                  with fixes), SafeFileName, API messages (Api/Messages.cs),
+│                  sACN (Sacn/: E1.31 packet parser + DmxUniverses merge store)
 ├── src/Service/   net8.0-windows Windows service (LocalSystem): Kestrel API on
 │                  0.0.0.0:4431 (paired iPad) and 127.0.0.1:4432 (the Host window),
-│                  WindowsProbe (reads the PC), Fixer (applies fixes), Advertiser (mDNS)
+│                  WindowsProbe (reads the PC), Fixer (applies fixes), Advertiser (mDNS),
+│                  SacnListener (joins sACN multicast on every adapter, port shared)
 ├── src/App/       net8.0-windows WPF tray app + dashboard; talks only to 127.0.0.1:4432
 ├── tests/Core.Tests/  xunit
 └── installer/     Inno Setup script
@@ -42,6 +44,13 @@ TitanDeckHost/
 - The API shapes are shared with `TitanDeck/Sources/Host` (iPad side). Change
   both together; bump `Protocol.ApiVersion` for breaking changes.
 - Plain HTTP on the show network for now (isolated network, paired tokens).
+- **sACN:** Titan sends sACN multicast only (no unicast; this rig doesn't use
+  Art-Net). `SacnListener` binds 5568 with ReuseAddress and relies on Windows
+  looping Titan's multicast back to local sockets. Not yet tested on a real
+  Titan PC: if Titan holds 5568 exclusively, `/api/v1/dmx` reports the problem.
+  Paired endpoints: `GET /api/v1/dmx` (summary) and
+  `GET /api/v1/dmx/{universe}?start=&count=` (levels 0-255). Asking for a
+  universe starts listening to it.
 - Same house rules as the repo: regular hyphens, branch + PR, no secrets in git.
 
 ## Build, test

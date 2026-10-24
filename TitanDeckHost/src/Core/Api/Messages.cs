@@ -72,3 +72,15 @@ public sealed record UploadResponse(string SavedAs, long Size);
 public sealed record PairingInfo(string? Code, DateTimeOffset? Expires, IReadOnlyList<DeviceDto> Devices);
 
 public sealed record DeviceDto(string Id, string Name, DateTimeOffset PairedAt, DateTimeOffset? LastSeen);
+
+/// <summary>Live sACN levels of one universe (`GET /api/v1/dmx/{universe}`).
+/// Levels are 0-255, starting at DMX address `start`. Sources are the
+/// winning senders' names (Titan's own, normally).</summary>
+public sealed record DmxLevelsDto(int Universe, int Start, IReadOnlyList<int> Levels, int Priority,
+    IReadOnlyList<string> Sources, int AgeMs);
+
+/// <summary>What the Host hears over sACN (`GET /api/v1/dmx`): universes with
+/// a live source or announced by discovery, those it's listening to, and why
+/// it can't listen, if it can't.</summary>
+public sealed record DmxSummaryDto(IReadOnlyList<int> Universes, IReadOnlyList<int> Listening, string? Problem);
+

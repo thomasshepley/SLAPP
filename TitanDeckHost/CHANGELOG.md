@@ -6,6 +6,12 @@ until it's show-ready (1.0): MINOR for features, PATCH for fixes. Keep
 (ChangelogTests checks). Each version is published as a GitHub release
 `host-v<version>` with the installer attached.
 
+## 0.3.0 - 2026-10-24 - Live levels from sACN
+
+- **Hears Titan's sACN:** the Host listens to the sACN Titan sends (on the same PC, so no extra network setup) and keeps each universe's live levels. This is the groundwork for TitanDeck showing a fixture's real intensity, which Titan's WebAPI can't report.
+- Follows the sACN rules: highest priority wins, preview data is ignored, and a source that stops is dropped after 2.5 s. Listens to universes 1-4 from the start, plus any Titan announces or TitanDeck asks for.
+- Shares the sACN port, so it doesn't get in the way if Titan listens for sACN input too.
+
 ## 0.2.0 - 2026-10-24 - Picture quality and RDP Wrapper download
 
 - **Remote desktop picture presets:** Best (wired or strong link: high quality, 60 fps), Balanced (Windows' normal) and Weak signal (bad Wi-Fi on set: lowest bandwidth). Set them in the Host window or from TitanDeck, which reconnects to apply them.
