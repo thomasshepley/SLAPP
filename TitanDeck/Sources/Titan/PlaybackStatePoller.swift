@@ -22,6 +22,8 @@ final class PlaybackStatePoller: ObservableObject {
 
     /// Called with the active user numbers whenever they change.
     var onChange: ((Set<Int>) -> Void)?
+    /// Called with every playback handle Titan reports, each poll.
+    var onHandles: (([PlaybackHandleState]) -> Void)?
     /// Called with Titan's workspace names (by user number) every 15 s.
     var onWorkspaceNames: (([Int: String]) -> Void)?
 
@@ -44,6 +46,7 @@ final class PlaybackStatePoller: ObservableObject {
                 }
                 tick += 1
                 if self.isEnabled, isTitanReachable(), let handles = await client.playbackHandles() {
+                    self.onHandles?(handles)
                     if let active = TitanHandlesParser.activeUserNumbers(handles) {
                         self.support = .working
                         if active != self.lastActive {

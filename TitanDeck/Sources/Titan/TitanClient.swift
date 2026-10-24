@@ -23,6 +23,8 @@ actor TitanClient {
     /// Per-request timeout in seconds (0.5 by default).
     let timeout: TimeInterval
     private let session: URLSession
+    /// A flash fading down in steps; letting go stops it.
+    private var flashRamp: Task<Void, Never>?
 
     init(host: String, port: Int = TitanEndpoints.defaultPort, timeout: TimeInterval = 0.5) {
         self.host = host
@@ -45,6 +47,8 @@ actor TitanClient {
         case .keypadEnter: return await runEnter()
         case .keypadClear: return await runClear()
         case .colourTemperature(let kelvin): return await runColourTemperature(kelvin)
+        case .setCueFade(let id, let fadeOut, let seconds): return await runCueFade(titanId: id, fadeOut: fadeOut, seconds: seconds)
+        case .dimmerFlash(let down, let seconds): return await runFlash(down: down, seconds: seconds)
         default: break
         }
         let start = Date()
@@ -104,6 +108,66 @@ actor TitanClient {
         let result = await get(url)
         return finish(.keypadClear, start, ok: result.ok, status: result.status, error: result.error,
                       detail: text?.isEmpty == false ? "cleared command line" : "cleared programmer")
+    }
+
+    // MARK: - Cue fades (experimental)
+
+    /// Selects cue 1 of the playback, then writes its fade time. The API docs
+    /// list both properties but not the body format, so this sends the
+    /// seconds as plain text - check it on the console.
+    private func runCueFade(titanId: Int, fadeOut: Bool, seconds: Double) async -> TitanResult {
+        let action = TitanAction.setCueFade(titanId: titanId, fadeOut: fadeOut, seconds: seconds)
+        let start = Date()
+        let select = await get(TitanEndpoints.selectFirstCueURL(titanId: titanId, host: host, port: port))
+        guard select.ok else {
+            return finish(action, start, ok: false, status: select.status, error: select.error ?? "Couldn't select the cue")
+        }
+        guard let url = TitanEndpoints.cueFadePropertyURL(fadeOut: fadeOut, write: true, host: host, port: port) else {
+            return finish(action, start, ok: false, status: nil, error: "No Titan host set")
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("text/plain", forHTTPHeaderField: "Content-Type")
+        request.httpBody = Data(TitanEndpoints.format(number: seconds).utf8)
+        do {
+            let (_, response) = try await session.data(for: request)
+            let status = (response as? HTTPURLResponse)?.statusCode
+            return finish(action, start, ok: status == 200, status: status, error: nil)
+        } catch {
+            return finish(action, start, ok: false, status: nil, error: error.localizedDescription)
+        }
+    }
+
+    // MARK: - Flash (hold to 0%)
+
+    /// Down: straight to 0%, or -5% steps spread over `seconds` (SetDimmerLevel
+    /// takes no time). Back: release the selection's controls over `seconds`,
+    /// so they return to whatever they were before the deck touched them.
+    private func runFlash(down: Bool, seconds: Double?) async -> TitanResult {
+        let action = TitanAction.dimmerFlash(down: down, seconds: seconds)
+        let start = Date()
+        flashRamp?.cancel()
+        flashRamp = nil
+        guard down else {
+            let result = await get(TitanEndpoints.releaseSelectionURL(seconds: seconds ?? 0, host: host, port: port))
+            return finish(action, start, ok: result.ok, status: result.status, error: result.error)
+        }
+        guard let seconds, seconds > 0 else {
+            let result = await get(TitanEndpoints.setDimmerLevelURL(percent: 0, host: host, port: port))
+            return finish(action, start, ok: result.ok, status: result.status, error: result.error)
+        }
+        let steps = (count: 20, interval: seconds / 20)
+        let stepURL = TitanEndpoints.url(for: .adjustIntensity(percent: -5), host: host, port: port)
+        let first = await get(stepURL)
+        flashRamp = Task { [weak self] in
+            for _ in 1 ..< steps.count {
+                try? await Task.sleep(nanoseconds: UInt64(steps.interval * 1_000_000_000))
+                guard !Task.isCancelled, let self else { return }
+                _ = await self.get(stepURL)
+            }
+        }
+        return finish(action, start, ok: first.ok, status: first.status, error: first.error,
+                      detail: "fading over \(TitanEndpoints.format(number: seconds))s")
     }
 
     // MARK: - Colour temperature (find the palette, then apply it)

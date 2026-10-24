@@ -110,6 +110,18 @@ final class AppState: ObservableObject {
         playbackState.onWorkspaceNames = { [weak self] names in
             self?.deck.setWorkspaceNames(names)
         }
+        playbackState.onHandles = { [weak self] handles in
+            self?.deck.setAvailableCues(Self.cueChoices(handles))
+        }
+        deck.onNeedCues = { [weak self] in
+            guard let self else { return }
+            Task {
+                if let handles = await self.titan.playbackHandles() {
+                    self.deck.setAvailableCues(Self.cueChoices(handles))
+                }
+            }
+        }
+        deck.flashFadeRules = flashFadeRules
         playbackState.start(client: titan) { [weak self] in
             self?.heartbeat.health.isReachable ?? false
         }
@@ -316,6 +328,24 @@ final class AppState: ObservableObject {
     }
 
     // MARK: - Profiles
+
+    /// Fixture ranges whose deck flash fades (Settings > Deck > Flash fades).
+    @Published var flashFadeRules: [FlashFadeRule] = DeckCues.decodeRules(
+        UserDefaults.standard.data(forKey: DeckCues.fadeRulesKey)) {
+        didSet {
+            UserDefaults.standard.set(try? JSONEncoder().encode(flashFadeRules), forKey: DeckCues.fadeRulesKey)
+            deck.flashFadeRules = flashFadeRules
+        }
+    }
+
+    /// Titan's playback handles as the deck's Connect Cue choices.
+    static func cueChoices(_ handles: [PlaybackHandleState]) -> [CueChoice] {
+        handles.compactMap { handle in
+            guard let id = handle.titanId else { return nil }
+            return CueChoice(titanId: id, userNumber: handle.userNumber, page: handle.page ?? 0,
+                             index: handle.index ?? 0, legend: handle.legend, isActive: handle.active)
+        }
+    }
 
     /// Saves an edited profile and pushes it to the deck.
     func updateProfile(_ profile: DeckProfile) {

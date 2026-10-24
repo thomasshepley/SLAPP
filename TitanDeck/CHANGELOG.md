@@ -7,6 +7,15 @@ the GitHub Actions run that built it. The top entry is shown in the app
 so add an entry - and bump `MARKETING_VERSION` in `project.yml` to match -
 with every change that goes to `main`.
 
+## 0.14.0 - 2026-10-24 - Cues on the deck, and a flash key
+
+- **Playbacks page:** three GO keys, with Fade In and Fade Out under each and Connect Cue at the bottom.
+- **Connect Cue:** the GOs go red. Tap one and the deck lists Titan's playback pages, then the cues on the page you pick (live ones in green). Pick a cue and the GO shows its name. Connect Cue again offers Unassign under each GO; Done goes back.
+- **Fade In / Fade Out:** pick a time from 0 to 60 s and the deck sets that cue's fade in Titan. This one is experimental: Titan doesn't document how the time is sent, so check the cue on the console.
+- **Hold for 0%:** after a selection ("45 Enter") there's a flash key. Hold it to take the fixture to 0, let go to bring it back.
+- **Flash fades:** Settings > Deck > Flash fades sets a fade for fixture ranges, e.g. 1-99 fade over 5 s. Fixtures outside every range snap.
+- Titan's API can't read a fixture's level, so the flash key can't show it, and letting go releases the fixture from the programmer.
+
 ## 0.13.0 - 2026-10-24 - Colour, Layouts, and a smarter deck
 
 - **Blank keys stay blank:** keys with nothing on them now go black on the Stream Deck instead of showing the last page's key.

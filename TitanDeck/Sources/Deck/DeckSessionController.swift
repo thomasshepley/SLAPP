@@ -29,6 +29,8 @@ final class DeckSessionController: ObservableObject {
     var onOpenSettings: (() -> Void)?
     /// Called when the profile changes (e.g. re-flowed for a smaller deck) so it can be saved.
     var onProfileChanged: ((DeckProfile) -> Void)?
+    /// Called when Connect Cue needs Titan's playback list fresh.
+    var onNeedCues: (() -> Void)?
 
     /// Per-key press/failure highlight. Published so the on-screen deck mirrors it.
     @Published private(set) var overlays: [Int: DeckRenderer.Overlay] = [:]
@@ -36,6 +38,12 @@ final class DeckSessionController: ObservableObject {
     @Published private(set) var activePlaybacks: Set<Int> = []
     /// Titan's workspace names by user number, for workspace keys with no label.
     @Published private(set) var workspaceNames: [Int: String] = [:]
+    /// Every playback Titan has, across its pages, for Connect Cue.
+    @Published private(set) var availableCues: [CueChoice] = []
+    /// titanIds of live playbacks, to light connected GO keys.
+    @Published private(set) var activeTitanIds: Set<Int> = []
+    /// Fixture ranges whose flash fades rather than snaps (Settings > Deck).
+    var flashFadeRules: [FlashFadeRule] = []
     /// Latching keys that are switched on (their pressed look shows until pressed again).
     @Published private(set) var latchedKeys: Set<UUID> = []
     /// What's been typed on the deck's keypad, to spot "102 Enter".
@@ -57,13 +65,29 @@ final class DeckSessionController: ObservableObject {
         case .menu?: return DeckFlow.menuPage(profile: profile)
         case .selection(let returnTo)?: return DeckFlow.selectionPage(profile: profile, returnTo: returnTo)
         case .colour(let returnTo)?: return DeckFlow.colourPage(profile: profile, returnTo: returnTo)
-        case nil: return profile.pages.indices.contains(currentPageIndex) ? profile.pages[currentPageIndex] : nil
+        case .connectCue(let returnTo)?:
+            return DeckCues.connectPage(from: page(returnTo) ?? DeckPage(name: "", keys: []), slots: profile.cueSlots)
+        case .titanPages(_, let first, _, _)?:
+            return DeckCues.pagesPage(cues: availableCues, keyCount: profile.keyCount, first: first)
+        case .titanCues(_, let titanPage, _, _)?:
+            return DeckCues.cuesPage(cues: availableCues, page: titanPage, keyCount: profile.keyCount)
+        case .fadePicker(let slot, let fadeOut, _)?:
+            let cue = profile.cue(onSlot: slot)
+            return DeckCues.fadePage(current: fadeOut ? cue?.fadeOut : cue?.fadeIn, fadeOut: fadeOut,
+                                     keyCount: profile.keyCount)
+        case nil: return page(currentPageIndex)
         }
     }
 
-    /// A key as drawn: the Menu key carries the current page's name.
+    private func page(_ index: Int) -> DeckPage? {
+        profile.pages.indices.contains(index) ? profile.pages[index] : nil
+    }
+
+    /// A key as drawn: the Menu key carries the current page's name, cue keys
+    /// their cue and fade time.
     func displayedKey(at index: Int) -> KeyDefinition? {
         DeckFlow.displayed(currentPage?.key(at: index), onPage: currentPage?.name, workspaceNames: workspaceNames)
+            .map { DeckCues.displayed($0, slots: profile.cueSlots) }
     }
 
     func showMenu() {
@@ -73,6 +97,7 @@ final class DeckSessionController: ObservableObject {
     }
 
     private func show(_ overlay: DeckFlow.Overlay?) {
+        if case .titanPages? = overlay { onNeedCues?() }
         flowOverlay = overlay
         overlays.removeAll()
         redraw()
@@ -129,7 +154,9 @@ final class DeckSessionController: ObservableObject {
         // The shipped default is laid out for a 15-key deck. On another size,
         // re-flow it so Menu is still reachable. Hand-edited profiles are left alone.
         if profile.isBuiltInDefault, caps.keyCount > 0, caps.keyCount != profile.keyCount {
+            let slots = profile.cueSlots
             profile = DeckProfile.makeDefault(keyCount: caps.keyCount, orientation: profile.orientation)
+            profile.cueSlots = slots
             currentPageIndex = 0
             onProfileChanged?(profile)
         }
@@ -177,6 +204,9 @@ final class DeckSessionController: ObservableObject {
                 showPage(DeckFlow.nextPage(after: currentPageIndex, pageCount: profile.pages.count))
                 return
             }
+            if action == .flashSelection {
+                onAction?(.dimmerFlash(down: false, seconds: flashFade), index)
+            }
             // Key up: clear the pressed highlight unless a failure flash is showing.
             if overlays[index] == .pressed { setOverlay(nil, at: index) }
             return
@@ -202,11 +232,27 @@ final class DeckSessionController: ObservableObject {
             onOpenSettings?()
         case .colourPresets:
             // Back to wherever the selection started, or this page.
-            if case .selection(let returnTo)? = flowOverlay {
-                show(.colour(returnTo: returnTo))
+            show(.colour(returnTo: flowOverlay?.returnTo ?? currentPageIndex))
+        case .cueGo(let slot):
+            if let cue = profile.cue(onSlot: slot) {
+                setOverlay(.pressed, at: index)
+                onAction?(.fireHandle(titanId: cue.titanId), index)
             } else {
-                show(.colour(returnTo: currentPageIndex))
+                show(.titanPages(slot: slot, first: 0, fromConnect: false, returnTo: currentPageIndex))
             }
+        case .cueFade(let slot, let fadeOut):
+            if profile.cue(onSlot: slot) != nil {
+                show(.fadePicker(slot: slot, fadeOut: fadeOut, returnTo: currentPageIndex))
+            } else {
+                show(.titanPages(slot: slot, first: 0, fromConnect: false, returnTo: currentPageIndex))
+            }
+        case .connectCue:
+            show(.connectCue(returnTo: currentPageIndex))
+        case .deckChoice(let choice):
+            choose(choice, at: index)
+        case .flashSelection:
+            setOverlay(.pressed, at: index)
+            onAction?(.dimmerFlash(down: true, seconds: flashFade), index)
         default:
             setOverlay(.pressed, at: index)
             onAction?(action, index)
@@ -214,6 +260,73 @@ final class DeckSessionController: ObservableObject {
             if keypad.apply(action), flowOverlay == nil {
                 show(.selection(returnTo: currentPageIndex))
             }
+        }
+    }
+
+    /// The fade for the flash key: from the rule covering the fixture last
+    /// selected on the keypad, else none.
+    private var flashFade: Double? {
+        DeckCues.flashFade(forFixture: keypad.lastSelection, rules: flashFadeRules)
+    }
+
+    /// A press on one of the Connect Cue / fade pickers.
+    private func choose(_ choice: DeckChoice, at index: Int) {
+        guard let overlay = flowOverlay else { return }
+        let home = overlay.returnTo
+        switch (choice, overlay) {
+        case (.assignSlot(let slot), _):
+            show(.titanPages(slot: slot, first: 0, fromConnect: true, returnTo: home))
+        case (.unassignSlot(let slot), _):
+            changeProfile { $0.unassignSlot(slot) }
+            redraw()
+        case (.titanPage(let titanPage), .titanPages(let slot, _, let fromConnect, _)):
+            show(.titanCues(slot: slot, page: titanPage, fromConnect: fromConnect, returnTo: home))
+        case (.morePages(let first), .titanPages(let slot, _, let fromConnect, _)):
+            show(.titanPages(slot: slot, first: first, fromConnect: fromConnect, returnTo: home))
+        case (.pickCue(let titanId), .titanCues(let slot, _, let fromConnect, _)):
+            guard let cue = availableCues.first(where: { $0.titanId == titanId }) else { return }
+            changeProfile { $0.assign(cue.ref, toSlot: slot) }
+            if fromConnect { show(.connectCue(returnTo: home)) } else { showPage(home) }
+        case (.fadeTime(let seconds), .fadePicker(let slot, let fadeOut, _)):
+            if let cue = profile.cue(onSlot: slot) {
+                onAction?(.setCueFade(titanId: cue.titanId, fadeOut: fadeOut, seconds: seconds), index)
+                changeProfile { $0.recordFade(seconds, fadeOut: fadeOut, onSlot: slot) }
+            }
+            showPage(home)
+        case (.back, .titanCues(let slot, _, let fromConnect, _)):
+            show(.titanPages(slot: slot, first: 0, fromConnect: fromConnect, returnTo: home))
+        case (.back, .titanPages(_, _, true, _)):
+            show(.connectCue(returnTo: home))
+        case (.back, _), (.done, _):
+            showPage(home)
+        default:
+            break
+        }
+    }
+
+    /// Changes the profile from the deck itself (a connected cue, a fade) and saves it.
+    private func changeProfile(_ change: (inout DeckProfile) -> Void) {
+        change(&profile)
+        onProfileChanged?(profile)
+    }
+
+    /// Titan's playbacks, for Connect Cue and for lighting connected GOs.
+    func setAvailableCues(_ cues: [CueChoice]) {
+        let active = Set(cues.filter(\.isActive).map(\.titanId))
+        let changed = cues != availableCues
+        availableCues = cues
+        if active != activeTitanIds {
+            activeTitanIds = active
+            redraw()
+        } else if changed, flowOverlay.map(Self.showsCues) == true {
+            redraw()
+        }
+    }
+
+    private static func showsCues(_ overlay: DeckFlow.Overlay) -> Bool {
+        switch overlay {
+        case .titanPages, .titanCues: return true
+        default: return false
         }
     }
 
@@ -260,8 +373,15 @@ final class DeckSessionController: ObservableObject {
     }
 
     func isActive(_ key: KeyDefinition?) -> Bool {
-        guard let number = key?.action?.playbackUserNumber else { return false }
-        return activePlaybacks.contains(number)
+        switch key?.action {
+        case .cueGo(let slot)?:
+            return profile.cue(onSlot: slot).map { activeTitanIds.contains($0.titanId) } ?? false
+        case .fireHandle(let id)?:
+            return activeTitanIds.contains(id)
+        default:
+            guard let number = key?.action?.playbackUserNumber else { return false }
+            return activePlaybacks.contains(number)
+        }
     }
 
     // MARK: - Drawing

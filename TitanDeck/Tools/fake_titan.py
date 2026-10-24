@@ -20,7 +20,7 @@ Options:
     --no-user-numbers    leave user numbers out of /titan/handles/Playbacks, like
                          the example in Avolites' docs, to test the app's warning
     --fixtures 12        how many fake fixtures are patched
-    --playbacks 20       how many fake playbacks exist
+    --playbacks 20       how many fake playbacks exist (10 per page, like Titan)
 
 Standard library only. Ctrl-C to stop.
 """
@@ -74,6 +74,9 @@ class FakeTitan:
         self.levels = {n: 0.0 for n in range(1, fixtures + 1)}   # fixture -> percent
         self.selected = []
         self.playbacks = {n: 0.0 for n in range(1, playbacks + 1)}   # user number -> 0-1
+        self.cue_times = {}     # user number -> {"CueFadeInTime": s, "CueFadeOutTime": s}
+        self.editing = None     # the playback SelectCueByNumber picked
+        self.held = {}          # fixture -> level saved by a flash, for the release
 
     # --- Command line -----------------------------------------------------
 
@@ -141,6 +144,17 @@ class FakeTitan:
             return 200, None, "programmer cleared"
         if function == "Programmer/Editor/Fixtures/IncrementDimmer":
             return self.increment_dimmer(q)
+        if function == "Programmer/Editor/Fixtures/SetDimmerLevel":
+            return self.set_dimmer(q)
+        if function == "Programmer/Editor/Fixtures/ClearSelectedControls":
+            return self.release_selection(q)
+        if function == "Playbacks/Editor/CueSelection/SelectCueByNumber":
+            try:
+                n = self.from_titan_id(q.get("handle_titanId", ""))
+            except ValueError:
+                return 404, None, f"no playback with titanId {q.get('handle_titanId')}"
+            self.editing = n
+            return 200, None, f"editing playback {n}, cue {q.get('cueNumber', '1')}"
 
         if function in ("Playbacks/FirePlaybackAtLevel", "Playbacks/ReleasePlayback",
                         "Playbacks/SetPlaybackLevel"):
@@ -158,6 +172,52 @@ class FakeTitan:
 
         return 404, None, "Fake Titan doesn't know this function"
 
+    def from_titan_id(self, raw):
+        n = int(raw) - 1000
+        if n not in self.playbacks:
+            raise ValueError(raw)
+        return n
+
+    def set_property(self, path, body):
+        """POST /titan/set/2/Playbacks/Editor/Times/CueFadeInTime (or Out), body
+        the seconds. Real Titan's body format isn't documented; this takes a
+        bare number, or JSON with one."""
+        name = path.rsplit("/", 1)[-1]
+        if not path.startswith("/titan/set/2/Playbacks/Editor/Times/") or \
+                name not in ("CueFadeInTime", "CueFadeOutTime"):
+            return 404, None, "Fake Titan can't set this property"
+        if self.editing is None:
+            return 409, None, f"{name} with no cue selected (SelectCueByNumber first)"
+        text = body.decode(errors="replace").strip()
+        try:
+            value = json.loads(text)
+            seconds = float(value.get("value", value) if isinstance(value, dict) else value)
+        except (ValueError, TypeError, AttributeError):
+            return 400, None, f"body '{text}' isn't a number of seconds"
+        self.cue_times.setdefault(self.editing, {})[name] = seconds
+        return 200, None, f"playback {self.editing} {name} = {seconds:g}s"
+
+    def set_dimmer(self, q):
+        try:
+            level = float(q.get("level", ""))
+        except ValueError:
+            return 400, None, f"level '{q.get('level')}' isn't a number"
+        if not self.selected:
+            return 200, None, f"dimmer {level:g}% but nothing is selected"
+        for n in self.selected:
+            self.held.setdefault(n, self.levels[n])
+            self.levels[n] = max(0.0, min(100.0, level))
+        return 200, None, f"fixture(s) {self.selected} dimmer at {level:g}%"
+
+    def release_selection(self, q):
+        """Release puts the selection back where the playbacks had it. The fake
+        has no playback output, so it restores the level from before the flash."""
+        if not self.selected:
+            return 200, None, "release but nothing is selected"
+        for n in self.selected:
+            self.levels[n] = self.held.pop(n, self.levels[n])
+        return 200, None, f"released fixture(s) {self.selected} over {q.get('releaseTime', '0')}s"
+
     def increment_dimmer(self, q):
         try:
             value = float(q.get("value", ""))
@@ -166,6 +226,8 @@ class FakeTitan:
         if not self.selected:
             return 200, None, f"{value:+g} but nothing is selected"
         for n in self.selected:
+            if value < 0:
+                self.held.setdefault(n, self.levels[n])
             self.levels[n] = max(0.0, min(100.0, self.levels[n] + value))
         # The app assumes percent. If real Titan wants 0-1, the same request
         # would be 100x bigger, which is what the test plan asks you to watch for.
@@ -174,9 +236,9 @@ class FakeTitan:
     def playback(self, function, q):
         key = "srcHandle_userNumber" if function.endswith("SetPlaybackLevel") else "handle_userNumber"
         try:
-            n = int(q.get(key, ""))
-        except ValueError:
-            return 400, None, f"missing {key}"
+            n = self.from_titan_id(q["handle_titanId"]) if "handle_titanId" in q else int(q.get(key, ""))
+        except (ValueError, KeyError):
+            return 400, None, f"missing {key} or handle_titanId"
         if n not in self.playbacks:
             return 404, None, f"no playback {n} (1-{len(self.playbacks)} exist)"
         if function.endswith("FirePlaybackAtLevel"):
@@ -196,7 +258,7 @@ class FakeTitan:
         out = []
         for index, (n, level) in enumerate(sorted(self.playbacks.items())):
             handle = {
-                "handleLocation": {"group": "Playbacks", "index": index, "page": 0},
+                "handleLocation": {"group": "Playbacks", "index": index % 10, "page": index // 10},
                 "properties": [{"Key": "lockState", "Value": "Unlocked"}],
                 "titanId": 1000 + n,
                 "type": "playbackHandle",
@@ -278,6 +340,28 @@ class Handler(BaseHTTPRequestHandler):
         if status == 200:
             print(status_line, flush=True)
 
+    def do_POST(self):
+        if ARGS.latency:
+            time.sleep(ARGS.latency / 1000)
+        url = urlparse(self.path)
+        body = self.rfile.read(int(self.headers.get("Content-Length") or 0))
+        with TITAN.lock:
+            status, _, note = TITAN.set_property(url.path, body)
+            status_line = TITAN.status_line()
+        try:
+            self.send_response(status)
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+        except (BrokenPipeError, ConnectionResetError):
+            return
+        mark = green(str(status)) if status == 200 else red(str(status))
+        print(f"{stamp()} {self.client_address[0]} {mark} POST {bold(url.path)} "
+              f"body '{body.decode(errors='replace')}'", flush=True)
+        if note:
+            print(f"    {red(note) if status != 200 else note}", flush=True)
+        if status == 200:
+            print(status_line, flush=True)
+
     def log_message(self, format, *args):   # the default logging is too noisy
         pass
 
@@ -323,7 +407,8 @@ def main():
     else:
         print("Couldn't work out this computer's IP. On a Mac: ipconfig getifaddr en0")
     print("Remote desktop: give it the real PC's address, or it will try this computer.")
-    print(f"{ARGS.fixtures} fixtures, playbacks 1-{ARGS.playbacks}"
+    print(f"{ARGS.fixtures} fixtures, playbacks 1-{ARGS.playbacks} "
+          f"on {(ARGS.playbacks + 9) // 10} page(s)"
           f"{', latency +' + str(ARGS.latency) + ' ms' if ARGS.latency else ''}"
           f"{', no user numbers in handles' if not ARGS.user_numbers else ''}. Ctrl-C to stop.\n")
     try:

@@ -44,11 +44,32 @@ enum TitanAction: Codable, Hashable {
     case colourPresets
     /// Recalls a Titan workspace (a saved window layout / view) by user number.
     case recallWorkspace(userNumber: Int)
+    /// GO for whichever cue Connect Cue put on this deck slot (0 = GO 1). Local:
+    /// the deck turns it into fireHandle for the assigned playback.
+    case cueGo(slot: Int)
+    /// Opens the fade-time picker for a slot's cue. Local.
+    case cueFade(slot: Int, fadeOut: Bool)
+    /// Connect Cue: pick which Titan cues the GO slots fire. Local.
+    case connectCue
+    /// A choice on one of the deck's own pickers. Local, never in the editor.
+    case deckChoice(DeckChoice)
+    /// Fire a playback to full by its titanId (FirePlaybackAtLevel).
+    case fireHandle(titanId: Int)
+    /// Set a playback's first cue fade in or out, in seconds. Experimental:
+    /// selects the cue, then writes Playbacks/Editor/Times/CueFadeIn/OutTime.
+    case setCueFade(titanId: Int, fadeOut: Bool, seconds: Double)
+    /// Hold to take the selected fixtures to 0%, let go to put them back. Local:
+    /// the deck sends dimmerFlash down on press and up on release.
+    case flashSelection
+    /// The flash itself: down to 0% (stepping over `seconds` if given), or
+    /// back up by releasing the dimmer from the programmer over `seconds`.
+    case dimmerFlash(down: Bool, seconds: Double?)
 
     /// True for actions that go over the network to Titan.
     var isRemote: Bool {
         switch self {
-        case .switchPage, .openSettings, .nextPage, .previousPage, .mainMenu, .colourPresets: return false
+        case .switchPage, .openSettings, .nextPage, .previousPage, .mainMenu, .colourPresets,
+             .cueGo, .cueFade, .connectCue, .deckChoice, .flashSelection: return false
         default: return true
         }
     }
@@ -83,6 +104,27 @@ enum TitanAction: Codable, Hashable {
         case .colourTemperature(let k): return "Colour temp \(k)K"
         case .colourPresets: return "Colour temperature presets"
         case .recallWorkspace(let n): return "Workspace \(n)"
+        case .cueGo(let slot): return "Cue GO \(slot + 1)"
+        case .cueFade(let slot, let out): return "Cue \(slot + 1) fade \(out ? "out" : "in")"
+        case .connectCue: return "Connect Cue"
+        case .deckChoice: return "Deck choice"
+        case .fireHandle(let id): return "Go handle \(id)"
+        case .setCueFade(let id, let out, let s): return "Handle \(id) fade \(out ? "out" : "in") \(TitanEndpoints.format(number: s))s"
+        case .flashSelection: return "Flash selection to 0%"
+        case .dimmerFlash(let down, let s): return "Flash \(down ? "down" : "back")\(s.map { " over \(TitanEndpoints.format(number: $0))s" } ?? "")"
         }
     }
+}
+
+/// Choices made on the deck's own pickers. They're never saved in a profile
+/// the editor can see; they only exist on the pages DeckCues builds.
+enum DeckChoice: Codable, Hashable {
+    case assignSlot(Int)
+    case unassignSlot(Int)
+    case titanPage(Int)
+    case morePages(from: Int)
+    case pickCue(titanId: Int)
+    case fadeTime(Double)
+    case back
+    case done
 }

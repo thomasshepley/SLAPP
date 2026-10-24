@@ -398,6 +398,15 @@ private struct DeckSection: View {
                 ForEach(DeckOrientation.allCases) { Text($0.title).tag($0) }
             }
             LiveKeyStateRow(poller: appState.playbackState)
+            NavigationLink {
+                FlashFadeRulesView()
+            } label: {
+                LabeledContent {
+                    Text(appState.flashFadeRules.isEmpty ? "None" : "\(appState.flashFadeRules.count)")
+                } label: {
+                    Label("Flash fades", systemImage: "light.max")
+                }
+            }
             ShareLink(item: ProfileFile(profile: deck.profile), preview: SharePreview("TitanDeck profile: \(deck.profile.name)")) {
                 Label("Export profile", systemImage: "square.and.arrow.up")
             }
