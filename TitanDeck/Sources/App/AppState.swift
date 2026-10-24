@@ -10,6 +10,7 @@ final class AppState: ObservableObject {
     enum Mode: Hashable {
         case remote
         case deck
+        case companion
         case settings
     }
 
