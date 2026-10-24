@@ -18,6 +18,30 @@ struct PixelLayout: Codable, Hashable {
     /// The manual doesn't say where cell 1 is, so the order is a best guess.
     var cell1Assumed: Bool?
     var notes: String?
+    /// Other ways some modes can group the pixels, picked on the fixture
+    /// itself (the Vortex's Zone Orientation channel). Tied to mode numbers.
+    var variants: [Variant]?
+    /// What the choice is called ("Zone Orientation") and what `groups` is
+    /// when a variant is on offer ("Vertical stripes").
+    var variantTitle: String?
+    var defaultLabel: String?
+
+    struct Variant: Codable, Hashable {
+        var label: String
+        /// Mode numbers (or names) it applies to.
+        var modes: [String]
+        var groups: [String: [String: [[Int]]]]
+        /// The fixture's default, so the plain `groups` don't apply to these modes.
+        var isDefault: Bool?
+        var note: String?
+    }
+
+    /// One way to group the pixels for a mode.
+    struct Option: Hashable {
+        var label: String
+        var note: String?
+        var groups: [String: [String: [[Int]]]]
+    }
 
     struct Face: Codable, Hashable {
         var shape: Shape
@@ -80,9 +104,25 @@ struct PixelLayout: Codable, Hashable {
         }
     }
 
+    /// The groupings on offer for a mode: just the standard one, or the
+    /// fixture's choices (default first) when a variant names this mode.
+    func options(for mode: FixtureMode) -> [Option] {
+        let main = Option(label: defaultLabel ?? "Standard", groups: groups)
+        let key = mode.number ?? mode.name
+        let matching = (variants ?? []).filter { $0.modes.contains(key) }
+        guard !matching.isEmpty else { return [main] }
+        let choices = matching
+            .sorted { ($0.isDefault == true ? 0 : 1) < ($1.isDefault == true ? 0 : 1) }
+            .map { Option(label: $0.label, note: $0.note, groups: $0.groups) }
+        return matching.contains { $0.isDefault == true } ? choices : [main] + choices
+    }
+
     /// The cells of a mode this layout can draw, per group in the order the
     /// groups first appear in the mode. Empty when it has no matching grouping.
-    func cells(for mode: FixtureMode) -> [Cell] {
+    /// `option` picks one of `options(for:)`.
+    func cells(for mode: FixtureMode, option: Int = 0) -> [Cell] {
+        let choices = options(for: mode)
+        let groups = choices[min(max(option, 0), choices.count - 1)].groups
         var order: [String] = []
         var channelsByCell: [String: [Int: [DmxChannel]]] = [:]
         for channel in mode.allChannels {
@@ -103,20 +143,22 @@ struct PixelLayout: Codable, Hashable {
         return result
     }
 
-    /// Problems with the data: a grouping that misses or repeats a pixel, or
-    /// names one that isn't drawn. Empty when the layout is sound.
+    /// Problems with the data: a grouping with the wrong number of cells, a
+    /// pixel in two cells, or one that isn't drawn. Empty when the layout is
+    /// sound. An empty cell is fine: it lights nothing on this one fixture
+    /// (SkyPanel X zones 9-24 live on the next panel of an array).
     func problems() -> [String] {
         let known = Set(pixels.map(\.id))
         var found: [String] = []
         if known.count != pixels.count { found.append("pixel ids repeat") }
-        for (group, counts) in groups {
+        let all = [groups] + (variants ?? []).map(\.groups)
+        for (group, counts) in all.flatMap({ $0 }) {
             for (count, grouping) in counts {
                 let ids = grouping.flatMap { $0 }
                 let label = "\(group.isEmpty ? "" : group + " ")\(count) cells"
                 if grouping.count != Int(count) { found.append("\(label): \(grouping.count) lists") }
                 if Set(ids).count != ids.count { found.append("\(label): a pixel is in two cells") }
                 if !Set(ids).isSubset(of: known) { found.append("\(label): unknown pixel") }
-                if grouping.contains(where: \.isEmpty) { found.append("\(label): an empty cell") }
             }
         }
         return found

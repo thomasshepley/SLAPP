@@ -7,6 +7,9 @@ import SwiftUI
 struct PixelMapView: View {
     let layout: PixelLayout
     let cells: [PixelLayout.Cell]
+    /// The fixture's own choices for this mode (Zone Orientation), if any.
+    var options: [PixelLayout.Option] = []
+    @Binding var option: Int
     @Binding var selected: PixelLayout.Cell.ID?
     @State private var group = ""
 
@@ -30,6 +33,19 @@ struct PixelMapView: View {
                     .font(.callout.monospacedDigit())
                     .foregroundStyle(.secondary)
             }
+            if options.count > 1 {
+                VStack(alignment: .leading, spacing: 4) {
+                    Picker(layout.variantTitle ?? "Layout", selection: $option) {
+                        ForEach(options.indices, id: \.self) { index in
+                            Text(options[index].label).tag(index)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    Text("Set on the fixture\(layout.variantTitle.map { " (\($0))" } ?? ""). \(options[min(option, options.count - 1)].note ?? "")")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
             if groups.count > 1 {
                 Picker("Pixels", selection: $group) {
                     ForEach(groups, id: \.self) { Text($0.isEmpty ? "Pixels" : $0).tag($0) }
@@ -42,6 +58,7 @@ struct PixelMapView: View {
             footer
         }
         .onChange(of: group) { _, _ in selected = nil }
+        .onChange(of: option) { _, _ in selected = nil }
     }
 
     @ViewBuilder

@@ -70,6 +70,28 @@ final class PixelLayoutTests: XCTestCase {
         XCTAssertTrue(problems.contains { $0.contains("1 lists") })
     }
 
+    func testVortexZoneOrientationOffersBothLayouts() throws {
+        let layouts = try JSONDecoder().decode([String: PixelLayout].self, from: bundledJSON("pixel-layouts"))
+        let layout = try XCTUnwrap(layouts["fx-creamsource-vortex8"])
+        let vortex = try XCTUnwrap(try fixtures()["fx-creamsource-vortex8"])
+
+        // Bars: 4 vertical bars by default, or 2 horizontal ones.
+        let bars = try XCTUnwrap(vortex.modes.first { $0.number == "48" })
+        XCTAssertEqual(layout.options(for: bars).map(\.label), ["Vertical stripes", "Horizontal stripes"])
+        XCTAssertEqual(layout.cells(for: bars).map(\.pixelIDs), [[1, 5], [2, 6], [3, 7], [4, 8]])
+        XCTAssertEqual(layout.cells(for: bars, option: 1).filter { !$0.pixelIDs.isEmpty }.count, 2)
+
+        // Split: halves left/right by default, top/bottom when horizontal.
+        let split = try XCTUnwrap(vortex.modes.first { $0.number == "40" })
+        XCTAssertEqual(layout.options(for: split).count, 2)
+        XCTAssertNotEqual(layout.cells(for: split, option: 0).first?.pixelIDs, layout.cells(for: split, option: 1).first?.pixelIDs)
+
+        // An 8-zone mode has no choice to make.
+        let eight = try XCTUnwrap(vortex.modes.first { mode in Set(mode.allChannels.compactMap(\.cell)).count == 8 })
+        XCTAssertEqual(layout.options(for: eight).count, 1)
+        XCTAssertEqual(layout.cells(for: eight).count, 8)
+    }
+
     func testBundledLayoutsAreSound() throws {
         let layouts = try JSONDecoder().decode([String: PixelLayout].self, from: bundledJSON("pixel-layouts"))
         let fixtures = try fixtures()

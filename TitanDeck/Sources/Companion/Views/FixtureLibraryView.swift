@@ -142,6 +142,7 @@ struct FixtureDetailView: View {
     @State private var modeName: String = ""
     @State private var showingAllModes = false
     @State private var selectedCell: PixelLayout.Cell.ID?
+    @State private var layoutOption = 0
     @State private var distance: Double = 3
     @State private var comparing = false
 
@@ -178,7 +179,10 @@ struct FixtureDetailView: View {
             }
         }
         .onAppear { if modeName.isEmpty { modeName = fixture.modes.first?.name ?? "" } }
-        .onChange(of: modeName) { _, _ in selectedCell = nil }
+        .onChange(of: modeName) { _, _ in
+            selectedCell = nil
+            layoutOption = 0
+        }
     }
 
     private var header: some View {
@@ -249,9 +253,10 @@ struct FixtureDetailView: View {
             if let mode {
                 ModeHeader(mode: mode)
                 let layout = library.pixelLayouts[fixture.id]
-                let cells = layout?.cells(for: mode) ?? []
+                let cells = layout?.cells(for: mode, option: layoutOption) ?? []
                 if let layout, !cells.isEmpty {
-                    PixelMapView(layout: layout, cells: cells, selected: $selectedCell)
+                    PixelMapView(layout: layout, cells: cells, options: layout.options(for: mode),
+                                 option: $layoutOption, selected: $selectedCell)
                         .padding(.vertical, 4)
                 }
                 DmxChart(mode: mode, highlight: cells.first { $0.id == selectedCell })
