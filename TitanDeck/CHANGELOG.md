@@ -12,11 +12,15 @@ with every change that goes to `main`.
 - **Fixture library:** manufacturers in a tidy A-Z list. Tap one to see its fixtures, and drag the letter strip on the right to jump down the alphabet.
 - **Colour:** a proper RGB <-> HSI converter. Enter either one with sliders or typed numbers, and get the other back live, plus RGB in % and hex.
 - **Green / magenta in plain English:** "the light looks green, put 1/4 Minus Green (LEE 249) on it".
-- **New Flicker tool** (replaces Camera):
-  - Pick a fixture, set the frame rate and shutter, and see if it will flicker, with a frame-by-frame chart.
-  - Then the fixes: safe shutter angles (hello 172.8°), safe frame rates, refresh-rate settings, dimmer levels.
+- **New Flicker tool** (replaces Camera): pick a fixture, set the frame rate and shutter, and see if it will flicker, with a frame-by-frame chart.
+- Flicker fixes: safe shutter angles (hello 172.8°), safe frame rates, refresh-rate settings and dimmer levels.
 - **Sun on a map:** tap to drop a pin, search a place or use your location, then scrub a time slider to watch the sun's direction swing round. Sunrise and sunset directions are drawn too.
 - Removed gobo sync.
+
+## 0.4.1 - 2026-10-24 - Beam fix
+
+- Fixed a crash opening Companion > Beam & Photometry (and fixture pages with photometry): the falloff chart's log scale now has a safe range.
+- The chart is left out, rather than crashing, if the output is set to 0.
 
 ## 0.4.0 - 2026-10-24 - Send to PC
 
