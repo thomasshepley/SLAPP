@@ -14,6 +14,7 @@ struct SettingsView: View {
             Form {
                 connectionSection
                 RemoteDesktopSection(session: appState.rdp)
+                FileDropSection(store: appState.fileDrop)
                 testSection
                 DeckSection(deck: appState.deck)
                 SoakLogSection(store: appState.connectionLog)
@@ -172,6 +173,30 @@ private struct SoakLogSection: View {
         case .up: return .green
         case .down: return .red
         case .info: return .secondary
+        }
+    }
+}
+
+/// Sending files to the PC's shared folder (M16).
+private struct FileDropSection: View {
+    @EnvironmentObject private var appState: AppState
+    @ObservedObject var store: FileDropStore
+
+    var body: some View {
+        Section {
+            Button {
+                appState.showingFileDrop = true
+            } label: {
+                LabeledContent {
+                    Text(store.folderName ?? "Not set up")
+                } label: {
+                    Label("Send Files to PC", systemImage: "paperplane.fill")
+                }
+            }
+        } header: {
+            Text("File drop")
+        } footer: {
+            Text("Sends photos and files into a shared folder on the PC. You can also share to TitanDeck from any app.")
         }
     }
 }

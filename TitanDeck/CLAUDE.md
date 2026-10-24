@@ -47,6 +47,8 @@ TitanDeck/
 │   │   ├── Calc/   Photometry, Dimming, Stops, PowerBudget, Cable, GoboSync, Exposure,
 │   │   │           ColourMaths, Sun - pure maths ported from lighting-companion/src/services/calc
 │   │   └── Views/  CompanionView (split view), fixture library/detail/compare, one view per tool
+│   ├── FileDrop/   Send to PC (M16): FileDropStore (queue, bookmark, reachability),
+│   │               FileDropCopier (chunked copy, pure), FileDropView, FileDropSetupView
 │   ├── Settings/   SettingsView, DeckEditorView (M4), KeyInspectorView (M4)
 │   └── Support/    Logger (Log.titan / Log.deck), HexColor
 ├── FreeRDP/        build.sh (FreeRDP + OpenSSL -> FreeRDPKit.xcframework), fetch.sh, versions.env
@@ -81,6 +83,7 @@ them together (e.g. `deck.onAction` -> `titan.perform`). Keep it that way.
 | M13 | Companion: shows, patch builder (packer), universe plan, PDF cheat sheet, CSV / MA3 / Titan exports, `.slapp.json` import/export | Next |
 | M14 | Companion -> Titan: patch a show into Titan over the WebAPI (`Patch/SelectManufacturer`... `Fixtures/PatchFixturesToVacantHandles`), select / locate / highlight | Planned - DmxAssignment format and patch read-back unconfirmed |
 | M15 | Companion: plot tagging with PDFKit, GDTF import | Planned |
+| M16 | Send files to the PC, AirDrop style: a Windows shared folder connected in the Files app (iOS's own SMB client), picked once and kept as a security-scoped bookmark; Photos / Files / drag and drop / "Open in TitanDeck" from any app | Built - needs testing against the PC |
 
 ## Platform and design decisions
 

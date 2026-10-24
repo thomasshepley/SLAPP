@@ -34,6 +34,9 @@ struct RootView: View {
                 .tag(AppState.Mode.settings)
         }
         .onAppear(perform: pickStartingTab)
+        .sheet(isPresented: $appState.showingFileDrop) {
+            FileDropView(store: appState.fileDrop, host: appState.pcHost)
+        }
         .onChange(of: remoteDesktopEnabled) { _, enabled in
             if !enabled {
                 appState.rdp.disconnect()

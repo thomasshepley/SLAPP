@@ -7,6 +7,7 @@ struct CompanionView: View {
     @State private var selection: CompanionSection? = .fixtures
     @State private var fixturePath = NavigationPath()
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @EnvironmentObject private var appState: AppState
 
     private let library = CompanionLibrary.shared
 
@@ -24,6 +25,11 @@ struct CompanionView: View {
                 }
             }
             .navigationTitle("Companion")
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Button("Send to PC", systemImage: "paperplane") { appState.showingFileDrop = true }
+                }
+            }
         } detail: {
             switch selection ?? .fixtures {
             case .fixtures:

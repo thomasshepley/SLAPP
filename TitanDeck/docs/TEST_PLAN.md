@@ -162,6 +162,22 @@ each key land.
 - [ ] iPhone: no Remote tab and it opens on Companion. Settings → Remote desktop
       → "Show the Remote tab" brings it back.
 
+## 6c. Send files to the PC
+
+- [ ] On the PC: share a folder (e.g. Desktop\TitanDeck Drop) with your Windows
+      user, Read/Write. Private network: file sharing on.
+- [ ] iPad Files app → ⋯ → Connect to Server → `smb://<PC-IP>` → sign in.
+- [ ] TitanDeck: Settings → File drop → Send Files to PC → Setup → Choose
+      Folder → pick that share.
+- [ ] The PC icon pulses when it's reachable. Add a few photos and a file,
+      tap the PC: the ring fills, each file ticks, and they appear on the PC.
+      Sending the same file again saves "name (2)".
+- [ ] From Photos (or Files, Mail): Share → TitanDeck: the Send sheet opens
+      with that file queued.
+- [ ] iPad: drag a file from Files (Split View) onto the Send sheet.
+- [ ] Turn the PC's network off: the status says "PC not reachable" and a send
+      fails with a clear message, then works again once it's back.
+
 ## 7. Soak log
 
 - [ ] Settings → **Soak test log** lists the drop-out you caused in step 6,
