@@ -169,6 +169,13 @@ each key land.
 - [ ] Fixtures: search "skypanel", filter by type or maker, open one: specs,
       DMX modes chart (switch modes), the distance slider and falloff chart.
       **Compare** with another fixture.
+- [ ] DMX modes: open an Astera Titan Tube. The picker reads "Mode 89 · D CCT
+      GM CRO RGB" style titles, the yellow badge shows the number, and
+      **Every mode** lists all 165 with their footprints. Tap Mode 195: the
+      chart shows all 16 cells (Cell 16 at the end).
+- [ ] SkyPanel S360-C: Mode 25 shows LE1 to LE12 then Fan at 193. A Kino Flo
+      Celeb reads "P1 · ..." and an ARRI mode shows ARRI's description under
+      its name.
 - [ ] From a fixture, **Open in** Beam / Stops / Power pre-fills that tool.
 - [ ] Beam & Photometry, Stops (move the DMX slider, watch the curve chart),
       Power & Cable (add fixtures, change distro, temperature): numbers look sane.

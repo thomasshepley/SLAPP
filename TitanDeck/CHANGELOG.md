@@ -7,6 +7,16 @@ the GitHub Actions run that built it. The top entry is shown in the app
 so add an entry - and bump `MARKETING_VERSION` in `project.yml` to match -
 with every change that goes to `main`.
 
+## 0.10.0 - 2026-10-24 - Every DMX mode
+
+- **DMX modes from the manufacturers' own charts:** thousands of modes across the library, transcribed from each maker's DMX chart or manual and checked so every footprint adds up.
+- **Mode numbers and briefs:** modes show the maker's number and short description, like "Mode 89 · D CCT GM CRO RGB" on Astera or "P4 · ..." on Kino Flo, with a big number badge on the fixture page.
+- **Every mode list:** open a fixture and tap Every mode to see them all with their channel counts. Tap one to see its chart.
+- **Astera:** all of Astera's numbered modes for each product (165 on the Titan, Helios, Hyperion, AX1 and HydraPanel), plus the AX2 PixelBars, AX7, LunaBulb, SolaBulb and the Quik range.
+- **Pixel and zone modes** show every cell, from a 16-pixel tube to a SkyPanel S360's 12 light engines.
+- **More fixtures:** ARRI SkyPanel X, Panalux Sonara, Robe, Martin, Claypaky, Chauvet, GLP and more, with flicker data for each.
+- Removed a few library entries for lights that don't exist.
+
 ## 0.9.0 - 2026-10-24 - Remote desktop picture quality
 
 - **Picture quality presets** for the remote desktop: Best (wired or strong Wi-Fi: sharpest, 60 fps), Balanced (Windows' normal) and Weak signal (bad Wi-Fi on set: lowest bandwidth, plain Windows, stays responsive).
