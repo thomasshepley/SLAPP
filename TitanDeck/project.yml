@@ -97,6 +97,7 @@ targets:
         # Browsed only to detect whether Local Network access is allowed.
         NSBonjourServices:
           - _titandeck._tcp
+          - _titandeck-host._tcp
         NSAppTransportSecurity:
           # Titan's WebAPI is plain HTTP on the local network.
           NSAllowsLocalNetworking: true

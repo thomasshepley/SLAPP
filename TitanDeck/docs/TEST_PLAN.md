@@ -148,6 +148,18 @@ each key land.
       reinstalled one) at that address is refused with a certificate message.
       Settings → **Forget saved PC certificates** clears it.
 
+## 6a. Keypad readout (Remote screen)
+
+- [ ] Connect the remote desktop, Stream Deck on the Keypad page. Type 102@30:
+      it appears bottom left in the black band, with a blinking cursor.
+- [ ] Enter: the line goes green, then slides to the right. Do 3 more: only the
+      last 3 stay, newest on the right and biggest.
+- [ ] Clear or Exit throws away the line being typed.
+- [ ] Switch the deck to another page: the readout goes once nothing's typed.
+- [ ] Unplug the Titan network and type: the line turns red.
+- [ ] Tap the status pill top right: it opens network details and never
+      shrinks to dots.
+
 ## 6b. Companion
 
 - [ ] **Companion** tab: the sidebar (iPad) lists Fixtures and the tools.
@@ -187,6 +199,27 @@ each key land.
 - [ ] iPad: drag a file from Files (Split View) onto the Send sheet.
 - [ ] Turn the PC's network off: the status says "PC not reachable" and a send
       fails with a clear message, then works again once it's back.
+
+## 6d. TitanDeck Host
+
+- [ ] Download `TitanDeckHost-Setup-<version>.exe` from the newest `host-v`
+      release on GitHub, copy it to the PC and run it (SmartScreen: More info >
+      Run anyway). The Host window opens.
+- [ ] Every check is green, or has a Fix button that turns it green.
+- [ ] Host window: Show a pairing code. TitanDeck: Settings > TitanDeck Host >
+      Pair. The PC shows up by name; tap it, type the code, Pair.
+- [ ] A wrong code says so; 5 wrong codes kill that code.
+- [ ] Settings > TitanDeck Host > the PC: the same checks as the PC window.
+      Stop "Remote Desktop Services" on the PC, then Start it from the iPad.
+- [ ] Send Newest rdpwrap.ini (with the iPad online): it says it applied, or
+      that the newest ini doesn't cover the PC's build yet.
+- [ ] Send to PC: the subtitle says TitanDeck Host. Files land in
+      Public Documents\TitanDeck\To PC.
+- [ ] Put a file in To iPad on the PC: it appears under From PC on the Send
+      sheet. Get it, preview it, share it. On the PC it moves to To iPad\Sent.
+- [ ] Stop the Host service: the sheet falls back to the shared folder (if set
+      up), and Settings shows the Host as not answering.
+- [ ] Remove the iPad in the Host window: TitanDeck notices and asks to pair again.
 
 ## 7. Soak log
 

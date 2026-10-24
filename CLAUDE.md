@@ -7,6 +7,7 @@ conversational.
 | Folder | What | Status |
 | --- | --- | --- |
 | `TitanDeck/` | Native SwiftUI iPad app: Stream Deck -> Avolites Titan playbacks, plus an RDP view of the Titan PC | **Active**. Read `TitanDeck/CLAUDE.md` before working on it. |
+| `TitanDeckHost/` | Windows companion for the Titan PC (.NET 8 service + tray app): keeps Remote Desktop / RDP Wrapper working, pairs with TitanDeck, files both ways | **Active**. Read `TitanDeckHost/CLAUDE.md` before working on it. |
 | `lighting-companion/` | Offline React/Vite PWA: fixture library, stops/photometry/power tools, showfile macro, plot tagging | **Sidelined**. Don't change it unless asked. It will be rebuilt into TitanDeck later. |
 
 ## Repo-wide rules
@@ -14,6 +15,8 @@ conversational.
 - Regular hyphens only, never em dashes.
 - Work on a branch, never commit straight to `main`.
 - `.github/workflows/titandeck.yml` builds/tests TitanDeck on macOS runners and
-  uploads `main` builds to TestFlight. `.github/workflows/deploy.yml` deploys the
+  uploads `main` builds to TestFlight. `.github/workflows/host.yml` tests
+  TitanDeck Host and builds its Windows installer, released as `host-v<version>`
+  from `main`. `.github/workflows/deploy.yml` deploys the
   lighting companion to GitHub Pages from `main`.
 - No secrets in git.
