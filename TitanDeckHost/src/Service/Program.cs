@@ -76,7 +76,9 @@ network.MapPost("/rdpwrap/ini", async (HttpRequest request, WindowsProbe probe) 
     var ini = RdpWrapIni.Parse(text);
     if (ini is null) return Results.BadRequest(new { error = "That isn't an rdpwrap.ini file." });
     await File.WriteAllTextAsync(paths.UploadedIni, text);
-    var build = WindowsProbe.TermsrvVersion();
+    string build;
+    try { build = WindowsProbe.TermsrvVersion(); }
+    catch (IOException) { build = ""; }   // no termsrv.dll: nothing for the ini to support
     return Results.Ok(new { supportsThisPc = ini.Supports(build), build, updated = ini.Updated?.ToString("yyyy-MM-dd") });
 });
 
@@ -106,7 +108,8 @@ network.MapGet("/outbox", () => Outbox(paths));
 
 network.MapGet("/outbox/{name}", (string name) =>
 {
-    var path = Path.Combine(paths.ToIPad, SafeFileName.Clean(name));
+    // Full path, so it's always served from disk, never as a "virtual" web path.
+    var path = Path.GetFullPath(Path.Combine(paths.ToIPad, SafeFileName.Clean(name)));
     return File.Exists(path)
         ? Results.File(path, "application/octet-stream", Path.GetFileName(path), enableRangeProcessing: true)
         : Results.NotFound();
