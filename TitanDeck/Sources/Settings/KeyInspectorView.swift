@@ -236,6 +236,15 @@ struct KeyInspectorView: View {
             Stepper(value: $draft.percent, in: -100...100, step: 1) {
                 LabeledContent("Change", value: "\(draft.percent > 0 ? "+" : "")\(Int(draft.percent))%")
             }
+        case .cueGo:
+            Stepper("GO slot \(draft.slot)", value: $draft.slot, in: 1...32)
+        case .cueFade:
+            Stepper("GO slot \(draft.slot)", value: $draft.slot, in: 1...32)
+            Picker("Fade", selection: $draft.fadeOut) {
+                Text("Fade in").tag(false)
+                Text("Fade out").tag(true)
+            }
+            .pickerStyle(.segmented)
         case .workspace:
             Stepper(value: $draft.playback, in: 1...9999) {
                 LabeledContent("Workspace") {
@@ -254,7 +263,7 @@ struct KeyInspectorView: View {
                 LabeledContent("Kelvin", value: "\(draft.kelvin)K")
             }
         case .none, .nextPage, .previousPage, .openSettings, .keypadAt, .keypadEnter, .keypadExit,
-             .keypadClear, .mainMenu, .colourPresets:
+             .keypadClear, .mainMenu, .colourPresets, .connectCue, .flashSelection:
             EmptyView()
         }
     }
@@ -276,6 +285,14 @@ struct KeyInspectorView: View {
             Text("Recalls the colour palette in Titan named \(draft.kelvin)K on the selected fixtures. Make global colour palettes named 2700K, 3200K... once and every fixture type uses its own CCT channel.")
         case .colourPresets:
             Text("Shows the colour temperature keys, with a way back to the keypad.")
+        case .cueGo:
+            Text("Fires whichever Titan cue Connect Cue put on this slot. Leave the label blank to show the cue's name.")
+        case .cueFade:
+            Text("Shows the slot's fade time; press it on the deck to pick a new one. Setting cue times from the deck is new - check it on the console.")
+        case .connectCue:
+            Text("Turns the GO slot keys red: press one, then a Titan page, then a cue to put on it.")
+        case .flashSelection:
+            Text("Hold to take the selected fixtures to 0%, let go to put them back. Fades follow Settings > Deck > Flash fades.")
         case .workspace:
             Text("The workspace's user number in Titan (its saved window layout). Leave the label blank and the key shows the workspace's name from Titan.")
         case .mainMenu:

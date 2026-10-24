@@ -50,11 +50,18 @@ enum TitanEndpoints {
                 ("timeDelta", "1"),
                 ("shiftEnabled", "false"),
             ])
+        case .fireHandle(let id):
+            return script(host, port, "Playbacks/FirePlaybackAtLevel", [
+                ("handle_titanId", "\(id)"),
+                ("level_level", "1"),
+                ("alwaysRefire", "false"),
+            ])
         case .recallWorkspace(let n):
             return script(host, port, "Workspace/Apply", [("handle_userNumber", "\(n)")])
-        case .keypadEnter, .keypadClear, .colourTemperature:
+        case .keypadEnter, .keypadClear, .colourTemperature, .setCueFade, .dimmerFlash:
             return nil   // several requests - TitanClient runs them
-        case .switchPage, .openSettings, .nextPage, .previousPage, .mainMenu, .colourPresets:
+        case .switchPage, .openSettings, .nextPage, .previousPage, .mainMenu, .colourPresets,
+             .cueGo, .cueFade, .connectCue, .deckChoice, .flashSelection:
             return nil
         }
     }
@@ -62,6 +69,38 @@ enum TitanEndpoints {
     /// Palette/ApplyPalette on the selection, without the palette's own times.
     static func applyPaletteURL(titanId: Int, host: String, port: Int = defaultPort) -> URL? {
         script(host, port, "Palette/ApplyPalette", [("handle_titanId", "\(titanId)"), ("usePaletteTimes", "false")])
+    }
+
+    // MARK: Cue fades (experimental: the write's body format isn't documented)
+
+    /// Makes cue 1 of a playback the editor's cue, so its times can be set.
+    static func selectFirstCueURL(titanId: Int, host: String, port: Int = defaultPort) -> URL? {
+        script(host, port, "Playbacks/Editor/CueSelection/SelectCueByNumber", [
+            ("handle_titanId", "\(titanId)"), ("cueNumber", "1"),
+        ])
+    }
+
+    /// The selected cue's fade in or out time, read with GET and written with
+    /// POST (the value as the body).
+    static func cueFadePropertyURL(fadeOut: Bool, write: Bool, host: String, port: Int = defaultPort) -> URL? {
+        let cleanHost = host.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleanHost.isEmpty else { return nil }
+        let verb = write ? "set" : "get"
+        return URL(string: "http://\(authority(host, port))/titan/\(verb)/2/Playbacks/Editor/Times/\(fadeOut ? "CueFadeOutTime" : "CueFadeInTime")")
+    }
+
+    // MARK: Flash (hold to 0%)
+
+    /// The selection's dimmer to a level in percent (no fade: Titan's call has no time).
+    static func setDimmerLevelURL(percent: Double, host: String, port: Int = defaultPort) -> URL? {
+        script(host, port, "Programmer/Editor/Fixtures/SetDimmerLevel", [("level", format(number: percent))])
+    }
+
+    /// Releases the selection's edited controls from the programmer, over a time.
+    static func releaseSelectionURL(seconds: Double, host: String, port: Int = defaultPort) -> URL? {
+        script(host, port, "Programmer/Editor/Fixtures/ClearSelectedControls", [
+            ("release", "true"), ("releaseTime", format(number: max(seconds, 0))),
+        ])
     }
 
     /// GET /titan/get/System/SoftwareVersion - a cheap "are you there" check.

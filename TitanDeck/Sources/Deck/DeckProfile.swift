@@ -22,6 +22,8 @@ struct DeckProfile: Codable, Identifiable, Hashable {
     var isBuiltInDefault: Bool = false
     /// How the deck is mounted. Keys are laid out as you see the deck.
     var orientation: DeckOrientation = .landscape
+    /// The Titan cues Connect Cue put on the GO slots.
+    var cueSlots: [CueSlot] = []
 
     var geometry: DeckGeometry {
         DeckGeometry(keyCount: keyCount, orientation: orientation)
@@ -38,6 +40,29 @@ extension DeckProfile {
         pages = try container.decode([DeckPage].self, forKey: .pages)
         isBuiltInDefault = try container.decodeIfPresent(Bool.self, forKey: .isBuiltInDefault) ?? false
         orientation = try container.decodeIfPresent(DeckOrientation.self, forKey: .orientation) ?? .landscape
+        cueSlots = try container.decodeIfPresent([CueSlot].self, forKey: .cueSlots) ?? []
+    }
+
+    func cue(onSlot slot: Int) -> CueRef? {
+        cueSlots.first { $0.slot == slot }?.cue
+    }
+
+    /// Puts a cue on a GO slot, replacing what was there. Not an "edit" of
+    /// the layout, so the built-in default stays the default.
+    mutating func assign(_ cue: CueRef, toSlot slot: Int) {
+        cueSlots.removeAll { $0.slot == slot }
+        cueSlots.append(CueSlot(slot: slot, cue: cue))
+        cueSlots.sort { $0.slot < $1.slot }
+    }
+
+    mutating func unassignSlot(_ slot: Int) {
+        cueSlots.removeAll { $0.slot == slot }
+    }
+
+    /// Remembers a fade time set from the deck, for the key's label.
+    mutating func recordFade(_ seconds: Double, fadeOut: Bool, onSlot slot: Int) {
+        guard let index = cueSlots.firstIndex(where: { $0.slot == slot }) else { return }
+        if fadeOut { cueSlots[index].cue.fadeOut = seconds } else { cueSlots[index].cue.fadeIn = seconds }
     }
 }
 
@@ -55,10 +80,13 @@ extension DeckProfile {
     ///
     ///     Keypad              Intensity           Colour              Playbacks
     ///     1     2     3       +1%  +5%  +10%      2700K 3200K 4000K   GO 1  GO 2  GO 3
-    ///     4     5     6       -1%  -5%  -10%      4500K 5600K 6000K   GO 4  GO 5  GO 6
-    ///     7     8     9       .    .    .         6500K 7500K 10000K  REL 1 REL 2 REL 3
-    ///     Exit  0     Enter   .    .    .         .     .     .       REL 4 REL 5 REL 6
+    ///     4     5     6       -1%  -5%  -10%      4500K 5600K 6000K   IN 1  IN 2  IN 3
+    ///     7     8     9       .    .    .         6500K 7500K 10000K  OUT 1 OUT 2 OUT 3
+    ///     Exit  0     Enter   .    .    .         .     .     .       .     CONNECT .
     ///     Clear Menu  @       Clear Menu .        Clear Menu  .       .     Menu  .
+    ///
+    /// The Playbacks GOs fire whichever Titan cues Connect Cue puts on them;
+    /// IN / OUT show and set those cues' fade times.
     ///
     /// Layouts: twelve keys recalling Titan workspaces 1-12, named from Titan.
     ///
@@ -139,10 +167,10 @@ extension DeckProfile {
             [nil, menu, nil],
         ])
         let playbacks = page("Playbacks", [
-            (1...3).map { key("GO\n\($0)", goColor, .playbackGo(userNumber: $0)) },
-            (4...6).map { key("GO\n\($0)", goColor, .playbackGo(userNumber: $0)) },
-            (1...3).map { key("REL\n\($0)", releaseColor, .playbackRelease(userNumber: $0)) },
-            (4...6).map { key("REL\n\($0)", releaseColor, .playbackRelease(userNumber: $0)) },
+            (0...2).map { key("", goColor, .cueGo(slot: $0)) },
+            (0...2).map { key("", "#1E3A5A", .cueFade(slot: $0, fadeOut: false)) },
+            (0...2).map { key("", "#5A2A1E", .cueFade(slot: $0, fadeOut: true)) },
+            [nil, key("CONNECT\nCUE", "#8A5A00", .connectCue, symbol: "link"), nil],
             [nil, menu, nil],
         ])
 
@@ -158,6 +186,7 @@ extension DeckProfile {
         guard saved.isBuiltInDefault else { return saved }
         var fresh = makeDefault(keyCount: saved.keyCount, orientation: saved.orientation)
         fresh.id = saved.id
+        fresh.cueSlots = saved.cueSlots
         return fresh
     }
 

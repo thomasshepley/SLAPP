@@ -26,6 +26,10 @@ struct ActionDraft: Equatable {
         case colourTemperature
         case colourPresets
         case workspace
+        case cueGo
+        case cueFade
+        case connectCue
+        case flashSelection
 
         var id: String { rawValue }
 
@@ -51,6 +55,10 @@ struct ActionDraft: Equatable {
             case .colourTemperature: return "Colour temperature"
             case .colourPresets: return "Show colour temperature presets"
             case .workspace: return "Titan layout (workspace)"
+            case .cueGo: return "GO for a connected cue"
+            case .cueFade: return "Fade time for a connected cue"
+            case .connectCue: return "Connect Cue"
+            case .flashSelection: return "Flash selection to 0% (hold)"
             }
         }
     }
@@ -64,6 +72,9 @@ struct ActionDraft: Equatable {
     var digit = 0
     var percent = 5.0
     var kelvin = 3200
+    /// GO slot, 1-based as shown (GO 1 is slot 0).
+    var slot = 1
+    var fadeOut = false
 
     init(action: TitanAction?) {
         switch action {
@@ -87,6 +98,11 @@ struct ActionDraft: Equatable {
         case .colourTemperature(let k): kind = .colourTemperature; kelvin = k
         case .colourPresets: kind = .colourPresets
         case .recallWorkspace(let n): kind = .workspace; playback = n
+        case .cueGo(let s): kind = .cueGo; slot = s + 1
+        case .cueFade(let s, let out): kind = .cueFade; slot = s + 1; fadeOut = out
+        case .connectCue: kind = .connectCue
+        case .flashSelection: kind = .flashSelection
+        case .deckChoice, .fireHandle, .setCueFade, .dimmerFlash: kind = .none
         }
     }
 
@@ -119,6 +135,10 @@ struct ActionDraft: Equatable {
         case .colourTemperature: return .colourTemperature(kelvin: min(max(kelvin, 1000), 20000))
         case .colourPresets: return .colourPresets
         case .workspace: return .recallWorkspace(userNumber: number)
+        case .cueGo: return .cueGo(slot: max(slot, 1) - 1)
+        case .cueFade: return .cueFade(slot: max(slot, 1) - 1, fadeOut: fadeOut)
+        case .connectCue: return .connectCue
+        case .flashSelection: return .flashSelection
         }
     }
 }

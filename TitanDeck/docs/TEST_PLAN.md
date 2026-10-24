@@ -154,6 +154,28 @@ each key land.
       desk's selection? (The API may have its own programmer - note what happens.)
 - [ ] Numbers on the keypad are big and readable from arm's length.
 
+## 5d. Playbacks page and flash (0.14)
+
+- [ ] Playbacks page: three GO keys reading GO 1 / GO 2 / GO 3, Fade In and
+      Fade Out rows under them, Connect Cue below.
+- [ ] Connect Cue: the GOs go red (PICK). Tap one: the deck lists Titan pages
+      that have playbacks, then the cues on the page you pick, live ones green.
+      Pick one: the GO shows its legend. With more pages than keys, MORE pages on.
+- [ ] Connect Cue again: Unassign under a filled GO empties it. Done goes back.
+- [ ] GO fires the cue (the key lights while it's live). A GO with nothing on
+      it opens the page picker instead.
+- [ ] Fade In: pick 5s. Open the cue in Titan: is its fade in now 5 s? Same for
+      Fade Out. **Experimental:** if Titan's time doesn't change, note what the
+      log says (the request body format isn't documented).
+- [ ] Settings > Deck > Flash fades: add 1-99, 5 s.
+- [ ] 1 0 2 Enter, hold HOLD FOR 0%: the fixture snaps to 0 and comes back on
+      release.
+- [ ] 4 5 Enter, hold: it fades down over 5 s, release fades it back over 5 s.
+      Does it come back to where it was, or does release drop it to the
+      playbacks' level? (Release is Titan's "release programmer", so a level
+      set in the programmer before the flash is lost - note it.)
+- [ ] Flash with a fixture selected on the desk (not on the deck): what happens?
+
 ## 6. Remote desktop
 
 - [ ] Settings → Remote desktop: PC address (blank uses the Titan address),

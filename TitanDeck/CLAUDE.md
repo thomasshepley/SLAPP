@@ -161,6 +161,9 @@ parameter is named `srcHandle`). Levels are `level_level=` (absolute, 0-1).
 | Version check | `GET /titan/get/System/SoftwareVersion` |
 | Colour temp preset | `GET /titan/handles/Colours`, find the palette whose legend says "3200K", then `Palette/ApplyPalette?handle_titanId=N&usePaletteTimes=false` |
 | Layout (workspace) | `Workspace/Apply?handle_userNumber=N`; names from `GET /titan/handles/Workspaces` (group name from community sources) |
+| Fire a picked cue | `Playbacks/FirePlaybackAtLevel?handle_titanId=N&level_level=1&alwaysRefire=false` |
+| Cue fade time | `Playbacks/Editor/CueSelection/SelectCueByNumber?handle_titanId=N&cueNumber=1`, then POST `/titan/set/2/Playbacks/Editor/Times/CueFadeInTime` (or `CueFadeOutTime`), body the seconds as text. **Experimental:** body format undocumented |
+| Flash to 0 | `Programmer/Editor/Fixtures/SetDimmerLevel?level=0` (no time, so a faded flash is 20 `IncrementDimmer` steps of -5); back with `ClearSelectedControls?release=true&releaseTime=S` |
 | One page of playbacks | `GET /titan/handles/Playbacks/<pageIndex>` (0-based); without the index, every page |
 
 Notes from the API research (Oct 2026, `api.avolites.com` 19.2 + Avolites
@@ -170,7 +173,8 @@ support posts):
   to API calls; what the deck selects ("102 Enter") does. Test on the console.
 - `userNumber` in handle JSON may be an object (`userNumbers` / `hashCode`);
   `TitanHandlesParser` reads those shapes too.
-- There's no documented way to read a fixture's current intensity.
+- There's no documented way to read a fixture's current intensity, so the
+  flash key can't show it, and "back to where it was" is a programmer release.
 - Keypad levels: `@ @` = full; `@ 5` is 5% unless the user setting Channel
   Levels is "Set In Tens" (`GET /titan/get/2/UserSettings/SingleDigitLevels`).
 

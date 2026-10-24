@@ -15,6 +15,23 @@ enum DeckFlow {
         case selection(returnTo: Int)
         /// The colour temperature presets, from a selection or a CCT key.
         case colour(returnTo: Int)
+        /// Connect Cue: pick a GO slot to fill or empty.
+        case connectCue(returnTo: Int)
+        /// Titan's playback pages, for filling `slot`.
+        case titanPages(slot: Int, first: Int, fromConnect: Bool, returnTo: Int)
+        /// The cues on one Titan page, for filling `slot`.
+        case titanCues(slot: Int, page: Int, fromConnect: Bool, returnTo: Int)
+        /// Fade times for a slot's cue.
+        case fadePicker(slot: Int, fadeOut: Bool, returnTo: Int)
+
+        /// The profile page to go back to.
+        var returnTo: Int {
+            switch self {
+            case .menu: return 0
+            case .selection(let page), .colour(let page), .connectCue(let page): return page
+            case .titanPages(_, _, _, let page), .titanCues(_, _, _, let page), .fadePicker(_, _, let page): return page
+            }
+        }
     }
 
     // MARK: Keypad
@@ -22,6 +39,8 @@ enum DeckFlow {
     /// What's been typed on the deck's keypad since the last Enter, Clear or Exit.
     struct KeypadBuffer: Equatable {
         private(set) var text = ""
+        /// The fixture number last selected with "number Enter".
+        private(set) var lastSelection: Int?
 
         /// Feeds in a key's action. Returns true when it was an Enter that
         /// selected fixtures: a plain number, no @ ("102 Enter").
@@ -35,6 +54,7 @@ enum DeckFlow {
                 text = ""
             case .keypadEnter:
                 let selected = !text.isEmpty && text.allSatisfy(\.isNumber)
+                if selected { lastSelection = Int(text) }
                 text = ""
                 return selected
             default:
@@ -54,11 +74,17 @@ enum DeckFlow {
             ?? profile.pages.first { page in page.keys.contains { $0.action.map(isIntensity) ?? false } }
         var keys = withReturnKey(source?.keys ?? defaultIntensityKeys(keyCount: profile.keyCount),
                                  keyCount: profile.keyCount, returnTo: returnTo)
-        let used = Set(keys.map(\.index))
-        if !keys.contains(where: { $0.action == .colourPresets }),
-           let free = (0 ..< profile.keyCount).first(where: { !used.contains($0) }) {
-            keys.append(KeyDefinition(index: free, label: "CCT", colorHex: colourHex(kelvin: 4500),
-                                      sfSymbol: "thermometer.sun.fill", action: .colourPresets))
+        let extras = [
+            KeyDefinition(index: 0, label: "CCT", colorHex: colourHex(kelvin: 4500),
+                          sfSymbol: "thermometer.sun.fill", action: .colourPresets),
+            KeyDefinition(index: 0, label: "HOLD\nFOR 0%", colorHex: "#000000",
+                          sfSymbol: "lightbulb.slash.fill", action: .flashSelection),
+        ]
+        for var extra in extras where !keys.contains(where: { $0.action == extra.action }) {
+            let used = Set(keys.map(\.index))
+            guard let free = (0 ..< profile.keyCount).first(where: { !used.contains($0) }) else { break }
+            extra.index = free
+            keys.append(extra)
         }
         return DeckPage(name: "Selection", keys: keys.sorted { $0.index < $1.index })
     }

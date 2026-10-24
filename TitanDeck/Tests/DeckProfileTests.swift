@@ -86,8 +86,10 @@ final class DeckProfileTests: XCTestCase {
                        DeckFlow.cctPresets.map { TitanAction.colourTemperature(kelvin: $0) })
         XCTAssertEqual(colour.key(at: 13)?.action, .mainMenu)
         let playbacks = profile.pages[3]
-        XCTAssertEqual(playbacks.key(at: 0)?.action, .playbackGo(userNumber: 1))
-        XCTAssertEqual(playbacks.key(at: 11)?.action, .playbackRelease(userNumber: 6))
+        XCTAssertEqual(playbacks.key(at: 0)?.action, .cueGo(slot: 0))
+        XCTAssertEqual(playbacks.key(at: 5)?.action, .cueFade(slot: 2, fadeOut: false))
+        XCTAssertEqual(playbacks.key(at: 6)?.action, .cueFade(slot: 0, fadeOut: true))
+        XCTAssertEqual(playbacks.key(at: 10)?.action, .connectCue)
         XCTAssertEqual(playbacks.key(at: 13)?.action, .mainMenu)
     }
 
