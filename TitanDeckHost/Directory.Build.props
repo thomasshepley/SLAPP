@@ -1,0 +1,16 @@
+<Project>
+  <!-- One version for every TitanDeck Host project. Keep it in step with the
+       top entry of CHANGELOG.md (ChangelogTests checks). -->
+  <PropertyGroup>
+    <Version>0.1.0</Version>
+    <Product>TitanDeck Host</Product>
+    <Company>Elex Productions</Company>
+    <Copyright>Thomas Shepley</Copyright>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <!-- Lets the Windows projects compile on macOS/Linux too (CI and checks). -->
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+  </PropertyGroup>
+</Project>

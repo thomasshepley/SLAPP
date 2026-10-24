@@ -44,14 +44,17 @@ TitanDeck/
 │   │   └── Bridge/ titan_rdp.c/.h - the only code that touches FreeRDP's C API
 │   ├── Companion/  The lighting companion, rebuilt natively (M12+):
 │   │   ├── Model/  Fixture (matches the old app's JSON), FixtureLibrary, CompanionUnits
-│   │   ├── Calc/   Photometry, Dimming, Stops, PowerBudget, Cable, GoboSync, Exposure,
+│   │   ├── Calc/   Photometry, Dimming, Stops, PowerBudget, Cable, Flicker, Exposure, LetterIndex,
 │   │   │           ColourMaths, Sun - pure maths ported from lighting-companion/src/services/calc
 │   │   └── Views/  CompanionView (split view), fixture library/detail/compare, one view per tool
 │   ├── UniFi/      Wi-Fi tab (M17): UniFiModels (API shapes, channels, ChannelAdvisor - pure),
 │   │               UniFiConnection (login, cookies/CSRF, certificate trust on first use),
 │   │               UniFiStore, UniFiView, UniFiSetupView
-│   ├── FileDrop/   Send to PC (M16): FileDropStore (queue, bookmark, reachability),
+│   ├── FileDrop/   Send to PC (M16): FileDropStore (queue, Host or bookmarked folder),
 │   │               FileDropCopier (chunked copy, pure), FileDropView, FileDropSetupView
+│   ├── Host/       TitanDeck Host on the PC (M18): HostAPI (models + URLs, pure - mirrors
+│   │               TitanDeckHost/src/Core/Api/Messages.cs), HostClient, HostDiscovery
+│   │               (Bonjour), HostStore (pairing, health, From PC), pairing + status views
 │   ├── Settings/   SettingsView, DeckEditorView (M4), KeyInspectorView (M4)
 │   └── Support/    Logger (Log.titan / Log.deck), HexColor
 ├── FreeRDP/        build.sh (FreeRDP + OpenSSL -> FreeRDPKit.xcframework), fetch.sh, versions.env
@@ -82,12 +85,15 @@ them together (e.g. `deck.onAction` -> `titan.perform`). Keep it that way.
 | M9 | iPhone + iPhone Duo: on-screen deck drawn from the same profiles (Stream Deck Kit is iPad-only), adaptive layouts, App Intents (Shortcuts, Siri, Action button, Control Center) | Built - needs testing on an iPhone. iPhone Duo simulator needs Xcode 27.1 |
 | M10 | Apple Watch GO button: hold-to-fire or double-tap gesture, via the iPhone app or direct HTTP | Built - needs testing on a Watch |
 | M11 | Default deck: 15-key Stream Deck in portrait - Avolites keypad (digits, Exit, Enter, Clear, @), Intensity +/-1/5/10%, Playbacks; Menu key (hold 2 s) opens a menu of layouts; Titan command line shown on the Deck tab | Built - test on Titan |
-| M12 | Companion tab, core: fixture library (search, filters, specs, DMX chart, compare), beam/photometry, stops, power + cable, colour + gels, camera, sun & gobo sync, units & mains | Built |
+| M12 | Companion tab, core: fixture library (search, filters, specs, DMX chart, compare), beam/photometry, stops, power + cable, colour + gels (RGB/HSI converter, green/magenta), flicker (per fixture, with fixes), sun on a map with a time slider, units & mains | Built |
 | M13 | Companion: shows, patch builder (packer), universe plan, PDF cheat sheet, CSV / MA3 / Titan exports, `.slapp.json` import/export | Next |
 | M14 | Companion -> Titan: patch a show into Titan over the WebAPI (`Patch/SelectManufacturer`... `Fixtures/PatchFixturesToVacantHandles`), select / locate / highlight | Planned - DmxAssignment format and patch read-back unconfirmed |
 | M15 | Companion: plot tagging with PDFKit, GDTF import | Planned |
 | M16 | Send files to the PC, AirDrop style: a Windows shared folder connected in the Files app (iOS's own SMB client), picked once and kept as a security-scoped bookmark; Photos / Files / drag and drop / "Open in TitanDeck" from any app | Built - needs testing against the PC |
 | M17 | Wi-Fi tab from the UniFi console's local API (local admin login, no API key or internet): this iPad's AP and signal, channel map with neighbours, quietest channels, AP radios (channel, width, power, utilisation), weak clients, RF scans | Built - needs testing on the show network. Live spectral analysis stays in UniFi (it needs Ubiquiti's cloud) |
+| M18 H1 | TitanDeck Host for Windows (`TitanDeckHost/`): one install for the PC side - service, RDP checks and fixes, RDP Wrapper, pairing, files | Built - needs testing on the PC |
+| M18 H2 | TitanDeck pairs with the Host (Bonjour + 6-digit code, token in the Keychain), PC health + iPad-allowed fixes, rdpwrap.ini from the iPad, files both ways (Host first, shared folder fallback) | Built - needs testing on the PC |
+| M18 H3 | RDP quality presets (Best / Balanced / Weak signal), signal dashboard, iPad-to-PC link test | Next |
 
 ## Platform and design decisions
 

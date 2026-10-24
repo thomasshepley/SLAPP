@@ -1,5 +1,6 @@
 // FileDrop/FileDropView.swift
 import PhotosUI
+import QuickLook
 import QuickLookThumbnailing
 import SwiftUI
 import UIKit
@@ -7,14 +8,18 @@ import UniformTypeIdentifiers
 
 /// AirDrop-style sending to the Titan PC: the PC in the middle, pulsing while
 /// it's reachable; tap it to send. Files come from Photos, Files, drag and
-/// drop, or any app's share sheet ("Open in TitanDeck").
+/// drop, or any app's share sheet ("Open in TitanDeck"). Goes through
+/// TitanDeck Host when it's paired, which also brings files back (From PC).
 struct FileDropView: View {
     @ObservedObject var store: FileDropStore
+    @ObservedObject var hostStore: HostStore
     let host: String
     @State private var photoSelection: [PhotosPickerItem] = []
     @State private var importingFiles = false
     @State private var showingSetup = false
+    @State private var showingPairing = false
     @State private var dropTargeted = false
+    @State private var previewURL: URL?
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -23,7 +28,7 @@ struct FileDropView: View {
                 VStack(spacing: 28) {
                     pcTarget
                         .padding(.top, 24)
-                    if !store.hasFolder {
+                    if !hostStore.isPaired && !store.hasFolder {
                         setupPrompt
                     }
                     if let error = store.lastError {
@@ -35,6 +40,7 @@ struct FileDropView: View {
                     }
                     queue
                     addButtons
+                    fromPC
                 }
                 .padding()
                 .frame(maxWidth: 640)
@@ -62,6 +68,10 @@ struct FileDropView: View {
             .sheet(isPresented: $showingSetup) {
                 FileDropSetupView(store: store, host: host)
             }
+            .sheet(isPresented: $showingPairing) {
+                HostPairingView(host: hostStore, suggestedAddress: host)
+            }
+            .quickLookPreview($previewURL)
             .fileImporter(isPresented: $importingFiles, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
                 if case .success(let urls) = result { store.add(urls) }
             }
@@ -78,7 +88,9 @@ struct FileDropView: View {
             }
             .task(id: host) {
                 while !Task.isCancelled {
-                    await store.checkReachability(host: host)
+                    if hostStore.isPaired { await hostStore.refresh() }
+                    // The shared folder is the fallback, so only check it when the Host isn't answering.
+                    if store.hasFolder && !hostStore.isOnline { await store.checkReachability(host: host) }
                     try? await Task.sleep(for: .seconds(4))
                 }
             }
@@ -87,15 +99,21 @@ struct FileDropView: View {
 
     // MARK: - The PC
 
-    private var canSend: Bool { store.hasFolder && store.waitingCount > 0 && !store.isSending }
+    private var canSend: Bool { (hostStore.isOnline || store.hasFolder) && store.waitingCount > 0 && !store.isSending }
+
+    private var isReachable: Bool { hostStore.isOnline || (store.hasFolder && store.reachability == .reachable) }
+
+    private func sendAll() {
+        Task { await store.send(via: hostStore.isOnline ? hostStore.client : nil) }
+    }
 
     private var pcTarget: some View {
         VStack(spacing: 14) {
             Button {
-                Task { await store.send() }
+                sendAll()
             } label: {
                 ZStack {
-                    if store.reachability == .reachable && !store.isSending {
+                    if isReachable && !store.isSending {
                         PulseRings()
                     }
                     Circle()
@@ -123,9 +141,9 @@ struct FileDropView: View {
             .accessibilityLabel("Send \(store.waitingCount) file\(store.waitingCount == 1 ? "" : "s") to the Titan PC")
 
             VStack(spacing: 4) {
-                Text("Titan PC")
+                Text(hostStore.isPaired ? hostStore.displayName : "Titan PC")
                     .font(.title2.weight(.semibold))
-                Text([host.isEmpty ? nil : host, store.folderName].compactMap { $0 }.joined(separator: " · "))
+                Text(routeDescription)
                     .font(.callout)
                     .foregroundStyle(.secondary)
                 statusCapsule
@@ -136,7 +154,14 @@ struct FileDropView: View {
     private var statusCapsule: some View {
         let (text, colour): (String, Color) = {
             if store.isSending { return ("Sending...", .blue) }
-            if !store.hasFolder { return ("Folder not set up", .orange) }
+            if hostStore.isOnline {
+                return (store.waitingCount > 0 ? "Tap to send \(store.waitingCount)" : "Ready", .green)
+            }
+            if hostStore.isPaired && !store.hasFolder {
+                if hostStore.connection == .checking { return ("Looking for the PC...", Color.secondary) }
+                return ("TitanDeck Host not answering", Color.red)
+            }
+            if !store.hasFolder { return ("Not set up", .orange) }
             switch store.reachability {
             case .reachable: return (store.waitingCount > 0 ? "Tap to send \(store.waitingCount)" : "Ready", .green)
             case .unreachable: return ("PC not reachable", .red)
@@ -155,14 +180,27 @@ struct FileDropView: View {
             .animation(.snappy, value: text)
     }
 
+    /// "TitanDeck Host · 192.168.0.147", or the folder route when that's in use.
+    private var routeDescription: String {
+        if hostStore.isOnline || (hostStore.isPaired && !store.hasFolder) {
+            return ["TitanDeck Host", hostStore.address].joined(separator: " · ")
+        }
+        let folder = hostStore.isPaired ? store.folderName.map { "\($0) (Host not answering)" } : store.folderName
+        return [host.isEmpty ? nil : host, folder].compactMap { $0 }.joined(separator: " · ")
+    }
+
     private var setupPrompt: some View {
-        VStack(spacing: 10) {
-            Text("Set up a shared folder on the PC once, then files go straight into it.")
+        VStack(spacing: 12) {
+            Text("Pair with TitanDeck Host on the PC to send files both ways, or use a Windows shared folder.")
                 .font(.callout)
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.secondary)
-            Button("Set Up File Drop", systemImage: "folder.badge.plus") { showingSetup = true }
-                .buttonStyle(.glassProminent)
+            HStack(spacing: 10) {
+                Button("Pair with the PC", systemImage: "link") { showingPairing = true }
+                    .buttonStyle(.glassProminent)
+                Button("Shared Folder", systemImage: "folder.badge.plus") { showingSetup = true }
+                    .buttonStyle(.glass)
+            }
         }
         .padding()
         .frame(maxWidth: .infinity)
@@ -218,6 +256,144 @@ struct FileDropView: View {
         }
         .buttonStyle(.glass)
         .controlSize(.large)
+    }
+}
+
+extension FileDropView {
+    /// Files coming the other way: waiting in the PC's To iPad folder, and
+    /// ones already here (Documents/From PC), with Quick Look and Share.
+    @ViewBuilder
+    var fromPC: some View {
+        if hostStore.isPaired && (!hostStore.outbox.isEmpty || !hostStore.received.isEmpty) {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Label("From PC", systemImage: "arrow.down.circle")
+                        .font(.headline)
+                    Spacer()
+                    if hostStore.outbox.count > 1 {
+                        Button("Get All") { Task { await hostStore.downloadAll() } }
+                            .font(.callout.weight(.semibold))
+                            .disabled(!hostStore.downloading.isEmpty || !hostStore.isOnline)
+                    }
+                }
+                .padding(.horizontal, 4)
+
+                VStack(spacing: 0) {
+                    ForEach(hostStore.outbox) { entry in
+                        FromPCWaitingRow(entry: entry, progress: hostStore.downloading[entry.name],
+                                         enabled: hostStore.isOnline) {
+                            Task { await hostStore.download(entry) }
+                        }
+                        Divider().padding(.leading, 64)
+                    }
+                    ForEach(hostStore.received.prefix(20)) { file in
+                        FromPCReceivedRow(file: file) { previewURL = file.url }
+                            .contextMenu {
+                                ShareLink(item: file.url)
+                                Button("Delete", systemImage: "trash", role: .destructive) {
+                                    withAnimation { hostStore.deleteReceived(file) }
+                                }
+                            }
+                        if file.id != hostStore.received.prefix(20).last?.id { Divider().padding(.leading, 64) }
+                    }
+                }
+                .padding(.vertical, 4)
+                .background(.fill.quinary, in: .rect(cornerRadius: 18))
+                .animation(.snappy, value: hostStore.outbox)
+                .animation(.snappy, value: hostStore.received)
+
+                if hostStore.outbox.isEmpty {
+                    Text("Put files in Public Documents\\TitanDeck\\To iPad on the PC to see them here.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 4)
+                }
+            }
+        }
+    }
+}
+
+private struct FromPCWaitingRow: View {
+    let entry: HostFileEntry
+    let progress: Double?
+    let enabled: Bool
+    let download: () -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "icloud.and.arrow.down")
+                .font(.title2)
+                .foregroundStyle(.blue)
+                .frame(width: 40, height: 40)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(entry.name)
+                    .font(.callout.weight(.medium))
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                if let progress {
+                    ProgressView(value: progress)
+                } else {
+                    Text("\(ByteCountFormatter.string(fromByteCount: entry.size, countStyle: .file)) · waiting on the PC")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            }
+            Spacer(minLength: 8)
+            if progress == nil {
+                Button("Get", action: download)
+                    .buttonStyle(.glass)
+                    .controlSize(.small)
+                    .disabled(!enabled)
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+    }
+}
+
+private struct FromPCReceivedRow: View {
+    let file: HostStore.Received
+    let open: () -> Void
+    @State private var thumbnail: UIImage?
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Button(action: open) {
+                HStack(spacing: 12) {
+                    Group {
+                        if let thumbnail {
+                            Image(uiImage: thumbnail).resizable().scaledToFill()
+                        } else {
+                            Image(systemName: "doc.fill").font(.title2).foregroundStyle(.secondary)
+                        }
+                    }
+                    .frame(width: 40, height: 40)
+                    .clipShape(.rect(cornerRadius: 8))
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(file.name)
+                            .font(.callout.weight(.medium))
+                            .foregroundStyle(.primary)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                        Text("\(ByteCountFormatter.string(fromByteCount: file.size, countStyle: .file)) · \(file.date.formatted(.relative(presentation: .named)))")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                    Spacer(minLength: 8)
+                }
+                .contentShape(.rect)
+            }
+            .buttonStyle(.plain)
+            ShareLink(item: file.url) {
+                Image(systemName: "square.and.arrow.up").font(.title3)
+            }
+            .accessibilityLabel("Share \(file.name)")
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .task(id: file.url) {
+            let request = QLThumbnailGenerator.Request(fileAt: file.url, size: CGSize(width: 80, height: 80),
+                                                       scale: 2, representationTypes: .thumbnail)
+            thumbnail = try? await QLThumbnailGenerator.shared.generateBestRepresentation(for: request).uiImage
+        }
     }
 }
 

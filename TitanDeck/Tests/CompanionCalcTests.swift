@@ -144,7 +144,7 @@ final class CompanionCalcTests: XCTestCase {
                              Exposure.aperture(lux: 2000, iso: 100, shutter: 50).exact)
     }
 
-    // MARK: Power, cable, gobo
+    // MARK: Power, cable
 
     func testPowerBudget() {
         let result = PowerBudget.compute(items: [.init(name: "Par", watts: 1000, quantity: 4)],
@@ -163,11 +163,6 @@ final class CompanionCalcTests: XCTestCase {
         let pick = Cable.recommend(amps: 20, ambient: 30)
         XCTAssertEqual(pick?.csaMm2, 2.5)
         XCTAssertNil(Cable.recommend(amps: 500, ambient: 30))
-    }
-
-    func testGoboSync() {
-        XCTAssertEqual(GoboSync.rpm(bpm: 120, mode: .beat), 120)
-        XCTAssertEqual(GoboSync.bpm(rpm: GoboSync.rpm(bpm: 120, mode: .bar), mode: .bar), 120)
     }
 
     // MARK: Sun

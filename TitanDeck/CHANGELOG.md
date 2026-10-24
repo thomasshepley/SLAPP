@@ -16,6 +16,29 @@ with every change that goes to `main`.
 - **RF scans:** see an AP's last RF environment scan, or run a new one (with a warning, as its clients drop off while it scans).
 - Live spectral analysis still needs UniFi's own app and Ubiquiti's cloud.
 
+## 0.6.0 - 2026-10-24 - Companion tools
+
+- **Fixture library:** manufacturers in a tidy A-Z list. Tap one to see its fixtures, and drag the letter strip on the right to jump down the alphabet.
+- **Colour:** a proper RGB <-> HSI converter. Enter either one with sliders or typed numbers, and get the other back live, plus RGB in % and hex.
+- **Green / magenta in plain English:** "the light looks green, put 1/4 Minus Green (LEE 249) on it".
+- **New Flicker tool** (replaces Camera): pick a fixture, set the frame rate and shutter, and see if it will flicker, with a frame-by-frame chart.
+- Flicker fixes: safe shutter angles (hello 172.8°), safe frame rates, refresh-rate settings and dimmer levels.
+- **Sun on a map:** tap to drop a pin, search a place or use your location, then scrub a time slider to watch the sun's direction swing round. Sunrise and sunset directions are drawn too.
+- Removed gobo sync.
+
+## 0.5.0 - 2026-10-24 - TitanDeck Host
+
+- **Pair with TitanDeck Host,** the new Windows app for the Titan PC: Settings > TitanDeck Host finds the PC on the network by itself; type the 6-digit code from its window and you're paired.
+- **PC health from the iPad:** see whether Remote Desktop will work, and press Fix for the common problems (Remote Desktop off or stuck, firewall, RDP Wrapper out of date after a Windows update).
+- **Send newest rdpwrap.ini:** for a Titan PC with no internet, the iPad downloads the fix and hands it over.
+- **Files both ways:** Send to PC goes through the Host (no shared folder needed), and anything put in To iPad on the PC shows up under From PC, ready to preview or share. The shared folder still works as a fallback.
+
+## 0.4.2 - 2026-10-24 - Keypad readout
+
+- **Keypad readout on the Remote screen:** what you type on the Stream Deck keypad (like 102@30) shows in the black band under the desktop. Press Enter and it turns green and slides across to the last commands on the right, which keep the last three.
+- A command shows red if a key didn't reach Titan, so you know Titan's line might not match.
+- The status pill in the top corner no longer shrinks to dots. Tap it any time for network details.
+
 ## 0.4.1 - 2026-10-24 - Beam fix
 
 - Fixed a crash opening Companion > Beam & Photometry (and fixture pages with photometry): the falloff chart's log scale now has a safe range.

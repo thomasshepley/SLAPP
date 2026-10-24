@@ -148,16 +148,38 @@ each key land.
       reinstalled one) at that address is refused with a certificate message.
       Settings → **Forget saved PC certificates** clears it.
 
+## 6a. Keypad readout (Remote screen)
+
+- [ ] Connect the remote desktop, Stream Deck on the Keypad page. Type 102@30:
+      it appears bottom left in the black band, with a blinking cursor.
+- [ ] Enter: the line goes green, then slides to the right. Do 3 more: only the
+      last 3 stay, newest on the right and biggest.
+- [ ] Clear or Exit throws away the line being typed.
+- [ ] Switch the deck to another page: the readout goes once nothing's typed.
+- [ ] Unplug the Titan network and type: the line turns red.
+- [ ] Tap the status pill top right: it opens network details and never
+      shrinks to dots.
+
 ## 6b. Companion
 
 - [ ] **Companion** tab: the sidebar (iPad) lists Fixtures and the tools.
+- [ ] Fixtures: a list of manufacturers, A-Z. Tap one to open its fixtures.
+      Drag down the letter strip on the right: a big letter follows your
+      finger and the list jumps. Searching opens every matching maker.
 - [ ] Fixtures: search "skypanel", filter by type or maker, open one: specs,
       DMX modes chart (switch modes), the distance slider and falloff chart.
       **Compare** with another fixture.
 - [ ] From a fixture, **Open in** Beam / Stops / Power pre-fills that tool.
 - [ ] Beam & Photometry, Stops (move the DMX slider, watch the curve chart),
-      Power & Cable (add fixtures, change distro, temperature), Colour & Gels,
-      Camera, Sun & Sync: numbers look sane.
+      Power & Cable (add fixtures, change distro, temperature): numbers look sane.
+- [ ] Colour & Gels: Enter RGB, move the sliders or type numbers: HSI updates
+      live. Switch to Enter HSI: same colour, now set by hue/sat/intensity.
+      Hex in and out. Green / magenta: a + Duv says "looks green, use Minus Green".
+- [ ] Flicker: pick an HMI, set 24 fps 180°: "Will flicker", and the fix says
+      172.8°. Tap 172.8°: "No flicker". Pick an LED, dim it to 10% at 240 fps.
+- [ ] Sun: tap the map to move the pin; search a place; the location button.
+      Scrub the time slider: the sun line on the map swings round. Sunrise /
+      Golden / Noon / Sunset buttons jump the slider.
 - [ ] Units & Mains: switch to imperial; distances show in ft and lux in fc.
 - [ ] iPhone: no Remote tab and it opens on Companion. Settings → Remote desktop
       → "Show the Remote tab" brings it back.
@@ -177,6 +199,27 @@ each key land.
 - [ ] iPad: drag a file from Files (Split View) onto the Send sheet.
 - [ ] Turn the PC's network off: the status says "PC not reachable" and a send
       fails with a clear message, then works again once it's back.
+
+## 6d. TitanDeck Host
+
+- [ ] Download `TitanDeckHost-Setup-<version>.exe` from the newest `host-v`
+      release on GitHub, copy it to the PC and run it (SmartScreen: More info >
+      Run anyway). The Host window opens.
+- [ ] Every check is green, or has a Fix button that turns it green.
+- [ ] Host window: Show a pairing code. TitanDeck: Settings > TitanDeck Host >
+      Pair. The PC shows up by name; tap it, type the code, Pair.
+- [ ] A wrong code says so; 5 wrong codes kill that code.
+- [ ] Settings > TitanDeck Host > the PC: the same checks as the PC window.
+      Stop "Remote Desktop Services" on the PC, then Start it from the iPad.
+- [ ] Send Newest rdpwrap.ini (with the iPad online): it says it applied, or
+      that the newest ini doesn't cover the PC's build yet.
+- [ ] Send to PC: the subtitle says TitanDeck Host. Files land in
+      Public Documents\TitanDeck\To PC.
+- [ ] Put a file in To iPad on the PC: it appears under From PC on the Send
+      sheet. Get it, preview it, share it. On the PC it moves to To iPad\Sent.
+- [ ] Stop the Host service: the sheet falls back to the shared folder (if set
+      up), and Settings shows the Host as not answering.
+- [ ] Remove the iPad in the Host window: TitanDeck notices and asks to pair again.
 
 ## 6e. Wi-Fi (UniFi)
 

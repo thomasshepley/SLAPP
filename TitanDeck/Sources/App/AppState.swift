@@ -51,10 +51,14 @@ final class AppState: ObservableObject {
     let playbackState: PlaybackStatePoller
     /// Apple Watch GO button, iPhone side (M10).
     let watch: WatchBridge
-    /// Files queued for the PC's shared folder (M16).
+    /// Files queued for the PC (M16), through the Host or the shared folder.
     let fileDrop: FileDropStore
     /// The show Wi-Fi from the UniFi console (M17).
     let unifi: UniFiStore
+    /// TitanDeck Host on the PC: pairing, PC health, files both ways (M18).
+    let host: HostStore
+    /// What's typed on the deck keypad, shown under the remote desktop.
+    let keypad: KeypadReadoutStore
     private var logSubscriptions = Set<AnyCancellable>()
     private let store: ProfileStore
 
@@ -73,6 +77,8 @@ final class AppState: ObservableObject {
         watch = WatchBridge()
         fileDrop = FileDropStore()
         unifi = UniFiStore()
+        self.host = HostStore()
+        keypad = KeypadReadoutStore()
         titan = TitanClient(host: host)
         let store = ProfileStore()
         self.store = store
@@ -143,8 +149,10 @@ final class AppState: ObservableObject {
     /// Fire an action at Titan. Pass the key index when it came from the deck
     /// so a failure can flash that key red.
     func fire(_ action: TitanAction, fromKey keyIndex: Int? = nil) {
+        let keypadLine = keypad.press(action)
         Task {
             let result = await titan.perform(action)
+            if let keypadLine { keypad.markAnswered(keypadLine, ok: result.ok) }
             recentResults.insert(result, at: 0)
             if recentResults.count > Self.maxResults {
                 recentResults.removeLast(recentResults.count - Self.maxResults)

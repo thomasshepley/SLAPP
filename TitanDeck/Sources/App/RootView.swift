@@ -46,7 +46,7 @@ struct RootView: View {
             WhatsNewView(onlyVersion: version.id)
         }
         .sheet(isPresented: $appState.showingFileDrop) {
-            FileDropView(store: appState.fileDrop, host: appState.pcHost)
+            FileDropView(store: appState.fileDrop, hostStore: appState.host, host: appState.pcHost)
         }
         .onChange(of: remoteDesktopEnabled) { _, enabled in
             if !enabled {
