@@ -1,0 +1,97 @@
+name: TitanDeck Host
+
+# The Windows companion (TitanDeckHost/). Tests on Linux, builds the installer
+# on Windows, and on main publishes it as the GitHub release host-v<version>.
+on:
+  push:
+    paths:
+      - 'TitanDeckHost/**'
+      - '.github/workflows/host.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: host-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Test (Linux)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: TitanDeckHost
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Unit tests
+        run: dotnet test tests/Core.Tests
+      - name: Build everything
+        run: dotnet build TitanDeckHost.sln -c Release
+
+  installer:
+    name: Build installer (Windows)
+    needs: test
+    runs-on: windows-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    defaults:
+      run:
+        working-directory: TitanDeckHost
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Read version
+        id: version
+        run: |
+          $version = ([xml](Get-Content Directory.Build.props)).Project.PropertyGroup.Version
+          "version=$version" >> $env:GITHUB_OUTPUT
+          Write-Host "TitanDeck Host $version"
+
+      - name: Publish the service and the app
+        run: |
+          dotnet publish src/Service -c Release -o publish/service
+          dotnet publish src/App -c Release -o publish/app
+
+      - name: Fetch the newest rdpwrap.ini
+        run: |
+          New-Item -ItemType Directory -Force publish/rdpwrap | Out-Null
+          Invoke-WebRequest https://raw.githubusercontent.com/sebaxakerhtc/rdpwrap.ini/master/rdpwrap.ini -OutFile publish/rdpwrap/rdpwrap.ini
+          if (-not (Select-String -Path publish/rdpwrap/rdpwrap.ini -Pattern '^\[Main\]' -Quiet)) { throw "rdpwrap.ini download doesn't look right" }
+          Write-Host (Select-String -Path publish/rdpwrap/rdpwrap.ini -Pattern '^Updated=').Line
+
+      - name: Install Inno Setup
+        run: choco install innosetup --no-progress -y
+
+      - name: Build the installer
+        run: |
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" "/DAppVersion=${{ steps.version.outputs.version }}" "/DPublishDir=..\publish" installer\TitanDeckHost.iss
+          if ($LASTEXITCODE -ne 0) { throw "Inno Setup failed" }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TitanDeckHost-Setup-${{ steps.version.outputs.version }}
+          path: TitanDeckHost/out/*.exe
+
+      - name: Publish the release
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = "host-v${{ steps.version.outputs.version }}"
+          $installer = (Get-ChildItem out/*.exe).FullName
+          $changes = [regex]::Match((Get-Content CHANGELOG.md -Raw), '(?ms)^## .*?(?=^## |\z)').Value
+          $notes = "$changes`n`n**Install:** download the Setup .exe below, copy it to the Titan PC (USB stick, or send it from TitanDeck), and run it. Windows may warn that it's from an unknown publisher: More info > Run anyway."
+          Set-Content -Path notes.md -Value $notes
+          gh release view $tag --repo $env:GITHUB_REPOSITORY *> $null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload $tag $installer --clobber --repo $env:GITHUB_REPOSITORY
+          } else {
+            gh release create $tag $installer --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --prerelease --title "TitanDeck Host ${{ steps.version.outputs.version }}" --notes-file notes.md
+          }

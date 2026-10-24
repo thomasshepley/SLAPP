@@ -29,3 +29,9 @@ TitanDeck/Resources/TitanDeck.entitlements
 TitanDeck/Vendor/
 TitanDeck/FreeRDP/.build/
 TitanDeck/Watch/Info.plist
+
+# TitanDeck Host (.NET)
+TitanDeckHost/**/bin/
+TitanDeckHost/**/obj/
+TitanDeckHost/publish/
+TitanDeckHost/out/
