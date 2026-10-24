@@ -37,14 +37,12 @@ struct RootView: View {
                 .tag(AppState.Mode.settings)
         }
         .onAppear(perform: pickStartingTab)
-<<<<<<< HEAD
-        .sheet(isPresented: $appState.showingFileDrop) {
-            FileDropView(store: appState.fileDrop, host: appState.pcHost)
-=======
         .onAppear(perform: showWhatsNewAfterUpdate)
         .sheet(item: Binding(get: { whatsNewVersion.map(VersionID.init) }, set: { whatsNewVersion = $0?.id })) { version in
             WhatsNewView(onlyVersion: version.id)
->>>>>>> claude/titandeck-m12
+        }
+        .sheet(isPresented: $appState.showingFileDrop) {
+            FileDropView(store: appState.fileDrop, host: appState.pcHost)
         }
         .onChange(of: remoteDesktopEnabled) { _, enabled in
             if !enabled {
