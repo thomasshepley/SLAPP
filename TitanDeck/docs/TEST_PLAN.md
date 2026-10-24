@@ -26,18 +26,31 @@ tell me what happened and I'll fix it.
 
 Titan won't run without an AvoKey (or another Avolites USB device). Until you
 have one, `Tools/fake_titan.py` pretends to be Titan's WebAPI, so everything
-except the remote desktop can be tested. Run it on the Mac (same Wi-Fi as the
-iPad):
+except the remote desktop can be tested. Run it on any computer on the same
+network as the iPad. **Best: the Titan PC, with Titan closed** (they'd both
+want port 4430), because TitanDeck Host is there too, so the desk link and
+live intensity work exactly as on the real rig.
+
+On the Titan PC (Windows): install Python 3 from python.org (tick "Add
+python.exe to PATH"), download `TitanDeck/Tools/fake_titan.py` from GitHub
+(Raw, then save), close Titan, and in Command Prompt in that folder:
+
+```
+python fake_titan.py --sacn
+```
+
+On the Mac instead:
 
 ```bash
 cd ~/Developer/SLAPP && git pull
 python3 TitanDeck/Tools/fake_titan.py
 ```
 
-- [ ] If macOS asks whether Python may accept incoming connections: **Allow**.
-- [ ] It prints the Mac's IP. Put that in TitanDeck's **Titan PC address**.
-- [ ] Remote desktop: type the **PC's** IP in its own address box, or it will
-      try the Mac.
+- [ ] If Windows Firewall or macOS asks whether Python may accept incoming
+      connections: **Allow** (Private networks).
+- [ ] It prints the computer's IP. Put that in TitanDeck's **Titan PC address**.
+- [ ] Running it on the Mac: type the **PC's** IP in the remote desktop's own
+      address box, or it will try the Mac.
 - [ ] Every key press shows up in the Terminal, with the command line, selected
       fixtures, their levels and the live playbacks after it. Unknown calls
       show in red with a 404.
@@ -46,10 +59,11 @@ python3 TitanDeck/Tools/fake_titan.py
   - `--no-user-numbers` leaves user numbers out of the playback list, so
     Settings should show its "can't light keys" explanation.
 - [ ] Desk link without a desk (0.16): Fake Titan is also "the desk" on port
-      4433 (on by default). On the Mac there's no TitanDeck Host to pass it
-      on, so in TitanDeck set **Settings > Desk link > Port** to **4433**.
-      Status says Linked. Then pretend to click fixtures in Layouts, in a
-      second Terminal window:
+      4433 (on by default). On the Titan PC with Host 0.4, leave **Settings >
+      Desk link > Port** at **4434** (the Host passes it on). On the Mac
+      there's no Host, so set the port to **4433**. Status says Linked. Then
+      pretend to click fixtures in Layouts, in a second Command Prompt or
+      Terminal window (curl comes with Windows 10/11 and macOS):
 
       ```bash
       curl "http://localhost:4430/fake/desk-select?fixtures=3,4"   # select 3 and 4
@@ -58,15 +72,13 @@ python3 TitanDeck/Tools/fake_titan.py
 
       The deck should pop up the intensity keys, Currently Selected should say
       "3-4", and the deck's keys now act on the desk's selection (the Terminal
-      shows "desk selected 3,4" and the levels). Set the port back to 4434
-      for the real rig.
-- [ ] Live intensity needs TitanDeck Host, which only runs on Windows: run Fake
-      Titan on the Titan PC with Titan closed (they'd both want port 4430;
-      needs Python 3 for Windows) with
-      `python TitanDeck\Tools\fake_titan.py --sacn`, pair TitanDeck with the
-      Host, nudge a fixture once from the deck, and the flash key shows its
-      level. `--sacn` sends each fixture as Red, Green, Blue, Dimmer from
-      (n-1)*4+1 on universe 1. On the PC, the Desk link port can stay 4434.
+      shows "desk selected 3,4" and the levels). If you changed the port to
+      4433 on the Mac, set it back to 4434 for the real rig.
+- [ ] Live intensity needs TitanDeck Host, so it only works with Fake Titan on
+      the Titan PC, started with `--sacn`: pair TitanDeck with the Host,
+      nudge a fixture once from the deck, and the flash key shows its level.
+      `--sacn` sends each fixture as Red, Green, Blue, Dimmer from (n-1)*4+1
+      on universe 1.
 
 Fake Titan only checks the app's side. The **(unconfirmed)** items below still
 need the real Titan.
