@@ -45,6 +45,28 @@ python3 TitanDeck/Tools/fake_titan.py
   - `--latency 700` makes every reply slow, so keys should flash red.
   - `--no-user-numbers` leaves user numbers out of the playback list, so
     Settings should show its "can't light keys" explanation.
+- [ ] Desk link without a desk (0.16): Fake Titan is also "the desk" on port
+      4433 (on by default). On the Mac there's no TitanDeck Host to pass it
+      on, so in TitanDeck set **Settings > Desk link > Port** to **4433**.
+      Status says Linked. Then pretend to click fixtures in Layouts, in a
+      second Terminal window:
+
+      ```bash
+      curl "http://localhost:4430/fake/desk-select?fixtures=3,4"   # select 3 and 4
+      curl "http://localhost:4430/fake/desk-select?fixtures="      # clear
+      ```
+
+      The deck should pop up the intensity keys, Currently Selected should say
+      "3-4", and the deck's keys now act on the desk's selection (the Terminal
+      shows "desk selected 3,4" and the levels). Set the port back to 4434
+      for the real rig.
+- [ ] Live intensity needs TitanDeck Host, which only runs on Windows: run Fake
+      Titan on the Titan PC with Titan closed (they'd both want port 4430;
+      needs Python 3 for Windows) with
+      `python TitanDeck\Tools\fake_titan.py --sacn`, pair TitanDeck with the
+      Host, nudge a fixture once from the deck, and the flash key shows its
+      level. `--sacn` sends each fixture as Red, Green, Blue, Dimmer from
+      (n-1)*4+1 on universe 1. On the PC, the Desk link port can stay 4434.
 
 Fake Titan only checks the app's side. The **(unconfirmed)** items below still
 need the real Titan.
@@ -146,6 +168,8 @@ each key land.
 - [ ] Keypad: 1 0 2 Enter. The deck shows the intensity keys, CCT in the
       middle column 4th row, and Return to Keypad bottom right. 1 @ 5 Enter
       does NOT switch.
+- [ ] Selection > CCT > INTENSITY (bottom middle): straight back to the
+      intensity keys.
 - [ ] Remote screen, top left: "Currently Selected: 102" after 1 0 2 Enter, and
       101 after 1 0 1 @ 5 0 Enter. Is 101 really still selected on Titan?
 - [ ] Clear on the selection page: back to the keypad, Currently Selected gone,
@@ -169,9 +193,9 @@ each key land.
       that have playbacks, then the cues on the page you pick, live ones green.
       Pick one: the GO shows its legend. With more pages than keys, MORE pages on.
 - [ ] Connect Cue again: Unassign under a filled GO empties it. Done goes back.
-- [ ] GO fires the cue (the key lights while it's live). A GO with nothing on
-      it opens the page picker instead.
-- [ ] Fade In: pick 5s. Open the cue in Titan: is its fade in now 5 s? Same for
+- [ ] GO fires the cue (the key lights while it's live). A GO or fade key with
+      nothing on it just flashes red. DONE fits on one line.
+- [ ] Fade In: the picker offers 0, 0.1, 0.2, 0.25, 0.3, 0.5, 1, 3 and 5 s. Pick 5s. Open the cue in Titan: is its fade in now 5 s? Same for
       Fade Out. **Experimental:** if Titan's time doesn't change, note what the
       log says (the request body format isn't documented).
 - [ ] Settings > Deck > Flash fades: add 1-99, 5 s.

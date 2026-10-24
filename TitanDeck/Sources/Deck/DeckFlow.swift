@@ -162,8 +162,21 @@ enum DeckFlow {
     static func colourPage(profile: DeckProfile, returnTo: Int) -> DeckPage {
         let source = page(named: "Colour", in: profile)
             ?? profile.pages.first { page in page.keys.contains { $0.action.map(isColourTemperature) ?? false } }
-        let keys = withReturnKey(source?.keys ?? cctKeys(keyCount: profile.keyCount),
+        var keys = withReturnKey(source?.keys ?? cctKeys(keyCount: profile.keyCount),
                                  keyCount: profile.keyCount, returnTo: returnTo)
+        // Straight back to the intensity keys: where Menu sits on the 15-key
+        // deck (bottom middle), or the first free key.
+        if !keys.contains(where: { $0.action == .deckChoice(.intensity) }) {
+            let used = Set(keys.map(\.index))
+            let preferred = profile.keyCount == 15
+                && DeckGeometry(keyCount: 15, orientation: profile.orientation).logicalColumns == 3 ? 13 : nil
+            let spot = preferred.flatMap { used.contains($0) ? nil : $0 }
+                ?? (0 ..< profile.keyCount).first { !used.contains($0) }
+            if let spot {
+                keys.append(KeyDefinition(index: spot, label: "INTENSITY", colorHex: DeckProfile.goColor,
+                                          sfSymbol: "slider.vertical.3", action: .deckChoice(.intensity)))
+            }
+        }
         return DeckPage(name: "Colour", keys: keys.sorted { $0.index < $1.index })
     }
 

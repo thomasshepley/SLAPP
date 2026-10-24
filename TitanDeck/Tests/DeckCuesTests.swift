@@ -66,11 +66,13 @@ final class DeckCuesTests: XCTestCase {
     }
 
     func testFadePicker() {
-        let page = DeckCues.fadePage(current: 5, fadeOut: false, keyCount: 15)
-        XCTAssertEqual(page.keys.count, 13, "12 times and Back")
-        XCTAssertEqual(page.key(at: 5)?.label, "5s")
-        XCTAssertEqual(page.key(at: 5)?.colorHex, DeckProfile.goColor, "the current time stands out")
-        XCTAssertEqual(page.key(at: 1)?.action, .deckChoice(.fadeTime(0.5)))
+        XCTAssertEqual(DeckCues.fadeTimes, [0, 0.1, 0.2, 0.25, 0.3, 0.5, 1, 3, 5])
+        let page = DeckCues.fadePage(current: 0.25, fadeOut: false, keyCount: 15)
+        XCTAssertEqual(page.keys.count, 10, "9 times and Back")
+        XCTAssertEqual(page.keys.map(\.label).prefix(9), ["0s", "0.1s", "0.2s", "0.25s", "0.3s", "0.5s", "1s", "3s", "5s"])
+        XCTAssertEqual(page.key(at: 3)?.colorHex, DeckProfile.goColor, "the current time stands out")
+        XCTAssertEqual(page.key(at: 1)?.action, .deckChoice(.fadeTime(0.1)))
+        XCTAssertEqual(page.key(at: 14)?.action, .deckChoice(.back))
     }
 
     func testFlashFadeRules() {

@@ -54,7 +54,7 @@ struct FlashFadeRule: Codable, Hashable, Identifiable {
 
 enum DeckCues {
     /// Fade times offered for a cue's fade in or out, in seconds.
-    static let fadeTimes: [Double] = [0, 0.5, 1, 2, 3, 5, 8, 10, 15, 20, 30, 60]
+    static let fadeTimes: [Double] = [0, 0.1, 0.2, 0.25, 0.3, 0.5, 1, 3, 5]
 
     static let assignColour = "#B23B1E"
     static let backColour = "#3A3A3C"

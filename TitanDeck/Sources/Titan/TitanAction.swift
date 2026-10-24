@@ -125,6 +125,8 @@ enum DeckChoice: Codable, Hashable {
     case morePages(from: Int)
     case pickCue(titanId: Int)
     case fadeTime(Double)
+    /// From the colour temperatures straight back to the intensity keys.
+    case intensity
     case back
     case done
 }

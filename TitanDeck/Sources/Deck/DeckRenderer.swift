@@ -134,7 +134,7 @@ enum DeckRenderer {
                                                       options: [.usesLineFragmentOrigin], attributes: attributes, context: nil)
             widestWord = words.map { $0.size(withAttributes: attributes).width }.max() ?? 0
             fontSize -= 1
-        } while (bounds.height > rect.height || widestWord > rect.width) && fontSize > 8
+        } while (bounds.height > rect.height || widestWord > rect.width - 2) && fontSize > 8   // 2 pt spare: no wrap at the edge
 
         let drawRect = CGRect(x: rect.minX, y: rect.minY + (rect.height - bounds.height) / 2,
                               width: rect.width, height: bounds.height)

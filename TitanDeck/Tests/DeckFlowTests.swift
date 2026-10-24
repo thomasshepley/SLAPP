@@ -149,6 +149,9 @@ final class DeckColourTests: XCTestCase {
         XCTAssertEqual(colour.key(at: 0)?.action, .colourTemperature(kelvin: 2700))
         XCTAssertEqual(colour.key(at: 8)?.action, .colourTemperature(kelvin: 10000))
         XCTAssertEqual(colour.key(at: 14)?.action, .switchPage(0))
+        XCTAssertEqual(colour.key(at: 13)?.action, .deckChoice(.intensity), "straight back to the intensity keys")
+        XCTAssertEqual(colour.key(at: 13)?.label, "INTENSITY")
+        XCTAssertFalse(TitanAction.deckChoice(.intensity).isRemote)
         XCTAssertEqual(DeckFlow.cctKeys(keyCount: 6).count, 5, "leaves room for the way back")
     }
 
