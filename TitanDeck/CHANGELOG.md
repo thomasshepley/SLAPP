@@ -7,6 +7,13 @@ the GitHub Actions run that built it. The top entry is shown in the app
 so add an entry - and bump `MARKETING_VERSION` in `project.yml` to match -
 with every change that goes to `main`.
 
+## 0.12.0 - 2026-10-24 - Emoji keys, your own colours, and pressed looks
+
+- **Emoji on keys:** a key's icon can now be an emoji as well as an SF Symbol (Settings > Deck profile > tap a key > Icon > Emoji). On its own, with no label, the emoji fills the key.
+- **Save your colours:** pick any custom colour and tap + to keep it in the palette with the built-in swatches, ready for every key. Long-press one of yours to remove it.
+- **A second look when pressed:** give a key a different colour, label and icon or emoji, shown while it's held, until it's pressed again (on/off keys), or while its playback is live on Titan. Preview it in the editor with Normal / Pressed.
+- Symbol-only keys now draw the symbol bigger, centred on the key.
+
 ## 0.11.0 - 2026-10-24 - Pixel maps
 
 - **Pixel maps:** pixel and zone modes now show the fixture's face with every cell coloured and numbered, laid out the way the manufacturer's manual draws it. 33 fixtures so far: SkyPanels, Creamsource Vortex, Astera tubes, bars and HydraPanel, PavoTubes, amaran PT, INFINIBAR, MT Pro, GLP X4 Bar and X4 L, JDC1, B-EYE K20, MAC Aura PXL, Spiider, Maverick Storm 1 Wash and Rogue R2X Wash.
