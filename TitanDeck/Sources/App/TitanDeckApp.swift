@@ -12,6 +12,7 @@ struct TitanDeckApp: App {
                 .environmentObject(appState)
                 .preferredColorScheme(.dark)
                 .onAppear { appState.start() }
+                .onOpenURL { url in appState.receiveSharedFile(url) }
         }
         .onChange(of: scenePhase) { _, phase in
             appState.scenePhaseChanged(phase)

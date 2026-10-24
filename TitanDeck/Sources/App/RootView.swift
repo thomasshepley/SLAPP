@@ -41,6 +41,9 @@ struct RootView: View {
         .sheet(item: Binding(get: { whatsNewVersion.map(VersionID.init) }, set: { whatsNewVersion = $0?.id })) { version in
             WhatsNewView(onlyVersion: version.id)
         }
+        .sheet(isPresented: $appState.showingFileDrop) {
+            FileDropView(store: appState.fileDrop, host: appState.pcHost)
+        }
         .onChange(of: remoteDesktopEnabled) { _, enabled in
             if !enabled {
                 appState.rdp.disconnect()

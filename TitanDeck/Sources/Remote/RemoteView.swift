@@ -107,6 +107,8 @@ struct RemoteView: View {
             Button("Companion", systemImage: "lightbulb.2") { appState.mode = .companion }
             Button("Settings", systemImage: "gearshape") { appState.mode = .settings }
             Divider()
+            Button("Send Files to PC", systemImage: "paperplane.fill") { appState.showingFileDrop = true }
+            Divider()
             Button("Disconnect", systemImage: "xmark.circle", role: .destructive) { session.disconnect() }
         } label: {
             Label("Menu", systemImage: "line.3.horizontal")

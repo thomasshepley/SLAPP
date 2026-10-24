@@ -15,6 +15,8 @@ final class AppState: ObservableObject {
     }
 
     @Published var mode: Mode = .remote
+    /// The AirDrop-style "Send to PC" sheet (M16).
+    @Published var showingFileDrop = false
     @Published var titanHost: String {
         didSet {
             let host = titanHost
@@ -48,6 +50,8 @@ final class AppState: ObservableObject {
     let playbackState: PlaybackStatePoller
     /// Apple Watch GO button, iPhone side (M10).
     let watch: WatchBridge
+    /// Files queued for the PC's shared folder (M16).
+    let fileDrop: FileDropStore
     private var logSubscriptions = Set<AnyCancellable>()
     private let store: ProfileStore
 
@@ -64,6 +68,7 @@ final class AppState: ObservableObject {
         connectionLog = ConnectionLogStore()
         playbackState = PlaybackStatePoller()
         watch = WatchBridge()
+        fileDrop = FileDropStore()
         titan = TitanClient(host: host)
         let store = ProfileStore()
         self.store = store
@@ -216,6 +221,16 @@ final class AppState: ObservableObject {
     }
 
     // MARK: - Remote desktop
+
+    /// Where the file drop looks for the PC: the remote desktop address, or
+    /// the Titan address when that's blank.
+    var pcHost: String { rdpSettings.effectiveHost(titanHost: titanHost) }
+
+    /// Files shared to TitanDeck from another app ("Open in TitanDeck").
+    func receiveSharedFile(_ url: URL) {
+        fileDrop.add([url])
+        showingFileDrop = true
+    }
 
     var isRemoteConfigured: Bool {
         rdpSettings.isComplete(titanHost: titanHost)
