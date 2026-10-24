@@ -205,12 +205,10 @@ private struct SignalBars: View {
 
     private var level: Int {
         guard let dBm else { return 0 }
-        switch dBm {
-        case -55...: return 4
-        case -65 ..< -55: return 3
-        case -75 ..< -65: return 2
-        default: return 1
-        }
+        if dBm >= -55 { return 4 }
+        if dBm >= -65 { return 3 }
+        if dBm >= -75 { return 2 }
+        return 1
     }
 
     var body: some View {
