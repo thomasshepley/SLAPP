@@ -13,6 +13,7 @@ with every change that goes to `main`.
 - **Save your colours:** pick any custom colour and tap + to keep it in the palette with the built-in swatches, ready for every key. Long-press one of yours to remove it.
 - **A second look when pressed:** give a key a different colour, label and icon or emoji, shown while it's held, until it's pressed again (on/off keys), or while its playback is live on Titan. Preview it in the editor with Normal / Pressed.
 - Symbol-only keys now draw the symbol bigger, centred on the key.
+- **Fixed:** tapping anywhere in the key editor's Label box now brings up the keyboard, not just on the word "Label".
 
 ## 0.11.0 - 2026-10-24 - Pixel maps
 

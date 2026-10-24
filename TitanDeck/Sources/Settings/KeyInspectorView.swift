@@ -10,6 +10,9 @@ struct KeyInspectorView: View {
     @State private var key: KeyDefinition
     @State private var draft: ActionDraft
     @State private var previewPressed = false
+    @FocusState private var focusedField: Field?
+
+    private enum Field { case label, pressedLabel }
     private let isNew: Bool
     private let pageCount: Int
     private let onSave: (KeyDefinition) -> Void
@@ -63,6 +66,8 @@ struct KeyInspectorView: View {
                 Section {
                     TextField("Label", text: $key.label, axis: .vertical)
                         .lineLimit(1...3)
+                        .focused($focusedField, equals: .label)
+                        .wholeRowTapFocuses { focusedField = .label }
                 } header: {
                     Text("Label")
                 } footer: {
@@ -162,6 +167,8 @@ struct KeyInspectorView: View {
                 SwatchGrid(hex: pressedColour)
                 TextField("Label (blank keeps the normal one)", text: pressedLabel, axis: .vertical)
                     .lineLimit(1...3)
+                    .focused($focusedField, equals: .pressedLabel)
+                    .wholeRowTapFocuses { focusedField = .pressedLabel }
                 IconFields(sfSymbol: pressedBinding(\.sfSymbol), emoji: pressedBinding(\.emoji), emptyTitle: "Same")
             }
         } header: {
@@ -434,5 +441,19 @@ private struct IconFields: View {
 
     private func text(_ value: Binding<String?>) -> Binding<String> {
         Binding(get: { value.wrappedValue ?? "" }, set: { value.wrappedValue = $0 })
+    }
+}
+
+private extension View {
+    /// A multi-line TextField in a Form only takes taps on its text, so an
+    /// empty one is hard to hit. This makes the whole row bring up the keyboard.
+    func wholeRowTapFocuses(_ focus: @escaping () -> Void) -> some View {
+        frame(maxWidth: .infinity, minHeight: 36, alignment: .leading)
+            // Behind the field, so taps on the text still place the cursor.
+            .background {
+                Color.clear
+                    .contentShape(.rect)
+                    .onTapGesture(perform: focus)
+            }
     }
 }
