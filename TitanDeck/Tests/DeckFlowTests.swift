@@ -89,3 +89,43 @@ final class DeckLabelTests: XCTestCase {
         XCTAssertTrue(DeckProfile.starting(from: nil).isBuiltInDefault)
     }
 }
+
+final class DeckColourTests: XCTestCase {
+    func testColourTemperatureLooksRight() {
+        XCTAssertEqual(DeckFlow.colourHex(kelvin: 6600), "#FFFFFF", "6600K is the neutral point of the fit")
+        let warm = HexColor(DeckFlow.colourHex(kelvin: 2700))!
+        XCTAssertEqual(warm.red, 1)
+        XCTAssertLessThan(warm.blue, 0.6, "tungsten is orange")
+        let cool = HexColor(DeckFlow.colourHex(kelvin: 10000))!
+        XCTAssertEqual(cool.blue, 1)
+        XCTAssertLessThan(cool.red, 0.85, "10000K is blue-ish")
+    }
+
+    func testPaleKeysGetDarkText() {
+        XCTAssertTrue(DeckFlow.wantsDarkText(on: DeckFlow.colourHex(kelvin: 4500)))
+        XCTAssertFalse(DeckFlow.wantsDarkText(on: "#1E7D32"))
+        XCTAssertFalse(DeckFlow.wantsDarkText(on: "#000000"))
+        XCTAssertFalse(DeckFlow.wantsDarkText(on: "junk"))
+    }
+
+    func testSelectionOffersCCTAndColourPageComesBack() throws {
+        let profile = DeckProfile.makeDefault()
+        let selection = DeckFlow.selectionPage(profile: profile, returnTo: 0)
+        let cct = try XCTUnwrap(selection.keys.first { $0.action == .colourPresets })
+        XCTAssertEqual(cct.index, 6, "the first free spot on the Intensity page")
+
+        let colour = DeckFlow.colourPage(profile: profile, returnTo: 0)
+        XCTAssertEqual(colour.key(at: 0)?.action, .colourTemperature(kelvin: 2700))
+        XCTAssertEqual(colour.key(at: 8)?.action, .colourTemperature(kelvin: 10000))
+        XCTAssertEqual(colour.key(at: 13)?.action, .switchPage(0))
+        XCTAssertEqual(DeckFlow.cctKeys(keyCount: 6).count, 5, "leaves room for the way back")
+    }
+
+    func testColourActionsDraftAndDescribe() {
+        XCTAssertEqual(ActionDraft(action: .colourTemperature(kelvin: 5600)).action, .colourTemperature(kelvin: 5600))
+        XCTAssertEqual(ActionDraft(action: .colourPresets).action, .colourPresets)
+        XCTAssertFalse(TitanAction.colourPresets.isRemote)
+        XCTAssertTrue(TitanAction.colourTemperature(kelvin: 3200).isRemote)
+        XCTAssertNil(TitanEndpoints.url(for: .colourTemperature(kelvin: 3200), host: "10.0.0.1"))
+    }
+}

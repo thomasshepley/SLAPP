@@ -54,6 +54,7 @@ final class DeckSessionController: ObservableObject {
         switch flowOverlay {
         case .menu?: return DeckFlow.menuPage(profile: profile)
         case .selection(let returnTo)?: return DeckFlow.selectionPage(profile: profile, returnTo: returnTo)
+        case .colour(let returnTo)?: return DeckFlow.colourPage(profile: profile, returnTo: returnTo)
         case nil: return profile.pages.indices.contains(currentPageIndex) ? profile.pages[currentPageIndex] : nil
         }
     }
@@ -197,6 +198,13 @@ final class DeckSessionController: ObservableObject {
             showPage((currentPageIndex - 1 + count) % count)
         case .openSettings:
             onOpenSettings?()
+        case .colourPresets:
+            // Back to wherever the selection started, or this page.
+            if case .selection(let returnTo)? = flowOverlay {
+                show(.colour(returnTo: returnTo))
+            } else {
+                show(.colour(returnTo: currentPageIndex))
+            }
         default:
             setOverlay(.pressed, at: index)
             onAction?(action, index)

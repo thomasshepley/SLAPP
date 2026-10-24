@@ -50,9 +50,9 @@ enum TitanEndpoints {
                 ("timeDelta", "1"),
                 ("shiftEnabled", "false"),
             ])
-        case .keypadEnter, .keypadClear:
+        case .keypadEnter, .keypadClear, .colourTemperature:
             return nil   // several requests - TitanClient runs them
-        case .switchPage, .openSettings, .nextPage, .previousPage, .mainMenu:
+        case .switchPage, .openSettings, .nextPage, .previousPage, .mainMenu, .colourPresets:
             return nil
         }
     }

@@ -52,12 +52,12 @@ extension DeckProfile {
 
     /// The shipped profile, laid out for a 15-key Stream Deck in portrait:
     ///
-    ///     Keypad              Intensity           Playbacks
-    ///     1     2     3       +1%  +5%  +10%      GO 1  GO 2  GO 3
-    ///     4     5     6       -1%  -5%  -10%      GO 4  GO 5  GO 6
-    ///     7     8     9       .    .    .         REL 1 REL 2 REL 3
-    ///     Exit  0     Enter   .    .    .         REL 4 REL 5 REL 6
-    ///     Clear Menu  @       Clear Menu .        .     Menu  .
+    ///     Keypad              Intensity           Colour              Playbacks
+    ///     1     2     3       +1%  +5%  +10%      2700K 3200K 4000K   GO 1  GO 2  GO 3
+    ///     4     5     6       -1%  -5%  -10%      4500K 5600K 6000K   GO 4  GO 5  GO 6
+    ///     7     8     9       .    .    .         6500K 7500K 10000K  REL 1 REL 2 REL 3
+    ///     Exit  0     Enter   .    .    .         .     .     .       REL 4 REL 5 REL 6
+    ///     Clear Menu  @       Clear Menu .        Clear Menu  .       .     Menu  .
     ///
     /// Menu (hold 2 s) opens the main menu of layouts. On any other deck size
     /// the same keys are placed in order with Menu on the last key.
@@ -115,6 +115,16 @@ extension DeckProfile {
             [nil, nil, nil],
             [clear, menu, nil],
         ])
+        func cct(_ kelvin: Int) -> KeyDefinition {
+            key("\(kelvin)K", DeckFlow.colourHex(kelvin: kelvin), .colourTemperature(kelvin: kelvin))
+        }
+        let colour = page("Colour", [
+            [cct(2700), cct(3200), cct(4000)],
+            [cct(4500), cct(5600), cct(6000)],
+            [cct(6500), cct(7500), cct(10000)],
+            [nil, nil, nil],
+            [clear, menu, nil],
+        ])
         let playbacks = page("Playbacks", [
             (1...3).map { key("GO\n\($0)", goColor, .playbackGo(userNumber: $0)) },
             (4...6).map { key("GO\n\($0)", goColor, .playbackGo(userNumber: $0)) },
@@ -123,7 +133,7 @@ extension DeckProfile {
             [nil, menu, nil],
         ])
 
-        return DeckProfile(name: "Default", keyCount: count, pages: [keypad, intensity, playbacks],
+        return DeckProfile(name: "Default", keyCount: count, pages: [keypad, intensity, colour, playbacks],
                            isBuiltInDefault: true, orientation: orientation)
     }
 

@@ -36,11 +36,17 @@ enum TitanAction: Codable, Hashable {
     case adjustIntensity(percent: Double)
     /// Opens the main menu of deck layouts - only after a 2 s hold. Local.
     case mainMenu
+    /// Sets the selected fixtures' colour temperature by recalling Titan's
+    /// colour palette named for it ("3200K"), so each fixture type uses its
+    /// own CCT channel.
+    case colourTemperature(kelvin: Int)
+    /// Shows the colour temperature presets on the deck. Local.
+    case colourPresets
 
     /// True for actions that go over the network to Titan.
     var isRemote: Bool {
         switch self {
-        case .switchPage, .openSettings, .nextPage, .previousPage, .mainMenu: return false
+        case .switchPage, .openSettings, .nextPage, .previousPage, .mainMenu, .colourPresets: return false
         default: return true
         }
     }
@@ -72,6 +78,8 @@ enum TitanAction: Codable, Hashable {
         case .adjustIntensity(let p): return "Intensity \(p >= 0 ? "+" : "")\(TitanEndpoints.format(number: p))%"
         case .mainMenu: return "Main menu"
         case .previousPage: return "Previous deck page"
+        case .colourTemperature(let k): return "Colour temp \(k)K"
+        case .colourPresets: return "Colour temperature presets"
         }
     }
 }

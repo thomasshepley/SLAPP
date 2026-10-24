@@ -13,6 +13,8 @@ enum DeckFlow {
         /// Fixtures were selected on the keypad ("102 Enter"): the intensity
         /// keys, with a way back to `returnTo`.
         case selection(returnTo: Int)
+        /// The colour temperature presets, from a selection or a CCT key.
+        case colour(returnTo: Int)
     }
 
     // MARK: Keypad
@@ -45,16 +47,75 @@ enum DeckFlow {
     // MARK: Pages
 
     /// Shown after a selection: the profile's Intensity page (or, failing
-    /// that, the standard nudges) with Return to Keypad on its Menu key.
+    /// that, the standard nudges) with Return to Keypad on its Menu key, and
+    /// a CCT key in the first free spot for the colour temperature presets.
     static func selectionPage(profile: DeckProfile, returnTo: Int) -> DeckPage {
-        let source = profile.pages.first { $0.name.caseInsensitiveCompare("Intensity") == .orderedSame }
+        let source = page(named: "Intensity", in: profile)
             ?? profile.pages.first { page in page.keys.contains { $0.action.map(isIntensity) ?? false } }
-        var keys = source?.keys ?? defaultIntensityKeys(keyCount: profile.keyCount)
-        let returnIndex = keys.first { $0.action == .mainMenu }?.index ?? max(profile.keyCount - 1, 0)
+        var keys = withReturnKey(source?.keys ?? defaultIntensityKeys(keyCount: profile.keyCount),
+                                 keyCount: profile.keyCount, returnTo: returnTo)
+        let used = Set(keys.map(\.index))
+        if !keys.contains(where: { $0.action == .colourPresets }),
+           let free = (0 ..< profile.keyCount).first(where: { !used.contains($0) }) {
+            keys.append(KeyDefinition(index: free, label: "CCT", colorHex: colourHex(kelvin: 4500),
+                                      sfSymbol: "thermometer.sun.fill", action: .colourPresets))
+        }
+        return DeckPage(name: "Selection", keys: keys.sorted { $0.index < $1.index })
+    }
+
+    /// The colour temperature presets: the profile's Colour page, or the
+    /// standard presets, with Return to Keypad on the Menu key.
+    static func colourPage(profile: DeckProfile, returnTo: Int) -> DeckPage {
+        let source = page(named: "Colour", in: profile)
+            ?? profile.pages.first { page in page.keys.contains { $0.action.map(isColourTemperature) ?? false } }
+        let keys = withReturnKey(source?.keys ?? cctKeys(keyCount: profile.keyCount),
+                                 keyCount: profile.keyCount, returnTo: returnTo)
+        return DeckPage(name: "Colour", keys: keys.sorted { $0.index < $1.index })
+    }
+
+    /// Colour temperatures offered to begin with.
+    static let cctPresets = [2700, 3200, 4000, 4500, 5600, 6000, 6500, 7500, 10000]
+
+    /// One key per preset, in its own colour.
+    static func cctKeys(keyCount: Int) -> [KeyDefinition] {
+        cctPresets.prefix(max(keyCount - 1, 0)).enumerated().map { index, kelvin in
+            KeyDefinition(index: index, label: "\(kelvin)K", colorHex: colourHex(kelvin: kelvin),
+                          action: .colourTemperature(kelvin: kelvin))
+        }
+    }
+
+    /// Roughly how a light of that colour temperature looks, as "#RRGGBB"
+    /// (Tanner Helland's fit to the blackbody curve, good from 1000-40000 K).
+    static func colourHex(kelvin: Int) -> String {
+        let t = Double(min(max(kelvin, 1000), 40000)) / 100
+        func clamp(_ v: Double) -> Int { Int(min(max(v, 0), 255).rounded()) }
+        let red = t <= 66 ? 255 : clamp(329.698727446 * pow(t - 60, -0.1332047592))
+        let green = t <= 66 ? clamp(99.4708025861 * log(t) - 161.1195681661)
+                            : clamp(288.1221695283 * pow(t - 60, -0.0755148492))
+        let blue = t >= 66 ? 255 : t <= 19 ? 0 : clamp(138.5177312231 * log(t - 10) - 305.0447927307)
+        return String(format: "#%02X%02X%02X", red, green, blue)
+    }
+
+    /// Pale keys (a 3200K preset, a yellow swatch) get black text so it stays
+    /// readable; everything else keeps white.
+    static func wantsDarkText(on hex: String) -> Bool {
+        guard let colour = HexColor(hex) else { return false }
+        let luminance = 0.2126 * colour.red + 0.7152 * colour.green + 0.0722 * colour.blue
+        return luminance > 0.6
+    }
+
+    private static func page(named name: String, in profile: DeckProfile) -> DeckPage? {
+        profile.pages.first { $0.name.caseInsensitiveCompare(name) == .orderedSame }
+    }
+
+    /// Puts Return to Keypad where the Menu key was (or on the last key).
+    private static func withReturnKey(_ source: [KeyDefinition], keyCount: Int, returnTo: Int) -> [KeyDefinition] {
+        var keys = source
+        let returnIndex = keys.first { $0.action == .mainMenu }?.index ?? max(keyCount - 1, 0)
         keys.removeAll { $0.index == returnIndex }
         keys.append(KeyDefinition(index: returnIndex, label: "Return to Keypad", colorHex: DeckProfile.pageColor,
                                   sfSymbol: "circle.grid.3x3.fill", action: .switchPage(returnTo)))
-        return DeckPage(name: "Selection", keys: keys.sorted { $0.index < $1.index })
+        return keys
     }
 
     /// The main menu: one key per page, so new pages appear by themselves.
@@ -101,6 +162,11 @@ enum DeckFlow {
 
     private static func isIntensity(_ action: TitanAction) -> Bool {
         if case .adjustIntensity = action { return true }
+        return false
+    }
+
+    private static func isColourTemperature(_ action: TitanAction) -> Bool {
+        if case .colourTemperature = action { return true }
         return false
     }
 

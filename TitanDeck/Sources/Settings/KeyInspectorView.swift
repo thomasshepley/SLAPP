@@ -236,8 +236,16 @@ struct KeyInspectorView: View {
             Stepper(value: $draft.percent, in: -100...100, step: 1) {
                 LabeledContent("Change", value: "\(draft.percent > 0 ? "+" : "")\(Int(draft.percent))%")
             }
+        case .colourTemperature:
+            Picker("Preset", selection: $draft.kelvin) {
+                ForEach(DeckFlow.cctPresets, id: \.self) { Text("\($0)K").tag($0) }
+                if !DeckFlow.cctPresets.contains(draft.kelvin) { Text("\(draft.kelvin)K").tag(draft.kelvin) }
+            }
+            Stepper(value: $draft.kelvin, in: 1000...20000, step: 100) {
+                LabeledContent("Kelvin", value: "\(draft.kelvin)K")
+            }
         case .none, .nextPage, .previousPage, .openSettings, .keypadAt, .keypadEnter, .keypadExit,
-             .keypadClear, .mainMenu:
+             .keypadClear, .mainMenu, .colourPresets:
             EmptyView()
         }
     }
@@ -255,6 +263,10 @@ struct KeyInspectorView: View {
             Text("Works on Titan's command line, like the console keypad.")
         case .intensity:
             Text("Nudges the selected fixtures' intensity. Negative numbers bring it down.")
+        case .colourTemperature:
+            Text("Recalls the colour palette in Titan named \(draft.kelvin)K on the selected fixtures. Make global colour palettes named 2700K, 3200K... once and every fixture type uses its own CCT channel.")
+        case .colourPresets:
+            Text("Shows the colour temperature keys, with a way back to the keypad.")
         case .mainMenu:
             Text("Shows the page's name. Tap for the next page; hold for 2 seconds for the menu of all pages.")
         default:

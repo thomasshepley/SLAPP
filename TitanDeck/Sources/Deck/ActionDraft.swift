@@ -23,6 +23,8 @@ struct ActionDraft: Equatable {
         case keypadClear
         case intensity
         case mainMenu
+        case colourTemperature
+        case colourPresets
 
         var id: String { rawValue }
 
@@ -45,6 +47,8 @@ struct ActionDraft: Equatable {
             case .keypadClear: return "Keypad Clear"
             case .intensity: return "Intensity +/- %"
             case .mainMenu: return "Page name: tap for next page"
+            case .colourTemperature: return "Colour temperature"
+            case .colourPresets: return "Show colour temperature presets"
             }
         }
     }
@@ -57,6 +61,7 @@ struct ActionDraft: Equatable {
     var rawPath = ""
     var digit = 0
     var percent = 5.0
+    var kelvin = 3200
 
     init(action: TitanAction?) {
         switch action {
@@ -77,6 +82,8 @@ struct ActionDraft: Equatable {
         case .keypadClear: kind = .keypadClear
         case .adjustIntensity(let p): kind = .intensity; percent = p
         case .mainMenu: kind = .mainMenu
+        case .colourTemperature(let k): kind = .colourTemperature; kelvin = k
+        case .colourPresets: kind = .colourPresets
         }
     }
 
@@ -106,6 +113,8 @@ struct ActionDraft: Equatable {
         case .keypadClear: return .keypadClear
         case .intensity: return percent == 0 ? nil : .adjustIntensity(percent: min(max(percent, -100), 100))
         case .mainMenu: return .mainMenu
+        case .colourTemperature: return .colourTemperature(kelvin: min(max(kelvin, 1000), 20000))
+        case .colourPresets: return .colourPresets
         }
     }
 }
