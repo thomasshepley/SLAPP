@@ -96,6 +96,72 @@ enum ColourMaths {
                            ccEighths: Int((abs(duv) / 0.0007).rounded()))
     }
 
+    /// What to do about a green or magenta tint: the gel that cancels it.
+    struct TintCorrection: Equatable {
+        /// How the light looks: green, magenta or neutral.
+        let looks: TintDirection
+        /// "1/8", "1/4", "1/2", "Full" - nil when neutral.
+        let strength: String?
+        /// "Minus Green" for a green light, "Plus Green" for a magenta one.
+        let gelName: String?
+        /// The LEE number for that strength, e.g. "249".
+        let leeNumber: String?
+        /// More than a full gel's worth.
+        let beyondFull: Bool
+    }
+
+    /// LEE's green/magenta correction gels: (eighths, strength, minus green, plus green).
+    private static let tintGels: [(eighths: Int, strength: String, minus: String, plus: String)] = [
+        (1, "1/8", "279", "278"),
+        (2, "1/4", "249", "246"),
+        (4, "1/2", "248", "245"),
+        (8, "Full", "247", "244"),
+    ]
+
+    /// The nearest standard gel to cancel a Duv reading (positive Duv = green).
+    static func tintCorrection(duv: Double) -> TintCorrection {
+        let reading = tint(duv: duv)
+        guard reading.direction != .neutral, reading.ccEighths > 0 else {
+            return TintCorrection(looks: .neutral, strength: nil, gelName: nil, leeNumber: nil, beyondFull: false)
+        }
+        let gel = tintGels.min { abs($0.eighths - reading.ccEighths) < abs($1.eighths - reading.ccEighths) }!
+        let green = reading.direction == .green
+        return TintCorrection(looks: reading.direction, strength: gel.strength,
+                              gelName: green ? "Minus Green" : "Plus Green",
+                              leeNumber: green ? gel.minus : gel.plus,
+                              beyondFull: reading.ccEighths > 10)
+    }
+
+    // MARK: Hex
+
+    /// "#1AB39E".
+    static func hex(_ rgb: RGB) -> String {
+        func two(_ v: Int) -> String {
+            let digits = String(min(255, max(0, v)), radix: 16, uppercase: true)
+            return digits.count == 1 ? "0" + digits : digits
+        }
+        return "#" + two(rgb.r) + two(rgb.g) + two(rgb.b)
+    }
+
+    /// Reads "#1AB39E", "1ab39e" or "#1AB" (short form).
+    static func rgb(hex text: String) -> RGB? {
+        var digits = text.trimmingCharacters(in: .whitespaces).uppercased()
+        if digits.hasPrefix("#") { digits.removeFirst() }
+        if digits.count == 3 { digits = digits.map { "\($0)\($0)" }.joined() }
+        guard digits.count == 6, let value = Int(digits, radix: 16) else { return nil }
+        return RGB(r: (value >> 16) & 0xFF, g: (value >> 8) & 0xFF, b: value & 0xFF)
+    }
+
+    /// True when an HSI colour can't be made at that intensity without
+    /// clipping a channel (so the RGB shown is the nearest it gets).
+    static func isClipped(_ hsi: HSI) -> Bool {
+        guard hsi.i > 0.05 else { return false }   // too dark for 8-bit RGB to judge
+        let back = self.hsi(from: rgb(from: hsi))
+        let hueGap = abs(back.h - hsi.h).truncatingRemainder(dividingBy: 360)
+        return abs(back.i - hsi.i) > 0.02 || abs(back.s - hsi.s) > 0.03
+            || (hsi.s > 0.05 && min(hueGap, 360 - hueGap) > 3)
+    }
+
     // MARK: CT gel suggestion
 
     enum GelFamily: String {

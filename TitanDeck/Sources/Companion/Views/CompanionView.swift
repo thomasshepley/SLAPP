@@ -18,7 +18,7 @@ struct CompanionView: View {
                     sidebarRow(.fixtures, detail: "\(library.fixtures.count)")
                 }
                 Section("Tools") {
-                    ForEach([CompanionSection.beam, .stops, .power, .colour, .camera, .sun]) { sidebarRow($0) }
+                    ForEach([CompanionSection.beam, .stops, .power, .colour, .flicker, .sun]) { sidebarRow($0) }
                 }
                 Section {
                     sidebarRow(.settings)
@@ -75,7 +75,7 @@ struct CompanionView: View {
         case .stops: StopsToolView(library: library)
         case .power: PowerToolView(library: library)
         case .colour: ColourToolView(library: library)
-        case .camera: CameraToolView()
+        case .flicker: FlickerToolView(library: library)
         case .sun: SunToolView()
         case .settings: CompanionSettingsView()
         }
@@ -85,4 +85,5 @@ struct CompanionView: View {
 /// Loads the bundled library once, the first time the Companion opens.
 enum CompanionLibrary {
     static let shared = FixtureLibrary.bundled()
+    static let flicker = FlickerLibrary.bundled()
 }
