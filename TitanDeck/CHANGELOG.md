@@ -14,6 +14,7 @@ with every change that goes to `main`.
 - Switch modes and the map regroups: 8 zones become 4 or 2, 16 pixels become 8 or 4, just as the fixture does.
 - Fixtures with more than one set of pixels (beam and aura, plate and beam) get a switch between them.
 - Where a manual doesn't say which end cell 1 is, the map says so, so you know to check it on the rig.
+- **Fixed:** FX Library > Add > From Photos now opens the Photos picker. It did nothing before.
 
 ## 0.10.1 - 2026-10-24 - Fixture library tidy-up
 
