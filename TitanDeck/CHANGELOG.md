@@ -7,6 +7,15 @@ the GitHub Actions run that built it. The top entry is shown in the app
 so add an entry - and bump `MARKETING_VERSION` in `project.yml` to match -
 with every change that goes to `main`.
 
+## 0.7.0 - 2026-10-24 - Wi-Fi from UniFi
+
+- **New Wi-Fi tab:** your UniFi network from the console itself. It uses a local UniFi admin login, so there's no API key and no internet needed.
+- **This iPad:** which access point it's on, the channel, and its signal in dBm.
+- **Channel map** for 2.4, 5 and 6 GHz: your access points against every neighbouring network they can hear, plus the quietest channels, with DFS ones flagged.
+- **Every access point:** channel, width, transmit power, how busy each radio is, and how many clients it has. Weak clients are listed too.
+- **RF scans:** see an AP's last RF environment scan, or run a new one (with a warning, as its clients drop off while it scans).
+- Live spectral analysis still needs UniFi's own app and Ubiquiti's cloud.
+
 ## 0.4.1 - 2026-10-24 - Beam fix
 
 - Fixed a crash opening Companion > Beam & Photometry (and fixture pages with photometry): the falloff chart's log scale now has a safe range.
