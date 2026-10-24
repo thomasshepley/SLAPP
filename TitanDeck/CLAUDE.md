@@ -47,6 +47,9 @@ TitanDeck/
 │   │   ├── Calc/   Photometry, Dimming, Stops, PowerBudget, Cable, Flicker, Exposure, LetterIndex,
 │   │   │           ColourMaths, Sun - pure maths ported from lighting-companion/src/services/calc
 │   │   └── Views/  CompanionView (split view), fixture library/detail/compare, one view per tool
+│   ├── UniFi/      Wi-Fi tab (M17): UniFiModels (API shapes, channels, ChannelAdvisor - pure),
+│   │               UniFiConnection (login, cookies/CSRF, certificate trust on first use),
+│   │               UniFiStore, UniFiView, UniFiSetupView
 │   ├── FileDrop/   Send to PC (M16): FileDropStore (queue, Host or bookmarked folder),
 │   │               FileDropCopier (chunked copy, pure), FileDropView, FileDropSetupView
 │   ├── Host/       TitanDeck Host on the PC (M18): HostAPI (models + URLs, pure - mirrors
@@ -87,6 +90,7 @@ them together (e.g. `deck.onAction` -> `titan.perform`). Keep it that way.
 | M14 | Companion -> Titan: patch a show into Titan over the WebAPI (`Patch/SelectManufacturer`... `Fixtures/PatchFixturesToVacantHandles`), select / locate / highlight | Planned - DmxAssignment format and patch read-back unconfirmed |
 | M15 | Companion: plot tagging with PDFKit, GDTF import | Planned |
 | M16 | Send files to the PC, AirDrop style: a Windows shared folder connected in the Files app (iOS's own SMB client), picked once and kept as a security-scoped bookmark; Photos / Files / drag and drop / "Open in TitanDeck" from any app | Built - needs testing against the PC |
+| M17 | Wi-Fi tab from the UniFi console's local API (local admin login, no API key or internet): this iPad's AP and signal, channel map with neighbours, quietest channels, AP radios (channel, width, power, utilisation), weak clients, RF scans | Built - needs testing on the show network. Live spectral analysis stays in UniFi (it needs Ubiquiti's cloud) |
 | M18 H1 | TitanDeck Host for Windows (`TitanDeckHost/`): one install for the PC side - service, RDP checks and fixes, RDP Wrapper, pairing, files | Built - needs testing on the PC |
 | M18 H2 | TitanDeck pairs with the Host (Bonjour + 6-digit code, token in the Keychain), PC health + iPad-allowed fixes, rdpwrap.ini from the iPad, files both ways (Host first, shared folder fallback) | Built - needs testing on the PC |
 | M18 H3 | RDP quality presets (Best / Balanced / Weak signal), signal dashboard, iPad-to-PC link test | Next |

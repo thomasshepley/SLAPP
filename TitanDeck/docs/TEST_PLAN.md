@@ -221,6 +221,24 @@ each key land.
       up), and Settings shows the Host as not answering.
 - [ ] Remove the iPad in the Host window: TitanDeck notices and asks to pair again.
 
+## 6e. Wi-Fi (UniFi)
+
+- [ ] In UniFi: Settings > Admins & Users > Create New Admin, Restrict to Local
+      Access Only, role View Only (Site Admin if you want RF scans).
+- [ ] TitanDeck: Wi-Fi tab > Set Up UniFi: the console's IP, that username and
+      password. Connect: it says Connected (no internet needed).
+- [ ] The header counts your APs and Wi-Fi clients. "This iPad" shows the AP
+      you're on, its channel and your signal - walk away from it and watch.
+- [ ] Channels: each band shows our APs as blue blocks and neighbours in grey.
+      Quietest channels lists a few, with DFS marked on 5 GHz.
+- [ ] Each AP shows channel, width, utilisation and clients per radio.
+- [ ] Show Scan on an AP that's been scanned in UniFi: the per-channel chart.
+- [ ] **Not during a show:** RF Scan on a spare AP. It warns first, its clients
+      drop for a few minutes, then the chart appears.
+- [ ] Wrong password: a clear message. Change the console's certificate (or
+      point at a different console at the same address): refused until you
+      Forget the Console's Certificate.
+
 ## 7. Soak log
 
 - [ ] Settings → **Soak test log** lists the drop-out you caused in step 6,

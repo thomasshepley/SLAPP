@@ -11,6 +11,7 @@ final class AppState: ObservableObject {
         case remote
         case deck
         case companion
+        case network
         case settings
     }
 
@@ -52,6 +53,8 @@ final class AppState: ObservableObject {
     let watch: WatchBridge
     /// Files queued for the PC (M16), through the Host or the shared folder.
     let fileDrop: FileDropStore
+    /// The show Wi-Fi from the UniFi console (M17).
+    let unifi: UniFiStore
     /// TitanDeck Host on the PC: pairing, PC health, files both ways (M18).
     let host: HostStore
     /// What's typed on the deck keypad, shown under the remote desktop.
@@ -73,6 +76,7 @@ final class AppState: ObservableObject {
         playbackState = PlaybackStatePoller()
         watch = WatchBridge()
         fileDrop = FileDropStore()
+        unifi = UniFiStore()
         self.host = HostStore()
         keypad = KeypadReadoutStore()
         titan = TitanClient(host: host)
