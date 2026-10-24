@@ -7,6 +7,14 @@ the GitHub Actions run that built it. The top entry is shown in the app
 so add an entry - and bump `MARKETING_VERSION` in `project.yml` to match -
 with every change that goes to `main`.
 
+## 0.8.0 - 2026-10-24 - Gel book and FX Library
+
+- **Gels:** the full swatch books, 1,136 filters across LEE, Rosco (E-Colour+, Roscolux, Cinegel) and GAM. Search by number or name and filter by range or type.
+- **Gel details:** tap a swatch for its transmission, stops lost and mired shift, and the closest-looking gels in the other ranges.
+- **Colour converter:** now shows the nearest gels to whatever colour you dial in.
+- **FX Library:** keep your pixel-effect videos and bitmaps (fire, police, fireworks, lightning...) in one place, tagged and previewed, then send them to the PC for Prism through the file uploader.
+- **Flicker:** real refresh-rate data where manufacturers publish it (ETC, Astera, Aputure Nova, Martin, Elation, ARRI HMI ballasts), plus their "flicker-free up to" claims.
+
 ## 0.7.0 - 2026-10-24 - Wi-Fi from UniFi
 
 - **New Wi-Fi tab:** your UniFi network from the console itself. It uses a local UniFi admin login, so there's no API key and no internet needed.

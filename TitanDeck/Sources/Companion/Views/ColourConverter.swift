@@ -5,6 +5,7 @@ import SwiftUI
 /// other live. RGB is shown 0-255 (DMX), as percentages (how Titan shows
 /// colour attributes) and as hex.
 struct ColourConverterSection: View {
+    let library: FixtureLibrary
     enum Input: String, CaseIterable, Identifiable {
         case rgb = "RGB"
         case hsi = "HSI"
@@ -74,6 +75,7 @@ struct ColourConverterSection: View {
             ColorPicker(selection: pickerBinding, supportsOpacity: false) {
                 Label("Pick a colour", systemImage: "eyedropper")
             }
+            nearestGels
         } header: {
             Text("RGB and HSI")
         } footer: {
@@ -83,6 +85,31 @@ struct ColourConverterSection: View {
         }
         .onAppear { if hexText.isEmpty { hexText = ColourMaths.hex(rgb) } }
         .onChange(of: rgb) { _, newValue in if !hexFocused { hexText = ColourMaths.hex(newValue) } }
+    }
+
+    /// The gels that look most like this colour, across all ranges.
+    @ViewBuilder
+    private var nearestGels: some View {
+        let matches = library.nearestGels(to: rgb, count: 4)
+        if !matches.isEmpty {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Nearest gels").font(.subheadline.weight(.semibold))
+                HStack(spacing: 10) {
+                    ForEach(matches) { gel in
+                        VStack(alignment: .leading, spacing: 3) {
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(Color(gel: gel))
+                                .frame(height: 34)
+                                .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(.separator))
+                            Text(gel.displayNumber).font(.caption2.weight(.bold)).lineLimit(1)
+                            Text(gel.name).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+            }
+            .padding(.vertical, 2)
+        }
     }
 
     private var swatchCard: some View {

@@ -3,13 +3,15 @@ import SwiftUI
 
 /// The Companion's sections, in sidebar order.
 enum CompanionSection: String, CaseIterable, Identifiable, Hashable {
-    case fixtures, beam, stops, power, colour, flicker, sun, settings
+    case fixtures, gels, fx, beam, stops, power, colour, flicker, sun, settings
 
     var id: Self { self }
 
     var title: String {
         switch self {
         case .fixtures: return "Fixtures"
+        case .gels: return "Gels"
+        case .fx: return "FX Library"
         case .beam: return "Beam & Photometry"
         case .stops: return "Stops"
         case .power: return "Power & Cable"
@@ -23,6 +25,8 @@ enum CompanionSection: String, CaseIterable, Identifiable, Hashable {
     var symbol: String {
         switch self {
         case .fixtures: return "lightbulb.2.fill"
+        case .gels: return "swatchpalette.fill"
+        case .fx: return "film.stack.fill"
         case .beam: return "light.beacon.max.fill"
         case .stops: return "plusminus.circle.fill"
         case .power: return "bolt.fill"
@@ -36,6 +40,8 @@ enum CompanionSection: String, CaseIterable, Identifiable, Hashable {
     var tint: Color {
         switch self {
         case .fixtures: return .yellow
+        case .gels: return .purple
+        case .fx: return .orange
         case .beam: return .orange
         case .stops: return .indigo
         case .power: return .red
@@ -49,6 +55,8 @@ enum CompanionSection: String, CaseIterable, Identifiable, Hashable {
     var subtitle: String {
         switch self {
         case .fixtures: return "Specs, DMX modes and photometry"
+        case .gels: return "LEE, Rosco and GAM swatch book"
+        case .fx: return "Pixel effect clips for Prism"
         case .beam: return "Inverse square law and beam coverage"
         case .stops: return "DMX for each stop up or down"
         case .power: return "Load, distro and cable sizing"

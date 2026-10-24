@@ -43,7 +43,8 @@ TitanDeck/
 │   │               RDPSettings, RDPGeometry, CertificateTrustStore (trust on first use)
 │   │   └── Bridge/ titan_rdp.c/.h - the only code that touches FreeRDP's C API
 │   ├── Companion/  The lighting companion, rebuilt natively (M12+):
-│   │   ├── Model/  Fixture (matches the old app's JSON), FixtureLibrary, CompanionUnits
+│   │   ├── Model/  Fixture (matches the old app's JSON), FixtureLibrary, CompanionUnits,
+│   │   │           GelSearch (+ ColourDistance), FXLibrary (FX index, pure)
 │   │   ├── Calc/   Photometry, Dimming, Stops, PowerBudget, Cable, Flicker, Exposure, LetterIndex,
 │   │   │           ColourMaths, Sun - pure maths ported from lighting-companion/src/services/calc
 │   │   └── Views/  CompanionView (split view), fixture library/detail/compare, one view per tool
@@ -61,7 +62,8 @@ TitanDeck/
 ├── Vendor/         downloaded FreeRDPKit (gitignored) - never edit or commit
 ├── Watch/          watchOS app (GoView, WatchModel). Shares Titan/ + WatchCommand with the phone app
 ├── Tests/          XCTest unit tests (endpoints, profiles, editing, store, client)
-├── Resources/Companion/ fixtures.json (221 fixtures) + gels.json, exported from the old app
+├── Resources/Companion/ fixtures.json (221 fixtures, from the old app), gels.json (LEE/Rosco/GAM,
+│                   built by Tools/import_gels.py), flicker.json (researched refresh rates by fixture id)
 ├── Tools/          fake_titan.py - pretend Titan WebAPI for testing without an AvoKey;
 │                   export_companion_data.ts - regenerates Resources/Companion
 └── docs/           TESTFLIGHT_SETUP.md, TEST_PLAN.md

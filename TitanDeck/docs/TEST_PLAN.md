@@ -180,6 +180,15 @@ each key land.
 - [ ] Sun: tap the map to move the pin; search a place; the location button.
       Scrub the time slider: the sun line on the map swings round. Sunrise /
       Golden / Noon / Sunset buttons jump the slider.
+- [ ] Gels: the swatch book scrolls smoothly with all ranges. Search "201",
+      filter Roscolux, filter CTO. Tap a colour: transmission, stops, "Looks
+      like" from other ranges. The colour converter shows the nearest gels.
+- [ ] FX Library: add a video and a picture from Photos, and one from Files.
+      Each gets a thumbnail, size/fps/length and a guessed category. Open one:
+      it plays; rename it, change the category. Select two, Send: the Send to
+      PC sheet opens with both queued.
+- [ ] Flicker: pick an ETC Source Four LED Series 2: refresh setting choices
+      appear. Pick an ARRI SkyPanel: the note says high speed mode.
 - [ ] Units & Mains: switch to imperial; distances show in ft and lux in fc.
 - [ ] iPhone: no Remote tab and it opens on Companion. Settings → Remote desktop
       → "Show the Remote tab" brings it back.

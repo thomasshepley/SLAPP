@@ -166,16 +166,69 @@ struct ZoomRange: Codable, Hashable {
 struct Gel: Codable, Hashable, Identifiable {
     let id: String
     var manufacturer: String
+    /// "LEE", "E-Colour+", "Roscolux", "Cinegel", "GamColor".
+    var range: String?
     var number: String
     var name: String
+    var category: Category?
     var description: String?
+    /// Light let through, percent (under tungsten for LEE).
+    var transmission: Double?
+    var transmissionDaylight: Double?
     /// Positive warms (CTO), negative cools (CTB). Nil for non-CT gels.
     var miredShift: Double?
+    /// Approximate swatch colour, as the manufacturer shows it.
     var swatchRgb: SwatchRGB
+    var source: String?
 
     struct SwatchRGB: Codable, Hashable {
         var r: Int
         var g: Int
         var b: Int
     }
+
+    enum Category: String, Codable, CaseIterable, Identifiable {
+        case colour
+        case cto
+        case ctb
+        case plusGreen
+        case minusGreen
+        case nd
+        case diffusion
+        case otherCorrection = "other correction"
+
+        var id: Self { self }
+
+        init(from decoder: Decoder) throws {
+            let raw = try decoder.singleValueContainer().decode(String.self)
+            self = Category(rawValue: raw) ?? .otherCorrection
+        }
+
+        var title: String {
+            switch self {
+            case .colour: "Colours"
+            case .cto: "CTO (warming)"
+            case .ctb: "CTB (cooling)"
+            case .plusGreen: "Plus Green"
+            case .minusGreen: "Minus Green"
+            case .nd: "ND"
+            case .diffusion: "Diffusion"
+            case .otherCorrection: "Other correction"
+            }
+        }
+    }
+
+    /// "LEE 201", "Rosco E-Colour+ E201".
+    var displayNumber: String {
+        if manufacturer == "Lee" { return "LEE \(number)" }
+        return "\(range ?? manufacturer) \(number)"
+    }
+
+    /// Stops of light lost, from transmission.
+    var stopLoss: Double? {
+        guard let transmission, transmission > 0 else { return nil }
+        return log2(100 / transmission)
+    }
+
+    var rgb: RGB { RGB(r: swatchRgb.r, g: swatchRgb.g, b: swatchRgb.b) }
 }
