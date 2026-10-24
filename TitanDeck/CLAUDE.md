@@ -187,6 +187,15 @@ key images. Never index hardware keys with profile indices directly.
   same network answers every call TitanDeck makes and prints them. Add new
   actions to it when you add them to `TitanEndpoints`.
 
+- **Versions and changelog:** `CHANGELOG.md` is the release notes. Every change
+  that goes to `main` adds an entry at the top (`## 0.MINOR.PATCH - YYYY-MM-DD -
+  Title`, then `- ` bullets, plain enough for the TestFlight app) and bumps
+  `MARKETING_VERSION` in `project.yml` to match (`ChangelogTests` fails
+  otherwise). MINOR for features, PATCH for fixes; 1.0 when it's show-ready. The
+  build number is the CI run number. The app shows the notes (Settings > About >
+  What's New, and once after an update) and the TestFlight job copies the top
+  entry into "What to Test" (`Tools/testflight_notes.py`).
+
 - Unit tests: run the `TitanDeck` scheme's tests (Cmd-U) on an iPad simulator.
 - GitHub Actions (`.github/workflows/titandeck.yml`) regenerates the project,
   builds and runs the tests on every push touching `TitanDeck/`. Pushes to `main`

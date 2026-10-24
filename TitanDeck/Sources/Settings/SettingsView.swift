@@ -8,6 +8,7 @@ import StreamDeckSimulator
 /// log. The deck editor (DeckEditorView / KeyInspectorView) arrives in M4.
 struct SettingsView: View {
     @EnvironmentObject private var appState: AppState
+    @State private var showingWhatsNew = false
 
     var body: some View {
         NavigationStack {
@@ -92,7 +93,9 @@ struct SettingsView: View {
     private var aboutSection: some View {
         Section("About") {
             LabeledContent("Version", value: Bundle.main.versionString)
+            Button("What's New", systemImage: "sparkles") { showingWhatsNew = true }
         }
+        .sheet(isPresented: $showingWhatsNew) { WhatsNewView() }
     }
 }
 

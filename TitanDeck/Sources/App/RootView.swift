@@ -12,6 +12,9 @@ struct RootView: View {
     // width but is still a phone, where remote desktop is opt-in.
     @AppStorage(SettingsKeys.remoteDesktopEnabled)
     private var remoteDesktopEnabled = UIDevice.current.userInterfaceIdiom != .phone
+    /// The version whose What's New was last shown, so it pops up once per update.
+    @AppStorage("whatsNew.lastShownVersion") private var lastShownVersion = ""
+    @State private var whatsNewVersion: String?
 
     var body: some View {
         TabView(selection: $appState.mode) {
@@ -34,8 +37,14 @@ struct RootView: View {
                 .tag(AppState.Mode.settings)
         }
         .onAppear(perform: pickStartingTab)
+<<<<<<< HEAD
         .sheet(isPresented: $appState.showingFileDrop) {
             FileDropView(store: appState.fileDrop, host: appState.pcHost)
+=======
+        .onAppear(perform: showWhatsNewAfterUpdate)
+        .sheet(item: Binding(get: { whatsNewVersion.map(VersionID.init) }, set: { whatsNewVersion = $0?.id })) { version in
+            WhatsNewView(onlyVersion: version.id)
+>>>>>>> claude/titandeck-m12
         }
         .onChange(of: remoteDesktopEnabled) { _, enabled in
             if !enabled {
@@ -49,6 +58,19 @@ struct RootView: View {
         } message: {
             Text("Stream Deck keys only work while TitanDeck is on screen. Check the deck is responding before carrying on.")
         }
+    }
+
+    private func showWhatsNewAfterUpdate() {
+        let current = Bundle.main.shortVersion
+        guard current != lastShownVersion else { return }
+        lastShownVersion = current
+        if Changelog.bundled().entry(for: current) != nil {
+            whatsNewVersion = current
+        }
+    }
+
+    private struct VersionID: Identifiable {
+        let id: String
     }
 
     private func pickStartingTab() {
