@@ -2,10 +2,11 @@
 import Foundation
 import Network
 
-/// Sends files to a shared folder on the Titan PC. The folder is a Windows
-/// share connected in the Files app (Connect to Server, smb://<PC>), picked
-/// once in TitanDeck and remembered as a security-scoped bookmark - so iOS's
-/// own SMB client does the networking.
+/// Sends files to the Titan PC: through TitanDeck Host when it's paired and
+/// answering (into Public Documents\TitanDeck\To PC), otherwise into a shared
+/// folder. The folder is a Windows share connected in the Files app (Connect
+/// to Server, smb://<PC>), picked once in TitanDeck and remembered as a
+/// security-scoped bookmark - so iOS's own SMB client does the networking.
 @MainActor
 final class FileDropStore: ObservableObject {
     struct Item: Identifiable, Equatable {
@@ -36,6 +37,8 @@ final class FileDropStore: ObservableObject {
     @Published private(set) var folderName: String?
     @Published private(set) var isSending = false
     @Published private(set) var reachability: Reachability = .unknown
+    /// How the last send went: "TitanDeck Host" or the folder's name.
+    @Published private(set) var lastRoute: String?
     @Published var lastError: String?
 
     private let defaults: UserDefaults
@@ -123,39 +126,74 @@ final class FileDropStore: ObservableObject {
 
     // MARK: - Sending
 
-    /// Sends everything waiting (or failed) to the PC folder, one file at a time.
-    func send() async {
+    /// Sends everything waiting (or failed) to the PC, one file at a time:
+    /// through `host` when given, falling back to the shared folder if the
+    /// Host stops answering part way.
+    func send(via host: HostClient? = nil) async {
         guard !isSending else { return }
-        guard let folder = resolveFolder() else {
-            lastError = "Choose the PC's shared folder first."
+        let folder = resolveFolder()
+        guard host != nil || folder != nil else {
+            lastError = "Pair with TitanDeck Host in Settings, or set up a shared folder."
             return
         }
         isSending = true
         lastError = nil
         defer { isSending = false }
 
-        let scoped = folder.startAccessingSecurityScopedResource()
-        defer { if scoped { folder.stopAccessingSecurityScopedResource() } }
+        let scoped = folder?.startAccessingSecurityScopedResource() ?? false
+        defer { if scoped { folder?.stopAccessingSecurityScopedResource() } }
 
+        var host = host
         for id in items.filter({ $0.state == .waiting || isFailed($0) }).map(\.id) {
             guard let source = items.first(where: { $0.id == id })?.url else { continue }
             update(id) { $0.state = .sending; $0.progress = 0 }
-            let result: Result<String, Error> = await Task.detached(priority: .userInitiated) {
-                Result {
-                    try FileDropCopier.copy(source, into: folder) { fraction in
-                        Task { @MainActor [weak self] in self?.update(id) { $0.progress = fraction } }
-                    }
+            var result: Result<String, Error>
+            if let client = host {
+                result = await upload(source, id: id, via: client)
+                if case .failure(let error) = result, let folder, case HostError.unreachable = error {
+                    Log.titan("File drop: Host stopped answering, using the shared folder")
+                    host = nil
+                    update(id) { $0.progress = 0 }
+                    result = await copy(source, id: id, into: folder)
                 }
-            }.value
+            } else if let folder {
+                result = await copy(source, id: id, into: folder)
+            } else {
+                result = .failure(FileDropCopier.Failure(message: "TitanDeck Host stopped answering."))
+            }
             switch result {
             case .success(let savedAs):
                 update(id) { $0.state = .sent(savedAs); $0.progress = 1 }
             case .failure(let error):
                 update(id) { $0.state = .failed(error.localizedDescription) }
-                lastError = "Some files didn't send. Is the PC on and the folder still connected in Files?"
+                lastError = host != nil
+                    ? "Some files didn't send. Is TitanDeck Host running on the PC?"
+                    : "Some files didn't send. Is the PC on and the folder still connected in Files?"
             }
         }
-        Log.titan("File drop: sent \(items.filter(isSent).count) file(s) to \(folderName ?? "PC")")
+        lastRoute = host != nil ? "TitanDeck Host" : folderName
+        Log.titan("File drop: sent \(items.filter(isSent).count) file(s) via \(lastRoute ?? "PC")")
+    }
+
+    private func upload(_ source: URL, id: UUID, via client: HostClient) async -> Result<String, Error> {
+        do {
+            let result = try await client.upload(source) { fraction in
+                Task { @MainActor [weak self] in self?.update(id) { $0.progress = fraction } }
+            }
+            return .success(result.savedAs)
+        } catch {
+            return .failure(error)
+        }
+    }
+
+    private func copy(_ source: URL, id: UUID, into folder: URL) async -> Result<String, Error> {
+        await Task.detached(priority: .userInitiated) {
+            Result {
+                try FileDropCopier.copy(source, into: folder) { fraction in
+                    Task { @MainActor [weak self] in self?.update(id) { $0.progress = fraction } }
+                }
+            }
+        }.value
     }
 
     private func update(_ id: UUID, _ change: (inout Item) -> Void) {

@@ -15,7 +15,8 @@ struct SettingsView: View {
             Form {
                 connectionSection
                 RemoteDesktopSection(session: appState.rdp)
-                FileDropSection(store: appState.fileDrop)
+                HostSection(host: appState.host)
+                FileDropSection(store: appState.fileDrop, host: appState.host)
                 testSection
                 DeckSection(deck: appState.deck)
                 SoakLogSection(store: appState.connectionLog)
@@ -180,10 +181,63 @@ private struct SoakLogSection: View {
     }
 }
 
-/// Sending files to the PC's shared folder (M16).
+/// TitanDeck Host on the PC (M18): pair, then PC health and fixes.
+private struct HostSection: View {
+    @EnvironmentObject private var appState: AppState
+    @ObservedObject var host: HostStore
+    @State private var showingPairing = false
+
+    var body: some View {
+        Section {
+            if host.isPaired {
+                NavigationLink {
+                    HostStatusView(host: host)
+                } label: {
+                    HStack(spacing: 12) {
+                        HostConnectionBadge(host: host)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(host.displayName)
+                            Text(summary).font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            } else {
+                Button("Pair with TitanDeck Host", systemImage: "link") { showingPairing = true }
+            }
+        } header: {
+            Text("TitanDeck Host")
+        } footer: {
+            Text("The Windows app for the Titan PC: keeps Remote Desktop working, fixes it from here, and moves files both ways. Get it from the host-v releases on GitHub.")
+        }
+        .sheet(isPresented: $showingPairing) {
+            HostPairingView(host: host, suggestedAddress: appState.pcHost)
+        }
+        .task(id: host.isPaired) {
+            if host.isPaired { await host.refresh() }
+        }
+    }
+
+    private var summary: String {
+        switch host.connection {
+        case .online:
+            switch host.status?.overall {
+            case .ok?: "Ready"
+            case .warning?: "Working, a couple of things to look at"
+            case .problem?: "Needs attention"
+            case nil: "Connected"
+            }
+        case .checking: "Checking..."
+        case .offline: "Not answering"
+        case .notPaired: "Not paired"
+        }
+    }
+}
+
+/// Sending files to the PC (M16): through the Host, or the shared folder.
 private struct FileDropSection: View {
     @EnvironmentObject private var appState: AppState
     @ObservedObject var store: FileDropStore
+    @ObservedObject var host: HostStore
 
     var body: some View {
         Section {
@@ -191,7 +245,7 @@ private struct FileDropSection: View {
                 appState.showingFileDrop = true
             } label: {
                 LabeledContent {
-                    Text(store.folderName ?? "Not set up")
+                    Text(route)
                 } label: {
                     Label("Send Files to PC", systemImage: "paperplane.fill")
                 }
@@ -199,7 +253,16 @@ private struct FileDropSection: View {
         } header: {
             Text("File drop")
         } footer: {
-            Text("Sends photos and files into a shared folder on the PC. You can also share to TitanDeck from any app.")
+            Text("Sends photos and files to the PC, through TitanDeck Host when it's paired, otherwise into a shared folder. You can also share to TitanDeck from any app.")
+        }
+    }
+
+    private var route: String {
+        switch (host.isPaired, store.folderName) {
+        case (true, nil): "TitanDeck Host"
+        case (true, let folder?): "Host, then \(folder)"
+        case (false, let folder?): folder
+        case (false, nil): "Not set up"
         }
     }
 }
