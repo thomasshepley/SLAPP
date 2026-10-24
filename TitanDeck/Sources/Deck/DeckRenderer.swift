@@ -75,7 +75,9 @@ enum DeckRenderer {
                 textRect = CGRect(x: textRect.minX, y: below, width: textRect.width, height: max(textRect.maxY - below, 1))
             }
 
-            drawLabel(key.label, in: textRect, maxFontSize: size.height * 0.24)
+            let hasIcon = key.emoji != nil || key.sfSymbol != nil
+            drawLabel(key.label, in: textRect, maxFontSize: size.height * DeckFlow.labelScale(key.label, hasIcon: hasIcon),
+                      big: !hasIcon && DeckFlow.longestLine(key.label) <= 4)
 
             if isActive {
                 let line = max(size.width * 0.06, 3)
@@ -106,8 +108,9 @@ enum DeckRenderer {
         return top + bounds.height + rect.height * 0.01
     }
 
-    /// Centres the label, shrinking the font until it fits.
-    private static func drawLabel(_ label: String, in rect: CGRect, maxFontSize: CGFloat) {
+    /// Centres the label, shrinking the font until it fits. `big` labels use
+    /// heavy rounded type, like the numbers on a console keypad.
+    private static func drawLabel(_ label: String, in rect: CGRect, maxFontSize: CGFloat, big: Bool = false) {
         guard !label.isEmpty else { return }
         let paragraph = NSMutableParagraphStyle()
         paragraph.alignment = .center
@@ -118,7 +121,7 @@ enum DeckRenderer {
         var bounds = CGRect.zero
         repeat {
             attributes = [
-                .font: UIFont.systemFont(ofSize: fontSize, weight: .bold),
+                .font: big ? roundedFont(size: fontSize) : UIFont.systemFont(ofSize: fontSize, weight: .bold),
                 .foregroundColor: UIColor.white,
                 .paragraphStyle: paragraph,
             ]
@@ -130,5 +133,11 @@ enum DeckRenderer {
         let drawRect = CGRect(x: rect.minX, y: rect.minY + (rect.height - bounds.height) / 2,
                               width: rect.width, height: bounds.height)
         (label as NSString).draw(with: drawRect, options: [.usesLineFragmentOrigin], attributes: attributes, context: nil)
+    }
+
+    private static func roundedFont(size: CGFloat) -> UIFont {
+        let heavy = UIFont.systemFont(ofSize: size, weight: .heavy)
+        guard let rounded = heavy.fontDescriptor.withDesign(.rounded) else { return heavy }
+        return UIFont(descriptor: rounded, size: size)
     }
 }

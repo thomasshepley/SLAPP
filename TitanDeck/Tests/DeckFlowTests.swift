@@ -63,3 +63,29 @@ final class DeckFlowTests: XCTestCase {
         XCTAssertEqual(menu.keys.last?.action, .switchPage(profile.pages.count - 1))
     }
 }
+
+final class DeckLabelTests: XCTestCase {
+    func testShortLabelsGetBigType() {
+        XCTAssertEqual(DeckFlow.labelScale("7", hasIcon: false), 0.66, "a keypad digit fills the key")
+        XCTAssertEqual(DeckFlow.labelScale("@", hasIcon: false), 0.66)
+        XCTAssertEqual(DeckFlow.labelScale("GO\n12", hasIcon: false), 0.66, "measured by the longest line")
+        XCTAssertEqual(DeckFlow.labelScale("+10%", hasIcon: false), 0.40)
+        XCTAssertEqual(DeckFlow.labelScale("ENTER", hasIcon: false), 0.30)
+        XCTAssertEqual(DeckFlow.labelScale("Return to Keypad", hasIcon: false), 0.24)
+        XCTAssertEqual(DeckFlow.labelScale("7", hasIcon: true), 0.24, "an icon needs the room")
+    }
+
+    func testAnUntouchedDefaultIsRefreshed() {
+        var old = DeckProfile.makeDefault()
+        old.pages[0].keys[0].colorHex = "#3A3A3C"   // how an older build saved it
+        let refreshed = DeckProfile.starting(from: old)
+        XCTAssertEqual(refreshed.pages[0].keys[0].colorHex, DeckProfile.digitColor)
+        XCTAssertEqual(refreshed.id, old.id)
+        XCTAssertEqual(refreshed.keyCount, old.keyCount)
+
+        var edited = old
+        edited.renamePage(at: 0, to: "Mine")
+        XCTAssertEqual(DeckProfile.starting(from: edited), edited, "an edited profile is left alone")
+        XCTAssertTrue(DeckProfile.starting(from: nil).isBuiltInDefault)
+    }
+}

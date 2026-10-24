@@ -79,6 +79,26 @@ enum DeckFlow {
         return key
     }
 
+    // MARK: Drawing
+
+    /// How tall a label may be, as a share of the key: a lone digit or "@"
+    /// fills most of the key so it reads from across the desk, short words
+    /// get big type, longer labels stay at the usual size.
+    static func labelScale(_ label: String, hasIcon: Bool) -> CGFloat {
+        guard !hasIcon else { return 0.24 }
+        switch longestLine(label) {
+        case ...2: return 0.66
+        case ...4: return 0.40
+        case ...6: return 0.30
+        default: return 0.24
+        }
+    }
+
+    /// Characters on the label's longest line ("GO\n12" counts as 2).
+    static func longestLine(_ label: String) -> Int {
+        label.split(separator: "\n").map(\.count).max() ?? 0
+    }
+
     private static func isIntensity(_ action: TitanAction) -> Bool {
         if case .adjustIntensity = action { return true }
         return false

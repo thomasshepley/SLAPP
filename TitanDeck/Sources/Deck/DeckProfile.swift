@@ -46,7 +46,7 @@ extension DeckProfile {
     static let releaseColor = "#B23B1E"
     static let pageColor = "#2D4FA3"
 
-    static let digitColor = "#3A3A3C"
+    static let digitColor = "#000000"
     static let menuColor = "#6A3FA0"
     static let menuSymbol = "square.grid.2x2.fill"
 
@@ -125,6 +125,17 @@ extension DeckProfile {
 
         return DeckProfile(name: "Default", keyCount: count, pages: [keypad, intensity, playbacks],
                            isBuiltInDefault: true, orientation: orientation)
+    }
+
+    /// The profile to start with: a saved one that's been edited stays as it
+    /// is; an untouched built-in default is rebuilt from the current default
+    /// (same deck size and mounting), so improvements to it reach the deck.
+    static func starting(from saved: DeckProfile?) -> DeckProfile {
+        guard let saved else { return makeDefault() }
+        guard saved.isBuiltInDefault else { return saved }
+        var fresh = makeDefault(keyCount: saved.keyCount, orientation: saved.orientation)
+        fresh.id = saved.id
+        return fresh
     }
 
     /// The original playback-only layout (GO 1-16 / REL 1-16, last key pages),
