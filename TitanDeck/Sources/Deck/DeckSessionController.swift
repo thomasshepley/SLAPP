@@ -292,17 +292,18 @@ final class DeckSessionController: ObservableObject {
             // Back to wherever the selection started, or this page.
             show(.colour(returnTo: flowOverlay?.returnTo ?? currentPageIndex))
         case .cueGo(let slot):
+            // Just a GO: fires its cue. Nothing on it yet: a red flash (Connect Cue puts one on).
             if let cue = profile.cue(onSlot: slot) {
                 setOverlay(.pressed, at: index)
                 onAction?(.fireHandle(titanId: cue.titanId), index)
             } else {
-                show(.titanPages(slot: slot, first: 0, fromConnect: false, returnTo: currentPageIndex))
+                report(success: false, forKey: index)
             }
         case .cueFade(let slot, let fadeOut):
             if profile.cue(onSlot: slot) != nil {
                 show(.fadePicker(slot: slot, fadeOut: fadeOut, returnTo: currentPageIndex))
             } else {
-                show(.titanPages(slot: slot, first: 0, fromConnect: false, returnTo: currentPageIndex))
+                report(success: false, forKey: index)
             }
         case .connectCue:
             show(.connectCue(returnTo: currentPageIndex))
@@ -363,6 +364,8 @@ final class DeckSessionController: ObservableObject {
             show(.titanPages(slot: slot, first: 0, fromConnect: fromConnect, returnTo: home))
         case (.back, .titanPages(_, _, true, _)):
             show(.connectCue(returnTo: home))
+        case (.intensity, _):
+            show(.selection(returnTo: home))
         case (.back, _), (.done, _):
             showPage(home)
         default:

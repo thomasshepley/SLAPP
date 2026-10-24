@@ -7,6 +7,13 @@ the GitHub Actions run that built it. The top entry is shown in the app
 so add an entry - and bump `MARKETING_VERSION` in `project.yml` to match -
 with every change that goes to `main`.
 
+## 0.16.1 - 2026-10-24 - Quicker back to intensity, plainer GOs
+
+- **Back from CCT:** the colour temperature keys have an INTENSITY key (bottom middle) that goes straight back to the intensity keys.
+- **GO keys are just GO keys:** a GO with no cue on it flashes red instead of opening a page. Put cues on with Connect Cue. Fade keys with no cue flash red too.
+- **Fade times:** the fade picker now offers 0, 0.1, 0.2, 0.25, 0.3, 0.5, 1, 3 and 5 s.
+- **Fixed:** DONE in Connect Cue (and any short word close to the key's width) no longer breaks onto two lines.
+
 ## 0.16.0 - 2026-10-24 - Desk link and live intensity
 
 - **Follow the desk's selection:** select fixtures in Layouts, the Fixtures window or on the desk and the deck brings up its intensity keys, just like typing "101 Enter". Currently Selected on the Remote screen shows them ("101-110"). Clear the selection on the desk and the keys go away.
