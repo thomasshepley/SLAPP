@@ -171,15 +171,17 @@ private struct SelectedFixtureChip: View {
 
     var body: some View {
         if let fixture = deck.selectedFixture {
-            HStack(spacing: 6) {
+            // Same look as the Menu button and the connection pill opposite.
+            HStack(spacing: 5) {
+                Image(systemName: "scope")
+                    .foregroundStyle(.secondary)
                 Text("Currently Selected:")
                     .foregroundStyle(.secondary)
                 Text("\(fixture)")
-                    .fontWeight(.bold)
-                    .monospacedDigit()
                     .contentTransition(.numericText())
             }
-            .font(.subheadline)
+            .font(.caption.weight(.semibold).monospacedDigit())
+            .fixedSize()
             .padding(.horizontal, 14)
             .padding(.vertical, 8)
             .glassEffect(.regular, in: .capsule)

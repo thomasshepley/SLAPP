@@ -9,7 +9,8 @@ with every change that goes to `main`.
 
 ## 0.15.0 - 2026-10-24 - Currently Selected, and tidier keys
 
-- **Currently Selected:** the Remote screen shows the fixture in the programmer in its top left corner, after "101 Enter" or "101 @ 50 Enter" (Titan keeps 101 selected after setting its level).
+- **Currently Selected:** the Remote screen shows the fixture in the programmer in its top left corner, styled like the Menu button and status pill, after "101 Enter" or "101 @ 50 Enter" (Titan keeps 101 selected after setting its level).
+- **Keypad Log:** the keypad readout under the remote desktop is now called Keypad Log, without the "Type on the keypad" hint or the blinking cursor.
 - **Clear goes back to the keypad:** a Clear that empties the programmer takes the deck back to the keypad and clears Currently Selected. The first Clear, with something typed, still just empties the line.
 - **Selection keys moved:** CCT is in the middle column, 4th row, with Hold for 0% above it. Return to Keypad is on the bottom right with a return arrow.
 - **Fixed:** CLEAR and ENTER no longer break onto two lines. Labels shrink until every word fits on one line.
