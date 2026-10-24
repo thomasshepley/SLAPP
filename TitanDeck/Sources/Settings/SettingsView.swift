@@ -212,7 +212,7 @@ private struct RemoteDesktopSection: View {
                     .multilineTextAlignment(.trailing)
                     .frame(maxWidth: 300)
             }
-            Toggle("Connect when TitanDeck opens", isOn: $appState.rdpSettings.autoConnect)
+            Toggle("Connect when TitanDeck opens", isOn: $appState.rdpSettings.connectOnLaunch)
             HStack {
                 switch session.state {
                 case .connected, .connecting:

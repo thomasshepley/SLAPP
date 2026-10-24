@@ -238,10 +238,10 @@ final class AppState: ObservableObject {
                     viewSize: remoteViewSize)
     }
 
-    /// Connects once at launch, if set up to. The app goes straight to the
-    /// Titan desktop with no taps needed.
+    /// Connects once at launch, if Settings -> "Connect when TitanDeck opens"
+    /// is on (it's off by default).
     func autoConnectRemote() {
-        guard !didAutoConnect, rdpSettings.autoConnect, isRemoteConfigured, rdp.state == .idle else { return }
+        guard !didAutoConnect, rdpSettings.connectOnLaunch, isRemoteConfigured, rdp.state == .idle else { return }
         didAutoConnect = true
         connectRemote()
     }

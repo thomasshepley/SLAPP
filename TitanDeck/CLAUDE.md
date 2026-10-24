@@ -74,7 +74,9 @@ them together (e.g. `deck.onAction` -> `titan.perform`). Keep it that way.
 ## Platform and design decisions
 
 - **Universal app (iPhone + iPad).** Tabs: Remote, Deck (on-screen deck),
-  Settings. Compact width opens on Deck.
+  Settings. Compact width opens on Deck. While the remote desktop is live the
+  tab bar hides; the glass **Menu** button next to the connection pill is the
+  way back (Deck / Settings / Disconnect). Connect-on-launch is off by default.
 - **Minimum OS is iOS/iPadOS 26.** Use iOS 26 APIs directly, without `#available` checks.
 - **Liquid Glass:** standard SwiftUI components get it automatically. Use
   `.glassEffect()` / `.buttonStyle(.glass)` for floating controls (connection
@@ -88,9 +90,12 @@ them together (e.g. `deck.onAction` -> `titan.perform`). Keep it that way.
   USB-C into the hub, so it appears as Ethernet. iPad Wi-Fi should be off on set.
   Don't assume Wi-Fi APIs (SSID etc.) are meaningful on the iPad.
 - **Capabilities are added only when a feature needs them:** App Groups
-  (iPhone/Watch/widgets sharing), iCloud (M8), Access Wi-Fi Information (iPhone
-  only, given the iPad uses Ethernet). Add them in `project.yml` AND on the app ID
-  in the Apple Developer portal.
+  (iPhone/Watch/widgets sharing), iCloud (M8), Access Wi-Fi Information (on: the
+  connection details panel shows the Wi-Fi name and access point; it also needs
+  precise Location, asked for only when that panel opens). Add them in
+  `project.yml` AND on the app ID in the Apple Developer portal.
+- **iOS gives apps no Wi-Fi signal strength.** The details panel shows Titan
+  reply times (`LatencySummary`) as the link-quality measure instead.
 
 Not yet verified on real hardware: Stream Deck behaviour and Titan calls have
 only run in the simulator/tests. Treat the first on-device run as a test.

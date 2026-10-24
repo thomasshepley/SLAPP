@@ -9,8 +9,9 @@ struct RDPSettings: Codable, Hashable {
     var port: UInt16 = 3389
     var username: String = ""
     var domain: String = ""
-    /// Connect automatically when the app opens.
-    var autoConnect = true
+    /// Connect automatically when the app opens. Off by default: the app opens
+    /// on the remote view and waits for Connect.
+    var connectOnLaunch = false
 
     /// The address to actually use, falling back to the Titan host.
     func effectiveHost(titanHost: String) -> String {
@@ -26,6 +27,24 @@ struct RDPSettings: Codable, Hashable {
     /// Keychain account the password is saved under.
     var keychainAccount: String {
         "\(username.trimmingCharacters(in: .whitespacesAndNewlines).lowercased())@rdp"
+    }
+
+    init() {}
+
+    // Decoded by hand so settings saved by older builds still load. Their
+    // `autoConnect` key (on by default back then) is deliberately ignored, which
+    // turns connect-on-launch off once.
+    private enum CodingKeys: String, CodingKey {
+        case host, port, username, domain, connectOnLaunch
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        host = try container.decodeIfPresent(String.self, forKey: .host) ?? ""
+        port = try container.decodeIfPresent(UInt16.self, forKey: .port) ?? 3389
+        username = try container.decodeIfPresent(String.self, forKey: .username) ?? ""
+        domain = try container.decodeIfPresent(String.self, forKey: .domain) ?? ""
+        connectOnLaunch = try container.decodeIfPresent(Bool.self, forKey: .connectOnLaunch) ?? false
     }
 
     static let defaultsKey = "rdpSettings"

@@ -91,9 +91,23 @@ final class RemoteModelTests: XCTestCase {
         var settings = RDPSettings()
         settings.host = "titan-pc"
         settings.username = "Show"
-        settings.autoConnect = false
+        settings.connectOnLaunch = true
         settings.save(to: defaults)
         XCTAssertEqual(RDPSettings.load(from: defaults), settings)
         XCTAssertEqual(settings.keychainAccount, "show@rdp")
+    }
+
+    func testConnectOnLaunchIsOffByDefault() {
+        XCTAssertFalse(RDPSettings().connectOnLaunch)
+    }
+
+    func testOlderSettingsKeepTheLoginButTurnConnectOnLaunchOff() throws {
+        let defaults = freshDefaults()
+        let old = #"{"host":"192.168.0.147","port":3389,"username":"Show","domain":"","autoConnect":true}"#
+        defaults.set(Data(old.utf8), forKey: RDPSettings.defaultsKey)
+        let settings = RDPSettings.load(from: defaults)
+        XCTAssertEqual(settings.host, "192.168.0.147")
+        XCTAssertEqual(settings.username, "Show")
+        XCTAssertFalse(settings.connectOnLaunch)
     }
 }

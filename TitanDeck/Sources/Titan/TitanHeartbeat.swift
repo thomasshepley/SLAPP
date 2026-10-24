@@ -7,10 +7,13 @@ import Foundation
 final class TitanHeartbeat: ObservableObject {
     @Published private(set) var health: TitanHealth = .unknown
     @Published private(set) var version: String?
+    /// The last minute of reply times, oldest first (nil = no reply).
+    @Published private(set) var recentSamples: [Int?] = []
 
     private var tracker = HeartbeatTracker()
     private var task: Task<Void, Never>?
     private let interval: UInt64 = 2_000_000_000
+    private let sampleCount = 30
 
     func start(client: TitanClient, isHostSet: @escaping @MainActor () -> Bool) {
         task?.cancel()
@@ -22,9 +25,11 @@ final class TitanHeartbeat: ObservableObject {
                     let version = await client.softwareVersion()
                     let ms = Int((Date().timeIntervalSince(started) * 1000).rounded())
                     self.tracker.record(milliseconds: version == nil ? nil : ms)
+                    self.recentSamples = Array((self.recentSamples + [version == nil ? nil : ms]).suffix(self.sampleCount))
                     if let version { self.version = version }
                 } else {
                     self.tracker.reset()
+                    self.recentSamples = []
                 }
                 self.health = self.tracker.health
                 try? await Task.sleep(nanoseconds: self.interval)
