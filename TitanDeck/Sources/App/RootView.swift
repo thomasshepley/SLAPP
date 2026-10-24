@@ -32,6 +32,10 @@ struct RootView: View {
                 .tabItem { Label("Companion", systemImage: "lightbulb.2") }
                 .tag(AppState.Mode.companion)
 
+            UniFiView(store: appState.unifi)
+                .tabItem { Label("Wi-Fi", systemImage: "wifi.router") }
+                .tag(AppState.Mode.network)
+
             SettingsView()
                 .tabItem { Label("Settings", systemImage: "gearshape") }
                 .tag(AppState.Mode.settings)

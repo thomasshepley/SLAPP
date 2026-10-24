@@ -11,6 +11,7 @@ final class AppState: ObservableObject {
         case remote
         case deck
         case companion
+        case network
         case settings
     }
 
@@ -52,6 +53,8 @@ final class AppState: ObservableObject {
     let watch: WatchBridge
     /// Files queued for the PC's shared folder (M16).
     let fileDrop: FileDropStore
+    /// The show Wi-Fi from the UniFi console (M17).
+    let unifi: UniFiStore
     private var logSubscriptions = Set<AnyCancellable>()
     private let store: ProfileStore
 
@@ -69,6 +72,7 @@ final class AppState: ObservableObject {
         playbackState = PlaybackStatePoller()
         watch = WatchBridge()
         fileDrop = FileDropStore()
+        unifi = UniFiStore()
         titan = TitanClient(host: host)
         let store = ProfileStore()
         self.store = store

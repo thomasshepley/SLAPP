@@ -19,31 +19,34 @@ struct CertificateTrustStore {
     }
 
     let defaults: UserDefaults
+    /// Where the fingerprints live; the UniFi console keeps its own list.
+    let key: String
     static let key = "rdpTrustedCertificates"
 
-    init(defaults: UserDefaults = .standard) {
+    init(defaults: UserDefaults = .standard, key: String = CertificateTrustStore.key) {
         self.defaults = defaults
+        self.key = key
     }
 
     func evaluate(host: String, port: UInt16, fingerprint: String) -> Decision {
         let id = Self.identifier(host: host, port: port)
-        var trusted = defaults.dictionary(forKey: Self.key) as? [String: String] ?? [:]
+        var trusted = defaults.dictionary(forKey: key) as? [String: String] ?? [:]
         let normalised = fingerprint.lowercased()
         if let stored = trusted[id] {
             return stored == normalised ? .trusted : .mismatch
         }
         guard !normalised.isEmpty else { return .mismatch }
         trusted[id] = normalised
-        defaults.set(trusted, forKey: Self.key)
+        defaults.set(trusted, forKey: key)
         return .trustedFirstUse
     }
 
     func forgetAll() {
-        defaults.removeObject(forKey: Self.key)
+        defaults.removeObject(forKey: key)
     }
 
     var trustedHosts: [String] {
-        (defaults.dictionary(forKey: Self.key) as? [String: String] ?? [:]).keys.sorted()
+        (defaults.dictionary(forKey: key) as? [String: String] ?? [:]).keys.sorted()
     }
 
     static func identifier(host: String, port: UInt16) -> String {
