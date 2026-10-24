@@ -9,7 +9,8 @@ with every change that goes to `main`.
 
 ## 0.11.0 - 2026-10-24 - Pixel maps
 
-- **Pixel maps:** pixel and zone modes now show the fixture's face with every cell coloured and numbered, laid out the way the manufacturer's manual draws it. The Vortex8's zones, a Titan Tube's 16 pixels, a MAC Aura PXL's beam and aura...
+- **Pixel maps:** pixel and zone modes now show the fixture's face with every cell coloured and numbered, laid out the way the manufacturer's manual draws it. 33 fixtures so far: SkyPanels, Creamsource Vortex, Astera tubes, bars and HydraPanel, PavoTubes, amaran PT, INFINIBAR, MT Pro, GLP X4 Bar and X4 L, JDC1, B-EYE K20, MAC Aura PXL, Spiider, Maverick Storm 1 Wash and Rogue R2X Wash.
+- **Vortex Zone Orientation:** Bars and Split modes show both the vertical and horizontal layout, matching the setting on the fixture.
 - **Tap a cell** to see which DMX channels drive it. The DMX chart below dims everything else, so you can see at a glance where cell 7 lives.
 - Switch modes and the map regroups: 8 zones become 4 or 2, 16 pixels become 8 or 4, just as the fixture does.
 - Fixtures with more than one set of pixels (beam and aura, plate and beam) get a switch between them.

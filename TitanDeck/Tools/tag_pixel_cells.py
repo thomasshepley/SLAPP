@@ -44,7 +44,16 @@ GROUP_NAMES = {"zone": "Zone", "pixel": "Pixel", "Beam": "Beam", "Aura": "Aura",
                "Plate": "Plate", "Plate Background": "Plate background"}
 
 
+# GLP X4 Bar Dual Pixel modes drive lenses in pairs: "Set 3&4 Red" is cell 2.
+PAIR = re.compile(r"^Set (?P<a>\d+)&(?P<b>\d+)\b")
+# GLP X4 Bar Normal modes number colour layers ("Set 2 Pattern Select"), not pixels.
+LAYER_MODE = re.compile(r"^Set \d+ (?:Colour \(Fixed|Pattern)")
+
+
 def cell_of(label):
+    pair = PAIR.search(label)
+    if pair:
+        return (int(pair.group("a")) + 1) // 2, None
     if NOT_CELLS.search(label):
         return None, None
     for rule in COMPILED:
@@ -64,10 +73,11 @@ def main():
     for fixture in fixtures:
         for mode in fixture["modes"]:
             tagged = []
+            layers = any(LAYER_MODE.search(channel["label"]) for channel in mode["channels"])
             for channel in mode["channels"]:
                 channel.pop("cell", None)
                 channel.pop("cellGroup", None)
-                cell, group = cell_of(channel["label"])
+                cell, group = (None, None) if layers else cell_of(channel["label"])
                 if cell:
                     channel["cell"] = cell
                     if group:
