@@ -176,6 +176,11 @@ each key land.
 - [ ] SkyPanel S360-C: Mode 25 shows LE1 to LE12 then Fan at 193. A Kino Flo
       Celeb reads "P1 · ..." and an ARRI mode shows ARRI's description under
       its name.
+- [ ] Pixel maps: open a Creamsource Vortex8 and pick an 8-zone mode. The panel
+      appears with its zones coloured and numbered. Tap zone 3: its channels
+      are listed and the DMX chart below dims everything else. Switch to a
+      4-zone mode: the zones regroup. Try a Titan Tube 16-pixel mode and a MAC
+      Aura PXL (Beam / Aura switch).
 - [ ] From a fixture, **Open in** Beam / Stops / Power pre-fills that tool.
 - [ ] Beam & Photometry, Stops (move the DMX slider, watch the curve chart),
       Power & Cable (add fixtures, change distro, temperature): numbers look sane.

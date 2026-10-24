@@ -5,18 +5,23 @@ import Foundation
 struct FixtureLibrary {
     let fixtures: [Fixture]
     let gels: [Gel]
+    /// Pixel layouts from the manuals, by fixture id.
+    let pixelLayouts: [String: PixelLayout]
 
-    /// Loads Resources/Companion/fixtures.json and gels.json from a bundle.
+    /// Loads Resources/Companion/fixtures.json, gels.json and
+    /// pixel-layouts.json from a bundle.
     static func bundled(in bundle: Bundle = .main) -> FixtureLibrary {
         FixtureLibrary(fixtures: load([Fixture].self, "fixtures", bundle) ?? [],
-                       gels: load([Gel].self, "gels", bundle) ?? [])
+                       gels: load([Gel].self, "gels", bundle) ?? [],
+                       pixelLayouts: load([String: PixelLayout].self, "pixel-layouts", bundle) ?? [:])
     }
 
-    init(fixtures: [Fixture], gels: [Gel] = []) {
+    init(fixtures: [Fixture], gels: [Gel] = [], pixelLayouts: [String: PixelLayout] = [:]) {
         self.fixtures = fixtures.sorted {
             ($0.manufacturer.lowercased(), $0.model.lowercased()) < ($1.manufacturer.lowercased(), $1.model.lowercased())
         }
         self.gels = gels
+        self.pixelLayouts = pixelLayouts
     }
 
     var manufacturers: [String] {
