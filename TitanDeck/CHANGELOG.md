@@ -9,12 +9,13 @@ with every change that goes to `main`.
 
 ## 0.10.0 - 2026-10-24 - Every DMX mode
 
-- **DMX modes from the manufacturers' own charts:** thousands of modes across the library, transcribed from each maker's DMX chart or manual and checked so every footprint adds up.
+- **DMX modes from the manufacturers' own charts:** over 5,000 modes across 179 fixtures (Astera, ARRI, Aputure and amaran, Nanlite, Nanlux, Godox/Knowled, Creamsource, Kino Flo, Litepanels, Quasar, DMG, ETC, Robe, Martin, Claypaky, Chauvet, GLP and more), transcribed from each maker's DMX chart or manual and checked so every footprint adds up.
 - **Mode numbers and briefs:** modes show the maker's number and short description, like "Mode 89 · D CCT GM CRO RGB" on Astera or "P4 · ..." on Kino Flo, with a big number badge on the fixture page.
 - **Every mode list:** open a fixture and tap Every mode to see them all with their channel counts. Tap one to see its chart.
 - **Astera:** all of Astera's numbered modes for each product (165 on the Titan, Helios, Hyperion, AX1 and HydraPanel), plus the AX2 PixelBars, AX7, LunaBulb, SolaBulb and the Quik range.
 - **Pixel and zone modes** show every cell, from a 16-pixel tube to a SkyPanel S360's 12 light engines.
-- **More fixtures:** ARRI SkyPanel X, Panalux Sonara, Robe, Martin, Claypaky, Chauvet, GLP and more, with flicker data for each.
+- **More fixtures:** 270 in all, including ARRI SkyPanel X, Panalux Sonara, Aputure STORM and NOVA II, and live moving lights, with flicker data for each.
+- The Companion loads its library in the background at launch, so opening it doesn't pause.
 - Removed a few library entries for lights that don't exist.
 
 ## 0.9.0 - 2026-10-24 - Remote desktop picture quality
