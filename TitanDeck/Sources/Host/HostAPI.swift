@@ -20,6 +20,11 @@ enum HostProtocol {
     /// Community-maintained rdpwrap.ini. The iPad fetches it when the PC has
     /// no internet, then hands it to the Host.
     static let rdpWrapIniURL = URL(string: "https://raw.githubusercontent.com/sebaxakerhtc/rdpwrap.ini/master/rdpwrap.ini")!
+
+    /// The official RDP Wrapper release the Host accepts (same pin as the
+    /// Host's RdpWrapperRelease): fetched here for a PC without internet.
+    static let rdpWrapperURL = URL(string: "https://github.com/stascorp/rdpwrap/releases/download/v1.6.2/RDPWrap-v1.6.2.zip")!
+    static let rdpWrapperSHA256 = "35a9481ddbed5177431a9ea4bd09468fe987797d7b1231d64942d17eb54ec269"
 }
 
 struct HostHello: Codable, Equatable {
@@ -98,6 +103,22 @@ struct HostIniResult: Codable, Equatable {
     var supportsThisPc: Bool
     var build: String
     var updated: String?
+}
+
+/// Remote desktop picture settings on the PC (Host 0.2+).
+struct HostRdpQuality: Codable, Equatable {
+    var imageQuality: String
+    var profile: String
+    var frameRate: Int
+    /// "best", "balanced", "weakSignal", or nil when customised.
+    var preset: String?
+}
+
+struct HostRdpQualityRequest: Codable, Equatable {
+    var preset: String?
+    var imageQuality: String?
+    var profile: String?
+    var frameRate: Int
 }
 
 /// `{ "error": "..." }`, which the Host sends with a 4xx.

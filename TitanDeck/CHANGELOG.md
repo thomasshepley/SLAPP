@@ -7,6 +7,13 @@ the GitHub Actions run that built it. The top entry is shown in the app
 so add an entry - and bump `MARKETING_VERSION` in `project.yml` to match -
 with every change that goes to `main`.
 
+## 0.9.0 - 2026-10-24 - Remote desktop picture quality
+
+- **Picture quality presets** for the remote desktop: Best (wired or strong Wi-Fi: sharpest, 60 fps), Balanced (Windows' normal) and Weak signal (bad Wi-Fi on set: lowest bandwidth, plain Windows, stays responsive).
+- Switch presets straight from the Remote screen's Menu, or fine-tune them in Settings > Remote desktop > Picture quality: Windows effects on the iPad, and image quality, graphics mode and frame rate on the PC.
+- The PC's half is set through TitanDeck Host (needs Host 0.2). TitanDeck reconnects by itself to apply a change.
+- **Send RDP Wrapper:** for a Titan PC with no internet, TitanDeck downloads the official RDP Wrapper, checks it, and hands it to the Host to install.
+
 ## 0.8.0 - 2026-10-24 - Gel book and FX Library
 
 - **Gels:** the full swatch books, 1,136 filters across LEE, Rosco (E-Colour+, Roscolux, Cinegel) and GAM. Search by number or name and filter by range or type.

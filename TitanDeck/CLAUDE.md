@@ -95,7 +95,7 @@ them together (e.g. `deck.onAction` -> `titan.perform`). Keep it that way.
 | M17 | Wi-Fi tab from the UniFi console's local API (local admin login, no API key or internet): this iPad's AP and signal, channel map with neighbours, quietest channels, AP radios (channel, width, power, utilisation), weak clients, RF scans | Built - needs testing on the show network. Live spectral analysis stays in UniFi (it needs Ubiquiti's cloud) |
 | M18 H1 | TitanDeck Host for Windows (`TitanDeckHost/`): one install for the PC side - service, RDP checks and fixes, RDP Wrapper, pairing, files | Built - needs testing on the PC |
 | M18 H2 | TitanDeck pairs with the Host (Bonjour + 6-digit code, token in the Keychain), PC health + iPad-allowed fixes, rdpwrap.ini from the iPad, files both ways (Host first, shared folder fallback) | Built - needs testing on the PC |
-| M18 H3 | RDP quality presets (Best / Balanced / Weak signal), signal dashboard, iPad-to-PC link test | Next |
+| M18 H3 | RDP picture presets (Best / Balanced / Weak signal): iPad visual effects (FreeRDP connection type) + PC image quality / graphics mode / 30-60 fps via Host 0.2; Send RDP Wrapper | Built - needs testing on the PC. Signal dashboard and link test next |
 
 ## Platform and design decisions
 

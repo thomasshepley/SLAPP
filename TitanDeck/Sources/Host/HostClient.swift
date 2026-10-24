@@ -1,4 +1,5 @@
 // Host/HostClient.swift
+import CryptoKit
 import Foundation
 
 /// Talks to TitanDeck Host on the PC (port 4431). A value type: make a new
@@ -58,6 +59,29 @@ struct HostClient: Sendable {
         request.httpBody = Data(text.utf8)
         request.setValue("text/plain; charset=utf-8", forHTTPHeaderField: "Content-Type")
         return try await send(request)
+    }
+
+    // MARK: - Remote desktop picture (Host 0.2+)
+
+    func rdpQuality() async throws -> HostRdpQuality {
+        try await send(request("rdp/quality"))
+    }
+
+    func setRdpQuality(_ quality: HostRdpQualityRequest) async throws -> HostRdpQuality {
+        var request = try request("rdp/quality", method: "POST")
+        request.httpBody = try HostAPI.encoder.encode(quality)
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        return try await send(request)
+    }
+
+    /// Hands the PC the official RDP Wrapper zip. It checks it before keeping it.
+    func sendRdpWrapperPackage(_ zip: Data) async throws {
+        var request = try request("rdpwrap/package", method: "POST")
+        request.timeoutInterval = 60
+        request.httpBody = zip
+        request.setValue("application/zip", forHTTPHeaderField: "Content-Type")
+        let (data, response) = try await transport { try await Self.session.data(for: request) }
+        try check(response, body: data)
     }
 
     // MARK: - Files
@@ -169,4 +193,11 @@ private final class ProgressWatcher: NSObject, URLSessionTaskDelegate, @unchecke
     }
 
     deinit { observation?.invalidate() }
+}
+
+extension HostAPI {
+    /// Lowercase hex SHA-256, for checking downloads against a pinned hash.
+    static func sha256Hex(_ data: Data) -> String {
+        SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+    }
 }

@@ -47,6 +47,9 @@ public sealed class MainViewModel : INotifyPropertyChanged
             Apply(await _client.NewCode());
         });
         OpenToPCCommand = new RelayCommand(async () => App.OpenFolder((await _client.Folders())?.ToPC));
+        BestCommand = new RelayCommand(() => SetQuality("best"));
+        BalancedCommand = new RelayCommand(() => SetQuality("balanced"));
+        WeakSignalCommand = new RelayCommand(() => SetQuality("weakSignal"));
         OpenToIPadCommand = new RelayCommand(async () => App.OpenFolder((await _client.Folders())?.ToIPad));
     }
 
@@ -55,6 +58,13 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public ICommand NewCodeCommand { get; }
     public ICommand OpenToPCCommand { get; }
     public ICommand OpenToIPadCommand { get; }
+    public ICommand BestCommand { get; }
+    public ICommand BalancedCommand { get; }
+    public ICommand WeakSignalCommand { get; }
+
+    private string _qualityText = "";
+    /// <summary>"Now: Best - high quality, 60 fps".</summary>
+    public string QualityText { get => _qualityText; set => Set(ref _qualityText, value); }
 
     public string Headline { get => _headline; set => Set(ref _headline, value); }
     public string Subtitle { get => _subtitle; set => Set(ref _subtitle, value); }
@@ -105,6 +115,28 @@ public sealed class MainViewModel : INotifyPropertyChanged
             });
         }
         Apply(await _client.Pairing());
+        ShowQuality(await _client.Quality());
+    }
+
+    private async Task SetQuality(string preset)
+    {
+        var result = await _client.SetQuality(preset);
+        ShowQuality(result);
+        Message = result is null ? "Couldn't change the picture settings." : "Picture settings changed. They apply when the iPad next connects (TitanDeck reconnects by itself when you change them there).";
+    }
+
+    private void ShowQuality(RdpQualityDto? quality)
+    {
+        if (quality is null) return;
+        var name = quality.Preset switch
+        {
+            "best" => "Best",
+            "balanced" => "Balanced",
+            "weakSignal" => "Weak signal",
+            _ => "Custom",
+        };
+        QualityText = $"Now: {name} - {quality.ImageQuality} quality, {quality.FrameRate} fps" +
+                      (quality.Profile == "minimumBandwidth" ? ", lowest bandwidth" : "");
     }
 
     private async Task RunFix(CheckDto check)

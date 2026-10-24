@@ -121,11 +121,14 @@ public class RdpTests
     }
 
     [Fact]
-    public void HomeWithoutWrapperOffersInstallOnlyWithThePackage()
+    public void HomeWithoutWrapperOffersDownloadOrInstall()
     {
         var bare = HealthyHome with { RdpWrapperInstalled = false, ListeningOn3389 = false };
-        Assert.Equal(FixAction.None, RdpDiagnosis.Run(bare).Single(c => c.Id == "wrapper").Fix);
-        var ready = bare with { RdpWrapperPackageAvailable = true };
-        Assert.Equal(FixAction.InstallRdpWrapper, RdpDiagnosis.Run(ready).Single(c => c.Id == "wrapper").Fix);
+        var download = RdpDiagnosis.Run(bare).Single(c => c.Id == "wrapper");
+        Assert.Equal(FixAction.InstallRdpWrapper, download.Fix);
+        Assert.Equal("Download & install", download.FixTitle);
+        var ready = RdpDiagnosis.Run(bare with { RdpWrapperPackageAvailable = true }).Single(c => c.Id == "wrapper");
+        Assert.Equal(FixAction.InstallRdpWrapper, ready.Fix);
+        Assert.Equal("Install", ready.FixTitle);
     }
 }

@@ -117,6 +117,22 @@ struct RemoteView: View {
             Divider()
             Button("Send Files to PC", systemImage: "paperplane.fill") { appState.showingFileDrop = true }
             Divider()
+            Menu {
+                ForEach(RDPQuality.Preset.allCases) { preset in
+                    Button {
+                        Task { await appState.applyRemoteQuality(.preset(preset)) }
+                    } label: {
+                        if appState.rdpSettings.quality.preset == preset {
+                            Label(preset.title, systemImage: "checkmark")
+                        } else {
+                            Text(preset.title)
+                        }
+                    }
+                }
+            } label: {
+                Label("Picture: \(appState.rdpSettings.quality.preset?.title ?? "Custom")", systemImage: "dial.medium")
+            }
+            Divider()
             Button("Disconnect", systemImage: "xmark.circle", role: .destructive) { session.disconnect() }
         } label: {
             Label("Menu", systemImage: "line.3.horizontal")

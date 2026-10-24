@@ -46,9 +46,10 @@ public enum FixAction
     InstallRdpWrapper,
 }
 
-public sealed record Check(string Id, string Title, CheckState State, string Detail, FixAction Fix = FixAction.None)
+public sealed record Check(string Id, string Title, CheckState State, string Detail, FixAction Fix = FixAction.None,
+                           string? FixLabel = null)
 {
-    public string FixTitle => Fix switch
+    public string FixTitle => FixLabel ?? Fix switch
     {
         FixAction.AllowRemoteDesktop => "Turn on",
         FixAction.StartRemoteDesktop => "Start",
@@ -80,9 +81,10 @@ public static class RdpDiagnosis
             {
                 checks.Add(new Check("wrapper", "RDP Wrapper", CheckState.Problem,
                     f.RdpWrapperPackageAvailable
-                        ? "Windows Home needs RDP Wrapper for Remote Desktop. The package is ready to install."
-                        : "Windows Home needs RDP Wrapper for Remote Desktop. Put the RDP Wrapper zip in the Host's folder (or send it from the iPad), or upgrade to Windows Pro.",
-                    f.RdpWrapperPackageAvailable ? FixAction.InstallRdpWrapper : FixAction.None));
+                        ? $"Windows Home needs RDP Wrapper for Remote Desktop. The official v{RdpWrapperRelease.Version} package is here, ready to install."
+                        : $"Windows Home needs RDP Wrapper for Remote Desktop. The Host downloads the official v{RdpWrapperRelease.Version} release and checks it before installing. No internet on this PC? Send it from TitanDeck instead.",
+                    FixAction.InstallRdpWrapper,
+                    f.RdpWrapperPackageAvailable ? "Install" : "Download & install"));
             }
             else if (!f.RdpWrapperDllPresent)
             {

@@ -263,7 +263,41 @@ final class AppState: ObservableObject {
                     username: rdpSettings.username.trimmingCharacters(in: .whitespacesAndNewlines),
                     domain: rdpSettings.domain.trimmingCharacters(in: .whitespacesAndNewlines),
                     password: remotePassword,
-                    viewSize: remoteViewSize)
+                    viewSize: remoteViewSize,
+                    connectionType: rdpSettings.quality.visuals.connectionType)
+    }
+
+    /// Changes the picture quality: saves it, sets the PC half through
+    /// TitanDeck Host (if paired), and reconnects a live session so both take
+    /// effect. Returns a line for the screen.
+    @discardableResult
+    func applyRemoteQuality(_ quality: RDPQuality) async -> String {
+        rdpSettings.quality = quality
+        var notes: [String] = []
+        if let client = host.client {
+            do {
+                let applied = try await client.setRdpQuality(quality.hostRequest)
+                host.updatePCQuality(applied)
+            } catch HostError.server(404, _) {
+                notes.append("The PC's Host is too old for picture settings - update TitanDeck Host to 0.2.")
+            } catch {
+                notes.append("Couldn't set the PC: \(error.localizedDescription)")
+            }
+        } else {
+            notes.append("Pair TitanDeck Host to change the PC's half too.")
+        }
+        if rdp.state == .connected || rdp.state == .connecting {
+            rdp.disconnect()
+            for _ in 0 ..< 50 where rdp.state == .connected || rdp.state == .connecting {
+                try? await Task.sleep(for: .milliseconds(100))
+            }
+            connectRemote()
+            notes.insert("Reconnecting with \(quality.preset?.title ?? "custom") settings.", at: 0)
+        } else {
+            notes.insert("Saved. Used from the next connection.", at: 0)
+        }
+        Log.titan("RDP quality: \(quality.summary)")
+        return notes.joined(separator: " ")
     }
 
     /// Connects once at launch, if Settings -> "Connect when TitanDeck opens"

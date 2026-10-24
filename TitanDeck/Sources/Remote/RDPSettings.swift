@@ -12,6 +12,8 @@ struct RDPSettings: Codable, Hashable {
     /// Connect automatically when the app opens. Off by default: the app opens
     /// on the remote view and waits for Connect.
     var connectOnLaunch = false
+    /// Picture quality: visual effects here, image quality and frame rate on the PC.
+    var quality = RDPQuality.preset(.best)
 
     /// The address to actually use, falling back to the Titan host.
     func effectiveHost(titanHost: String) -> String {
@@ -35,7 +37,7 @@ struct RDPSettings: Codable, Hashable {
     // `autoConnect` key (on by default back then) is deliberately ignored, which
     // turns connect-on-launch off once.
     private enum CodingKeys: String, CodingKey {
-        case host, port, username, domain, connectOnLaunch
+        case host, port, username, domain, connectOnLaunch, quality
     }
 
     init(from decoder: Decoder) throws {
@@ -45,6 +47,7 @@ struct RDPSettings: Codable, Hashable {
         username = try container.decodeIfPresent(String.self, forKey: .username) ?? ""
         domain = try container.decodeIfPresent(String.self, forKey: .domain) ?? ""
         connectOnLaunch = try container.decodeIfPresent(Bool.self, forKey: .connectOnLaunch) ?? false
+        quality = (try? container.decodeIfPresent(RDPQuality.self, forKey: .quality)) ?? RDPQuality.preset(.best)
     }
 
     static let defaultsKey = "rdpSettings"

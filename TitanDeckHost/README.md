@@ -21,10 +21,15 @@ dashboard and a link test.
 4. Press **Show a pairing code** and type it into TitanDeck.
 
 On Windows Home, Remote Desktop needs RDP Wrapper. If it isn't installed yet,
-put the official release zip (`RDPWrap-v1.6.2.zip` from
-github.com/stascorp/rdpwrap) in `To PC` and press **Install** in the checklist.
-Windows Defender calls RDP Wrapper a "HackTool", so the Host adds an exclusion
-for its folder first (you'll see it in Windows Security). Windows Pro needs
-none of this.
+press **Download & install** in the checklist: the Host fetches the official
+v1.6.2 release from github.com/stascorp/rdpwrap, checks its fingerprint, and
+installs it. If the PC has no internet, use TitanDeck: Settings > TitanDeck
+Host > Send RDP Wrapper, then press **Install** on the PC. Windows Defender
+calls RDP Wrapper a "HackTool", so the Host adds an exclusion for its folders
+first (you'll see it in Windows Security). Windows Pro needs none of this.
+
+**Remote desktop picture:** Best, Balanced or Weak signal, in the Host window
+or from TitanDeck. They change what Windows sends (image quality, bandwidth
+mode, 30 or 60 fps) and apply on the next connection.
 
 Developer notes: [CLAUDE.md](CLAUDE.md).
