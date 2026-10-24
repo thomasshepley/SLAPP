@@ -33,6 +33,8 @@ final class HostStore: ObservableObject {
     @Published private(set) var downloading: [String: Double] = [:]
     /// Fix being run, by check id.
     @Published private(set) var fixing: String?
+    /// The PC's remote desktop picture settings, from Host 0.2+ (nil if older).
+    @Published private(set) var pcQuality: HostRdpQuality?
     @Published var lastMessage: String?
 
     private let defaults: UserDefaults
@@ -123,6 +125,7 @@ final class HostStore: ObservableObject {
             outbox = try await client.outbox()
             if full || Date().timeIntervalSince(lastStatusFetch) > 20 {
                 status = try await client.status()
+                pcQuality = try? await client.rdpQuality()
                 lastStatusFetch = Date()
             }
         } catch is CancellationError {
@@ -178,6 +181,38 @@ final class HostStore: ObservableObject {
             } else {
                 lastMessage = "Sent the newest rdpwrap.ini (\(result.updated ?? "undated")), but it doesn't cover this PC's build \(result.build) yet. Check again in a few days."
             }
+        } catch {
+            lastMessage = error.localizedDescription
+        }
+        lastStatusFetch = .distantPast
+        await refresh(full: true)
+    }
+
+    func updatePCQuality(_ quality: HostRdpQuality) {
+        pcQuality = quality
+    }
+
+    /// For a PC without internet: fetches the official RDP Wrapper release on
+    /// the iPad, checks it, and hands it to the Host. Installing it is still
+    /// a click on the PC (it needs a Defender exclusion).
+    func sendRdpWrapper() async {
+        guard let client, fixing == nil else { return }
+        fixing = "rdpwrap-package"
+        defer { fixing = nil }
+        do {
+            let (data, response) = try await URLSession.shared.data(from: HostProtocol.rdpWrapperURL)
+            guard (response as? HTTPURLResponse)?.statusCode == 200 else {
+                lastMessage = "Couldn't download RDP Wrapper. Is the iPad online?"
+                return
+            }
+            guard HostAPI.sha256Hex(data) == HostProtocol.rdpWrapperSHA256 else {
+                lastMessage = "The RDP Wrapper download didn't match the official release, so it wasn't sent."
+                return
+            }
+            try await client.sendRdpWrapperPackage(data)
+            lastMessage = "Sent RDP Wrapper to the PC. Press Install in TitanDeck Host on the PC to finish."
+        } catch HostError.server(404, _) {
+            lastMessage = "The PC's Host is too old for this - update TitanDeck Host to 0.2."
         } catch {
             lastMessage = error.localizedDescription
         }

@@ -230,6 +230,19 @@ each key land.
       up), and Settings shows the Host as not answering.
 - [ ] Remove the iPad in the Host window: TitanDeck notices and asks to pair again.
 
+## 6d+. Picture quality (needs Host 0.2)
+
+- [ ] Install TitanDeck Host 0.2 over 0.1. Its window has a Remote desktop
+      picture card; press Weak signal, then Best.
+- [ ] TitanDeck: Settings > Remote desktop > Picture quality. Pick each preset
+      and Apply: a live session reconnects. "On the PC" says the PC matches.
+- [ ] Remote screen > Menu > Picture > Weak signal: it reconnects; the desktop
+      is plainer and softer but snappy on a poor link. Best: sharp, smooth.
+- [ ] Without the Host paired, presets still change the iPad's half and say so.
+- [ ] Windows Home without RDP Wrapper: the Host checklist offers Download &
+      install (online), or TitanDeck > PC health > Send RDP Wrapper (offline),
+      then Install on the PC.
+
 ## 6e. Wi-Fi (UniFi)
 
 - [ ] In UniFi: Settings > Admins & Users > Create New Admin, Restrict to Local

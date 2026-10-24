@@ -27,6 +27,21 @@ public sealed class HostClient
         return await response.Content.ReadFromJsonAsync<PairingInfo>(Json);
     }
 
+    public Task<RdpQualityDto?> Quality() => Get<RdpQualityDto>("rdp/quality");
+
+    public async Task<RdpQualityDto?> SetQuality(string preset)
+    {
+        try
+        {
+            using var response = await _http.PostAsJsonAsync("rdp/quality", new RdpQualityRequest(preset, null, null, 0), Json);
+            return response.IsSuccessStatusCode ? await response.Content.ReadFromJsonAsync<RdpQualityDto>(Json) : null;
+        }
+        catch (Exception)
+        {
+            return null;
+        }
+    }
+
     public async Task Revoke(string id) => await _http.DeleteAsync($"pairing/devices/{Uri.EscapeDataString(id)}");
 
     public async Task<FixResponse> Fix(string action)

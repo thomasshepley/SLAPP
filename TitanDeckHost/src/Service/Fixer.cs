@@ -173,14 +173,21 @@ public sealed class Fixer
         return $"Windows Defender will leave {folder} alone.";
     }
 
-    /// <summary>Installs RDP Wrapper from the official release package, then the best rdpwrap.ini.</summary>
+    /// <summary>Installs RDP Wrapper from the official release - one the user (or the
+    /// iPad) put in To PC, or downloaded now - then the best rdpwrap.ini.</summary>
     private async Task<string> InstallRdpWrapper()
     {
-        var installer = RdpWrapperInstaller.FindPackage(_paths)
-                        ?? throw new InvalidOperationException("Put the RDP Wrapper release zip (RDPWrap-v1.6.2.zip) in the To PC folder first.");
-        // Exclude both folders first, or Defender removes the files mid-install.
+        // Exclude both folders first, or Defender removes the files mid-download or mid-install.
+        Directory.CreateDirectory(_paths.RdpWrapperPackage);
         RunSync("powershell", "-NoProfile -NonInteractive -Command \"Add-MpPreference -ExclusionPath " +
                               $"'{WindowsProbe.DefaultRdpWrapperFolder}','{_paths.RdpWrapperPackage}'\"");
+        var sentEarlier = File.Exists(RdpWrapperInstaller.SentMarker(_paths));
+        File.Delete(RdpWrapperInstaller.SentMarker(_paths));
+        var installer = RdpWrapperInstaller.FindPackage(_paths);
+        if (installer is null && sentEarlier)
+            throw new InvalidOperationException(
+                "Windows Defender removed the RDP Wrapper package before it could install. The exclusion is in place now: send it from TitanDeck again (or press Install with the PC online).");
+        installer ??= await RdpWrapperInstaller.Download(_paths);
         var exe = RdpWrapperInstaller.Unpack(installer, _paths);
         var exitCode = await Run(exe, "-i");
         if (exitCode != 0) throw new InvalidOperationException($"RDP Wrapper's installer exited with code {exitCode}.");
@@ -212,22 +219,54 @@ public sealed class Fixer
     }
 }
 
-/// <summary>Finds and unpacks the official RDP Wrapper release (github.com/stascorp/rdpwrap).
-/// It isn't bundled: Defender flags its files, which would quarantine the whole Host installer.</summary>
+/// <summary>Finds, downloads and unpacks the official RDP Wrapper release
+/// (github.com/stascorp/rdpwrap v1.6.2, checked by SHA-256). It isn't bundled:
+/// Defender flags its files, which would quarantine the whole Host installer.</summary>
 public static class RdpWrapperInstaller
 {
-    /// <summary>RDPWInst.exe, or a release zip containing it, wherever the user put it.</summary>
+    /// <summary>The official release zip, wherever it was put (To PC, from the iPad
+    /// or by hand), or an already-unpacked RDPWInst.exe. Other zips are ignored.</summary>
     public static string? FindPackage(HostPaths paths)
     {
         var unpacked = Path.Combine(paths.RdpWrapperPackage, "RDPWInst.exe");
         if (File.Exists(unpacked)) return unpacked;
-        foreach (var folder in new[] { paths.ToPC, paths.Data })
+        foreach (var folder in new[] { paths.RdpWrapperPackage, paths.ToPC, paths.Data })
         {
             if (!Directory.Exists(folder)) continue;
-            var zip = Directory.EnumerateFiles(folder, "RDPWrap*.zip").OrderByDescending(File.GetLastWriteTimeUtc).FirstOrDefault();
-            if (zip is not null) return zip;
+            foreach (var zip in Directory.EnumerateFiles(folder, "RDPWrap*.zip").OrderByDescending(File.GetLastWriteTimeUtc))
+            {
+                using var stream = File.OpenRead(zip);
+                if (RdpWrapperRelease.IsOfficial(stream)) return zip;
+            }
         }
         return null;
+    }
+
+    /// <summary>Left by the iPad's upload; see Fixer.InstallRdpWrapper.</summary>
+    public static string SentMarker(HostPaths paths) => Path.Combine(paths.Data, "rdpwrap-sent-from-ipad.txt");
+
+    /// <summary>Downloads the official release into the (excluded) package folder.</summary>
+    public static async Task<string> Download(HostPaths paths)
+    {
+        var target = Path.Combine(paths.RdpWrapperPackage, RdpWrapperRelease.FileName);
+        using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(60) };
+        byte[] data;
+        try
+        {
+            data = await http.GetByteArrayAsync(RdpWrapperRelease.DownloadUrl);
+        }
+        catch (Exception error) when (error is HttpRequestException or TaskCanceledException)
+        {
+            throw new InvalidOperationException(
+                "Couldn't download RDP Wrapper - this PC seems to be offline. In TitanDeck: Settings > TitanDeck Host > Send RDP Wrapper, then press Install here.");
+        }
+        using (var check = new MemoryStream(data))
+        {
+            if (!RdpWrapperRelease.IsOfficial(check))
+                throw new InvalidOperationException("The download didn't match the official RDP Wrapper release, so it wasn't used.");
+        }
+        await File.WriteAllBytesAsync(target, data);
+        return target;
     }
 
     /// <summary>Returns the path of RDPWInst.exe, unzipping first if needed.</summary>

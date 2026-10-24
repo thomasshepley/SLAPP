@@ -44,6 +44,26 @@ public sealed record FixRequest(string Action);
 
 public sealed record FixResponse(bool Success, string Message);
 
+/// <summary>Remote desktop picture settings on the PC. Strings are the enum
+/// names in camelCase ("high", "minimumBandwidth"); preset is null when the
+/// settings don't match one.</summary>
+public sealed record RdpQualityDto(string ImageQuality, string Profile, int FrameRate, string? Preset)
+{
+    public static RdpQualityDto From(RdpServerQuality q) =>
+        new(Camel(q.ImageQuality.ToString()), Camel(q.Profile.ToString()), q.FrameRate, q.Preset is { } p ? Camel(p.ToString()) : null);
+
+    private static string Camel(string name) => char.ToLowerInvariant(name[0]) + name[1..];
+}
+
+/// <summary>Either a preset ("best", "balanced", "weakSignal") or the three settings.</summary>
+public sealed record RdpQualityRequest(string? Preset, string? ImageQuality, string? Profile, int FrameRate)
+{
+    public RdpServerQuality? Resolve() =>
+        Enum.TryParse<RdpPreset>(Preset, ignoreCase: true, out var preset) && Enum.IsDefined(preset)
+            ? RdpServerQuality.For(preset)
+            : RdpServerQuality.Parse(ImageQuality, Profile, FrameRate);
+}
+
 public sealed record FileEntry(string Name, long Size, DateTimeOffset Modified);
 
 public sealed record UploadResponse(string SavedAs, long Size);

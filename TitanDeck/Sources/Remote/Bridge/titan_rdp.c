@@ -428,7 +428,8 @@ static BOOL titan_set_string(rdpSettings *settings, FreeRDP_Settings_Keys_String
 }
 
 int titan_rdp_connect(TitanRDP *rdp, const char *host, uint16_t port, const char *username,
-                      const char *domain, const char *password, uint32_t width, uint32_t height) {
+                      const char *domain, const char *password, uint32_t width, uint32_t height,
+                      const TitanRDPOptions *options) {
     if (!rdp || !host || !host[0])
         return -1;
 
@@ -456,6 +457,10 @@ int titan_rdp_connect(TitanRDP *rdp, const char *host, uint16_t port, const char
 
     rdpSettings *settings = context->settings;
     const BOOL has_password = password && password[0];
+    const UINT32 connection_type =
+        options && options->connection_type >= CONNECTION_TYPE_MODEM && options->connection_type <= CONNECTION_TYPE_LAN
+            ? options->connection_type
+            : CONNECTION_TYPE_LAN;
     const BOOL ok =
         freerdp_settings_set_string(settings, FreeRDP_ServerHostname, host) &&
         freerdp_settings_set_uint32(settings, FreeRDP_ServerPort, port ? port : 3389) &&
@@ -479,7 +484,7 @@ int titan_rdp_connect(TitanRDP *rdp, const char *host, uint16_t port, const char
         freerdp_settings_set_bool(settings, FreeRDP_NSCodec, TRUE) &&
         // Reconnects are handled by the app (with backoff), not by FreeRDP.
         freerdp_settings_set_bool(settings, FreeRDP_AutoReconnectionEnabled, FALSE) &&
-        freerdp_set_connection_type(settings, CONNECTION_TYPE_LAN);
+        freerdp_set_connection_type(settings, connection_type);
     if (!ok) {
         freerdp_client_context_free(context);
         return -1;

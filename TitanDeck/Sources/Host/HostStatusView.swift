@@ -46,10 +46,22 @@ struct HostStatusView: View {
                         }
                     }
                     .disabled(host.fixing != nil || !host.isOnline)
+                    if status.checks.contains(where: { $0.id == "wrapper" && $0.fix == "InstallRdpWrapper" }) {
+                        Button {
+                            Task { await host.sendRdpWrapper() }
+                        } label: {
+                            HStack {
+                                Label("Send RDP Wrapper to the PC", systemImage: "shippingbox")
+                                Spacer()
+                                if host.fixing == "rdpwrap-package" { ProgressView() }
+                            }
+                        }
+                        .disabled(host.fixing != nil || !host.isOnline)
+                    }
                 } header: {
-                    Text("Remote Desktop after a Windows update")
+                    Text("RDP Wrapper (Windows Home)")
                 } footer: {
-                    Text("If the PC has no internet, this downloads the newest RDP Wrapper ini on the iPad, hands it to the PC and applies it. Only needed on Windows Home.")
+                    Text("For a PC with no internet: the iPad downloads the files, checks they're the official release, and hands them over. Installing RDP Wrapper is still pressed on the PC, because it needs a Windows Defender exclusion.")
                 }
 
                 Section("PC") {

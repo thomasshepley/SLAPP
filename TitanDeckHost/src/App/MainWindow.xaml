@@ -79,6 +79,21 @@
                     </StackPanel>
                 </Border>
 
+                <!-- Remote desktop picture -->
+                <Border Style="{StaticResource CardStyle}">
+                    <StackPanel>
+                        <TextBlock Text="Remote desktop picture" Style="{StaticResource CardTitle}" />
+                        <TextBlock Text="Best for a wired or strong link, Balanced is Windows' normal, Weak signal for bad Wi-Fi on set. TitanDeck can change this too."
+                                   Foreground="{StaticResource SecondaryText}" TextWrapping="Wrap" Margin="0,0,0,8" />
+                        <TextBlock Text="{Binding QualityText}" Margin="0,0,0,12" />
+                        <StackPanel Orientation="Horizontal">
+                            <Button Content="Best" Command="{Binding BestCommand}" Margin="0,0,10,0" />
+                            <Button Content="Balanced" Command="{Binding BalancedCommand}" Margin="0,0,10,0" />
+                            <Button Content="Weak signal" Command="{Binding WeakSignalCommand}" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
                 <!-- Files -->
                 <Border Style="{StaticResource CardStyle}">
                     <StackPanel>

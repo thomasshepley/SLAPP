@@ -104,6 +104,27 @@ network.MapPost("/files", async (HttpRequest request, string name) =>
     return Results.Ok(new UploadResponse(saved, new FileInfo(target).Length));
 });
 
+// The official RDP Wrapper zip, fetched by the iPad for a PC without internet.
+// Checked before it's kept; installing it still needs a click on the PC.
+network.MapPost("/rdpwrap/package", async (HttpRequest request) =>
+{
+    using var body = new MemoryStream();
+    await request.Body.CopyToAsync(body, request.HttpContext.RequestAborted);
+    if (body.Length > 20_000_000) return Results.BadRequest(new { error = "That's far too big to be RDP Wrapper." });
+    body.Position = 0;
+    if (!RdpWrapperRelease.IsOfficial(body))
+        return Results.BadRequest(new { error = $"That isn't the official RDP Wrapper v{RdpWrapperRelease.Version} release." });
+    Directory.CreateDirectory(paths.RdpWrapperPackage);
+    await File.WriteAllBytesAsync(Path.Combine(paths.RdpWrapperPackage, RdpWrapperRelease.FileName), body.ToArray());
+    // Remembers that it came, so Install can tell if Defender took it away again.
+    await File.WriteAllTextAsync(RdpWrapperInstaller.SentMarker(paths), DateTimeOffset.Now.ToString("O"));
+    return Results.Ok(new { saved = RdpWrapperRelease.FileName });
+});
+
+network.MapGet("/rdp/quality", () => QualityResult(RdpQualitySettings.Read));
+
+network.MapPost("/rdp/quality", (RdpQualityRequest request) => SetQuality(request));
+
 network.MapGet("/outbox", () => Outbox(paths));
 
 network.MapGet("/outbox/{name}", (string name) =>
@@ -152,6 +173,10 @@ local.MapPost("/fix", async (FixRequest request, Fixer fixer) =>
         ? Results.Ok(await fixer.Apply(action))
         : Results.BadRequest(new FixResponse(false, "Unknown fix.")));
 
+local.MapGet("/rdp/quality", () => QualityResult(RdpQualitySettings.Read));
+
+local.MapPost("/rdp/quality", (RdpQualityRequest request) => SetQuality(request));
+
 local.MapGet("/folders", () => new { toPC = paths.ToPC, toIPad = paths.ToIPad, data = paths.Data });
 
 // Keep last-seen times on disk without writing on every request.
@@ -177,6 +202,25 @@ static StatusResponse Status(WindowsProbe probe, HostPaths paths)
         facts.TitanRunning,
         Outbox(paths).Count,
         HostInfo.Version);
+}
+
+// Picture quality isn't a security setting, so a paired iPad may change it.
+static IResult QualityResult(Func<RdpServerQuality> read)
+{
+    try
+    {
+        return Results.Ok(RdpQualityDto.From(read()));
+    }
+    catch (Exception error)
+    {
+        return Results.Json(new { error = "Couldn't change the remote desktop settings: " + error.Message }, statusCode: 500);
+    }
+}
+
+static IResult SetQuality(RdpQualityRequest request)
+{
+    if (request.Resolve() is not { } quality) return Results.BadRequest(new { error = "Unknown picture setting." });
+    return QualityResult(() => RdpQualitySettings.Apply(quality));
 }
 
 static List<FileEntry> Outbox(HostPaths paths) =>

@@ -308,6 +308,15 @@ private struct RemoteDesktopSection: View {
                     .frame(maxWidth: 300)
             }
             Toggle("Connect when TitanDeck opens", isOn: $appState.rdpSettings.connectOnLaunch)
+            NavigationLink {
+                RDPQualityView(host: appState.host)
+            } label: {
+                LabeledContent {
+                    Text(appState.rdpSettings.quality.preset?.title ?? "Custom")
+                } label: {
+                    Label("Picture quality", systemImage: "dial.medium")
+                }
+            }
             HStack {
                 switch session.state {
                 case .connected, .connecting:

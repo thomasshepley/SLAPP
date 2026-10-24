@@ -43,6 +43,15 @@ typedef struct {
                           const char *fingerprint, int changed);
 } TitanRDPCallbacks;
 
+/// Picture options for titan_rdp_connect. Zero fields mean the defaults.
+typedef struct TitanRDPOptions {
+    /// FreeRDP connection type, which sets the visual effects Windows draws:
+    /// 6 LAN (everything), 4 broadband high (no wallpaper or animations),
+    /// 2 broadband low (plain: no themes, font smoothing or window contents
+    /// while dragging). 0 means LAN.
+    uint32_t connection_type;
+} TitanRDPOptions;
+
 /// Creates a connection object. Nothing happens until titan_rdp_connect.
 TitanRDP *titan_rdp_new(TitanRDPCallbacks callbacks);
 
@@ -54,7 +63,8 @@ void titan_rdp_free(TitanRDP *rdp);
 /// arrives through on_state), or -1 if a connection is already running or the
 /// arguments are unusable.
 int titan_rdp_connect(TitanRDP *rdp, const char *host, uint16_t port, const char *username,
-                      const char *domain, const char *password, uint32_t width, uint32_t height);
+                      const char *domain, const char *password, uint32_t width, uint32_t height,
+                      const TitanRDPOptions *options);
 
 /// Asks the connection to close. on_state reports DISCONNECTED when it has.
 void titan_rdp_disconnect(TitanRDP *rdp);

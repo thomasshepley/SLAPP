@@ -33,8 +33,12 @@ TitanDeckHost/
   still shows when one thing can't be read.
 - **RDP Wrapper binaries are never bundled.** Defender flags them, which would
   quarantine the installer. Only `rdpwrap.ini` ships (fetched at build time from
-  github.com/sebaxakerhtc/rdpwrap.ini); the binaries come from the official
-  release zip the user provides.
+  github.com/sebaxakerhtc/rdpwrap.ini). The binaries are the official v1.6.2
+  release only (`RdpWrapperRelease`, pinned SHA-256): downloaded by Install, or
+  sent by the iPad to `rdpwrap/package`. Any other zip is ignored.
+- Picture quality (`RdpServerQuality`) writes ImageQuality / GraphicsProfile
+  policies and DWMFRAMEINTERVAL. The iPad's FreeRDP has no H.264, so the AVC
+  policies are deliberately left alone.
 - The API shapes are shared with `TitanDeck/Sources/Host` (iPad side). Change
   both together; bump `Protocol.ApiVersion` for breaking changes.
 - Plain HTTP on the show network for now (isolated network, paired tokens).

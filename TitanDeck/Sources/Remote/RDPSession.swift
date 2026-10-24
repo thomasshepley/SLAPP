@@ -45,6 +45,8 @@ final class RDPSession: ObservableObject {
         var domain: String
         var password: String
         var viewSize: CGSize
+        /// Which Windows visual effects to ask for (RDPQuality.Visuals).
+        var connectionType: UInt32
     }
 
     private let policy = ReconnectPolicy()
@@ -89,17 +91,20 @@ final class RDPSession: ObservableObject {
 
     // MARK: - Connection
 
-    func connect(host: String, port: UInt16, username: String, domain: String, password: String, viewSize: CGSize) {
+    func connect(host: String, port: UInt16, username: String, domain: String, password: String, viewSize: CGSize,
+                 connectionType: UInt32 = RDPQuality.Visuals.full.connectionType) {
         cancelReconnect()
         userDisconnected = false
         hasBeenConnected = false
-        start(Request(host: host, port: port, username: username, domain: domain, password: password, viewSize: viewSize))
+        start(Request(host: host, port: port, username: username, domain: domain, password: password, viewSize: viewSize,
+                      connectionType: connectionType))
     }
 
     private func start(_ request: Request) {
         lastRequest = request
         let host = request.host, port = request.port, username = request.username
         let domain = request.domain, password = request.password, viewSize = request.viewSize
+        var options = TitanRDPOptions(connection_type: request.connectionType)
         guard let handle else {
             state = .failed("Remote desktop couldn't start")
             return
@@ -115,7 +120,7 @@ final class RDPSession: ObservableObject {
             username.withCString { u in
                 domain.withCString { d in
                     password.withCString { p in
-                        titan_rdp_connect(handle, h, port, u, d, p, size.width, size.height)
+                        titan_rdp_connect(handle, h, port, u, d, p, size.width, size.height, &options)
                     }
                 }
             }
