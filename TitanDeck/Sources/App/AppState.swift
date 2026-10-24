@@ -82,7 +82,7 @@ final class AppState: ObservableObject {
         titan = TitanClient(host: host)
         let store = ProfileStore()
         self.store = store
-        deck = DeckSessionController(profile: store.load() ?? DeckProfile.makeDefault())
+        deck = DeckSessionController(profile: DeckProfile.starting(from: store.load()))
 
         deck.onAction = { [weak self] action, keyIndex in
             self?.fire(action, fromKey: keyIndex)
@@ -106,6 +106,9 @@ final class AppState: ObservableObject {
         }
         playbackState.onChange = { [weak self] active in
             self?.deck.setActivePlaybacks(active)
+        }
+        playbackState.onWorkspaceNames = { [weak self] names in
+            self?.deck.setWorkspaceNames(names)
         }
         playbackState.start(client: titan) { [weak self] in
             self?.heartbeat.health.isReachable ?? false

@@ -7,6 +7,16 @@ the GitHub Actions run that built it. The top entry is shown in the app
 so add an entry - and bump `MARKETING_VERSION` in `project.yml` to match -
 with every change that goes to `main`.
 
+## 0.13.0 - 2026-10-24 - Colour, Layouts, and a smarter deck
+
+- **Blank keys stay blank:** keys with nothing on them now go black on the Stream Deck instead of showing the last page's key.
+- **Menu shows the page name:** the Menu key reads Keypad, Intensity, Colour... Tap it for the next page; hold it for 2 s for the list of all pages.
+- **After a selection:** type a fixture number and Enter (no @) and the deck swaps to the intensity keys, with Return to Keypad. A CCT key there opens the colour temperatures.
+- **Colour page:** 2700, 3200, 4000, 4500, 5600, 6000, 6500, 7500 and 10000K, each key in its own colour. Each recalls the Titan colour palette with that temperature in its name, so make global palettes called 2700K, 3200K... once and every fixture type uses its own CCT channel.
+- **Layouts page:** twelve keys that bring up Titan's saved workspaces (window layouts). Keys left without a label show the workspace's name from Titan.
+- **Bigger numbers:** single digits and @ fill the key in big rounded type, and the keypad's number keys are black. Short labels are bigger too, and pale keys get black text.
+- The default deck picks these up by itself if you haven't edited it.
+
 ## 0.12.0 - 2026-10-24 - Emoji keys, your own colours, and pressed looks
 
 - **Emoji on keys:** a key's icon can now be an emoji as well as an SF Symbol (Settings > Deck profile > tap a key > Icon > Emoji). On its own, with no label, the emoji fills the key.

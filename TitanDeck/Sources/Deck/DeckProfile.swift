@@ -46,18 +46,21 @@ extension DeckProfile {
     static let releaseColor = "#B23B1E"
     static let pageColor = "#2D4FA3"
 
-    static let digitColor = "#3A3A3C"
+    static let digitColor = "#000000"
     static let menuColor = "#6A3FA0"
+    static let layoutColor = "#0E7C86"
     static let menuSymbol = "square.grid.2x2.fill"
 
     /// The shipped profile, laid out for a 15-key Stream Deck in portrait:
     ///
-    ///     Keypad              Intensity           Playbacks
-    ///     1     2     3       +1%  +5%  +10%      GO 1  GO 2  GO 3
-    ///     4     5     6       -1%  -5%  -10%      GO 4  GO 5  GO 6
-    ///     7     8     9       .    .    .         REL 1 REL 2 REL 3
-    ///     Exit  0     Enter   .    .    .         REL 4 REL 5 REL 6
-    ///     Clear Menu  @       Clear Menu .        .     Menu  .
+    ///     Keypad              Intensity           Colour              Playbacks
+    ///     1     2     3       +1%  +5%  +10%      2700K 3200K 4000K   GO 1  GO 2  GO 3
+    ///     4     5     6       -1%  -5%  -10%      4500K 5600K 6000K   GO 4  GO 5  GO 6
+    ///     7     8     9       .    .    .         6500K 7500K 10000K  REL 1 REL 2 REL 3
+    ///     Exit  0     Enter   .    .    .         .     .     .       REL 4 REL 5 REL 6
+    ///     Clear Menu  @       Clear Menu .        Clear Menu  .       .     Menu  .
+    ///
+    /// Layouts: twelve keys recalling Titan workspaces 1-12, named from Titan.
     ///
     /// Menu (hold 2 s) opens the main menu of layouts. On any other deck size
     /// the same keys are placed in order with Menu on the last key.
@@ -115,6 +118,26 @@ extension DeckProfile {
             [nil, nil, nil],
             [clear, menu, nil],
         ])
+        func cct(_ kelvin: Int) -> KeyDefinition {
+            key("\(kelvin)K", DeckFlow.colourHex(kelvin: kelvin), .colourTemperature(kelvin: kelvin))
+        }
+        let colour = page("Colour", [
+            [cct(2700), cct(3200), cct(4000)],
+            [cct(4500), cct(5600), cct(6000)],
+            [cct(6500), cct(7500), cct(10000)],
+            [nil, nil, nil],
+            [clear, menu, nil],
+        ])
+        func view(_ number: Int) -> KeyDefinition {
+            key("", layoutColor, .recallWorkspace(userNumber: number))
+        }
+        let layouts = page("Layouts", [
+            [view(1), view(2), view(3)],
+            [view(4), view(5), view(6)],
+            [view(7), view(8), view(9)],
+            [view(10), view(11), view(12)],
+            [nil, menu, nil],
+        ])
         let playbacks = page("Playbacks", [
             (1...3).map { key("GO\n\($0)", goColor, .playbackGo(userNumber: $0)) },
             (4...6).map { key("GO\n\($0)", goColor, .playbackGo(userNumber: $0)) },
@@ -123,8 +146,19 @@ extension DeckProfile {
             [nil, menu, nil],
         ])
 
-        return DeckProfile(name: "Default", keyCount: count, pages: [keypad, intensity, playbacks],
+        return DeckProfile(name: "Default", keyCount: count, pages: [keypad, intensity, colour, playbacks, layouts],
                            isBuiltInDefault: true, orientation: orientation)
+    }
+
+    /// The profile to start with: a saved one that's been edited stays as it
+    /// is; an untouched built-in default is rebuilt from the current default
+    /// (same deck size and mounting), so improvements to it reach the deck.
+    static func starting(from saved: DeckProfile?) -> DeckProfile {
+        guard let saved else { return makeDefault() }
+        guard saved.isBuiltInDefault else { return saved }
+        var fresh = makeDefault(keyCount: saved.keyCount, orientation: saved.orientation)
+        fresh.id = saved.id
+        return fresh
     }
 
     /// The original playback-only layout (GO 1-16 / REL 1-16, last key pages),

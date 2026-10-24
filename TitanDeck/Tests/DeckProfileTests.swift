@@ -59,7 +59,7 @@ final class DeckProfileTests: XCTestCase {
         XCTAssertEqual(profile.keyCount, 15)
         XCTAssertEqual(profile.orientation, .portraitClockwise)
         XCTAssertEqual(profile.gridColumns, 3)
-        XCTAssertEqual(profile.pages.map(\.name), ["Keypad", "Intensity", "Playbacks"])
+        XCTAssertEqual(profile.pages.map(\.name), ["Keypad", "Intensity", "Colour", "Playbacks", "Layouts"])
 
         let keypad = profile.pages[0]
         let expected: [Int: TitanAction] = [
@@ -81,7 +81,11 @@ final class DeckProfileTests: XCTestCase {
         XCTAssertEqual((0...5).map { intensity.key(at: $0)?.action },
                        [1, 5, 10, -1, -5, -10].map { TitanAction.adjustIntensity(percent: $0) })
         XCTAssertEqual(intensity.key(at: 13)?.action, .mainMenu)
-        let playbacks = profile.pages[2]
+        let colour = profile.pages[2]
+        XCTAssertEqual((0...8).map { colour.key(at: $0)?.action },
+                       DeckFlow.cctPresets.map { TitanAction.colourTemperature(kelvin: $0) })
+        XCTAssertEqual(colour.key(at: 13)?.action, .mainMenu)
+        let playbacks = profile.pages[3]
         XCTAssertEqual(playbacks.key(at: 0)?.action, .playbackGo(userNumber: 1))
         XCTAssertEqual(playbacks.key(at: 11)?.action, .playbackRelease(userNumber: 6))
         XCTAssertEqual(playbacks.key(at: 13)?.action, .mainMenu)

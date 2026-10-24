@@ -55,6 +55,7 @@ enum DeckRenderer {
             context.fill(rect)
 
             guard let key else { return }
+            let ink: UIColor = DeckFlow.wantsDarkText(on: key.colorHex) && overlay != .failure ? .black : .white
 
             var textRect = rect.insetBy(dx: size.width * 0.06, dy: size.height * 0.06)
             let hasLabel = !key.label.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -67,7 +68,7 @@ enum DeckRenderer {
                       let symbol = UIImage(systemName: name,
                                            withConfiguration: UIImage.SymbolConfiguration(
                                                pointSize: size.height * (hasLabel ? 0.26 : 0.42), weight: .semibold))?
-                .withTintColor(.white, renderingMode: .alwaysOriginal) {
+                .withTintColor(ink, renderingMode: .alwaysOriginal) {
                 let top = hasLabel ? size.height * 0.1 : (size.height - symbol.size.height) / 2
                 let origin = CGPoint(x: (size.width - symbol.size.width) / 2, y: top)
                 symbol.draw(at: origin)
@@ -75,7 +76,9 @@ enum DeckRenderer {
                 textRect = CGRect(x: textRect.minX, y: below, width: textRect.width, height: max(textRect.maxY - below, 1))
             }
 
-            drawLabel(key.label, in: textRect, maxFontSize: size.height * 0.24)
+            let hasIcon = key.emoji != nil || key.sfSymbol != nil
+            drawLabel(key.label, in: textRect, maxFontSize: size.height * DeckFlow.labelScale(key.label, hasIcon: hasIcon),
+                      big: !hasIcon && DeckFlow.longestLine(key.label) <= 4, ink: ink)
 
             if isActive {
                 let line = max(size.width * 0.06, 3)
@@ -106,8 +109,10 @@ enum DeckRenderer {
         return top + bounds.height + rect.height * 0.01
     }
 
-    /// Centres the label, shrinking the font until it fits.
-    private static func drawLabel(_ label: String, in rect: CGRect, maxFontSize: CGFloat) {
+    /// Centres the label, shrinking the font until it fits. `big` labels use
+    /// heavy rounded type, like the numbers on a console keypad.
+    private static func drawLabel(_ label: String, in rect: CGRect, maxFontSize: CGFloat, big: Bool = false,
+                                  ink: UIColor = .white) {
         guard !label.isEmpty else { return }
         let paragraph = NSMutableParagraphStyle()
         paragraph.alignment = .center
@@ -118,8 +123,8 @@ enum DeckRenderer {
         var bounds = CGRect.zero
         repeat {
             attributes = [
-                .font: UIFont.systemFont(ofSize: fontSize, weight: .bold),
-                .foregroundColor: UIColor.white,
+                .font: big ? roundedFont(size: fontSize) : UIFont.systemFont(ofSize: fontSize, weight: .bold),
+                .foregroundColor: ink,
                 .paragraphStyle: paragraph,
             ]
             bounds = (label as NSString).boundingRect(with: CGSize(width: rect.width, height: .greatestFiniteMagnitude),
@@ -130,5 +135,11 @@ enum DeckRenderer {
         let drawRect = CGRect(x: rect.minX, y: rect.minY + (rect.height - bounds.height) / 2,
                               width: rect.width, height: bounds.height)
         (label as NSString).draw(with: drawRect, options: [.usesLineFragmentOrigin], attributes: attributes, context: nil)
+    }
+
+    private static func roundedFont(size: CGFloat) -> UIFont {
+        let heavy = UIFont.systemFont(ofSize: size, weight: .heavy)
+        guard let rounded = heavy.fontDescriptor.withDesign(.rounded) else { return heavy }
+        return UIFont(descriptor: rounded, size: size)
     }
 }

@@ -86,7 +86,7 @@ struct OnScreenDeckView: View {
         let columns = Array(repeating: GridItem(.flexible(), spacing: 10), count: columnCount)
         return LazyVGrid(columns: columns, spacing: 10) {
             ForEach(0..<deck.profile.keyCount, id: \.self) { index in
-                let key = deck.currentPage?.key(at: index)
+                let key = deck.displayedKey(at: index)
                 Image(uiImage: DeckRenderer.image(for: key, size: CGSize(width: 144, height: 144),
                                                   overlay: deck.overlays[index] ?? .none,
                                                   isActive: deck.isActive(key), isLatched: deck.isLatched(key)))
