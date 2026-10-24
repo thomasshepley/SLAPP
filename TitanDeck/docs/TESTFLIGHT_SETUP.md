@@ -125,3 +125,9 @@ log. The usual culprits:
 - **Errors naming `uk.co.elexproductions.titandeck.watchkitapp`**: the Watch
   app's ID. The Admin key normally registers it automatically. If not, add it
   in Identifiers the same way as step 3 (no capabilities needed).
+- **"Your account has reached the maximum number of certificates"**: each run's
+  Mac makes a development certificate and throws its private key away. The job
+  now revokes those ("Created via API" development certificates) before every
+  archive with `Tools/revoke_ci_certificates.py`, and leaves your own and the
+  distribution ones alone. If it still appears, check that step's log, or revoke
+  the "Created via API" development certificates by hand in Certificates.

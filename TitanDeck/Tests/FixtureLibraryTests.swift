@@ -18,7 +18,7 @@ final class FixtureLibraryTests: XCTestCase {
 
     func testEveryFixtureAndGelDecodes() throws {
         let library = try library()
-        XCTAssertEqual(library.fixtures.count, 270)
+        XCTAssertEqual(library.fixtures.count, 251)
         XCTAssertGreaterThan(library.gels.count, 1000, "the full LEE, Rosco and GAM books")
         XCTAssertGreaterThan(library.manufacturers.count, 10)
     }

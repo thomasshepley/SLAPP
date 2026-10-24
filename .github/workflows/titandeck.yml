@@ -129,6 +129,11 @@ jobs:
       (github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: macos-15
     timeout-minutes: 45
+    # One upload at a time, from any branch, so a run never revokes another's
+    # fresh certificate mid-archive.
+    concurrency:
+      group: testflight-upload
+      cancel-in-progress: false
     defaults:
       run:
         working-directory: TitanDeck
@@ -173,6 +178,13 @@ jobs:
           KEY_PATH="$RUNNER_TEMP/AuthKey_$ASC_KEY_ID.p8"
           printf '%s\n' "$ASC_KEY_P8" > "$KEY_PATH"
           echo "ASC_KEY_PATH=$KEY_PATH" >> "$GITHUB_ENV"
+
+      - name: Revoke certificates from earlier CI runs
+        if: steps.secrets.outputs.ready == 'true'
+        # Each run's Mac makes a development certificate and then vanishes with
+        # its private key; left alone they hit Apple's limit and archiving fails.
+        continue-on-error: true
+        run: python3 Tools/revoke_ci_certificates.py
 
       - name: Archive
         if: steps.secrets.outputs.ready == 'true'
