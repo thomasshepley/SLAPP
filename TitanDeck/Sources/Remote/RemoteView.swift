@@ -2,7 +2,8 @@
 import SwiftUI
 
 /// The main screen: the Titan PC's desktop, edge to edge. Status and controls
-/// only appear while not connected.
+/// only appear while not connected. The keypad readout sits in the black band
+/// under the desktop when the PC's screen shape leaves one.
 struct RemoteView: View {
     @EnvironmentObject private var appState: AppState
     @ObservedObject var session: RDPSession
@@ -20,6 +21,13 @@ struct RemoteView: View {
                     statusCard
                         .padding(24)
                         .frame(maxWidth: 520)
+                }
+            }
+            .overlay {
+                if session.state == .connected {
+                    KeypadReadoutLayer(store: appState.keypad, deck: appState.deck,
+                                       desktopSize: session.desktopSize)
+                        .allowsHitTesting(false)   // display only; touches go to the desktop
                 }
             }
             .overlay(alignment: .topTrailing) {
@@ -131,5 +139,43 @@ struct RemoteView: View {
             Button("Settings", systemImage: "gearshape") { appState.mode = .settings }
                 .buttonStyle(.glass)
         }
+    }
+}
+
+/// Places the keypad readout: in the band under the letterboxed desktop if
+/// there's room, otherwise as a small floating capsule while typing.
+private struct KeypadReadoutLayer: View {
+    @ObservedObject var store: KeypadReadoutStore
+    @ObservedObject var deck: DeckSessionController
+    let desktopSize: CGSize
+
+    /// Shorter than this and the band can't hold the readout.
+    private static let minimumBand: CGFloat = 40
+
+    private var onKeypad: Bool {
+        deck.currentPage?.keys.contains { $0.action.map(KeypadReadout.isKeypad) ?? false } ?? false
+    }
+    private var isTyping: Bool { store.readout.current != nil || store.flashingID != nil }
+
+    var body: some View {
+        GeometryReader { geometry in
+            let desktop = DesktopMapper(viewSize: geometry.size, desktopSize: desktopSize).fittedRect
+            let band = desktop.height > 0 ? geometry.size.height - desktop.maxY : 0
+            if band >= Self.minimumBand {
+                if onKeypad || isTyping || !store.readout.history.isEmpty {
+                    KeypadReadoutBar(store: store, height: band)
+                        .frame(width: geometry.size.width)
+                        .position(x: geometry.size.width / 2, y: desktop.maxY + band / 2)
+                        .transition(.opacity)
+                }
+            } else if isTyping {
+                KeypadReadoutBar(store: store, height: 56)
+                    .frame(maxWidth: min(geometry.size.width - 32, 720))
+                    .background(.black.opacity(0.75), in: .capsule)
+                    .position(x: geometry.size.width / 2, y: geometry.size.height - 44)
+                    .transition(.opacity)
+            }
+        }
+        .animation(.snappy, value: onKeypad)
     }
 }
