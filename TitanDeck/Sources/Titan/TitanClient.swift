@@ -44,6 +44,7 @@ actor TitanClient {
         switch action {
         case .keypadEnter: return await runEnter()
         case .keypadClear: return await runClear()
+        case .colourTemperature(let kelvin): return await runColourTemperature(kelvin)
         default: break
         }
         let start = Date()
@@ -105,6 +106,26 @@ actor TitanClient {
                       detail: text?.isEmpty == false ? "cleared command line" : "cleared programmer")
     }
 
+    // MARK: - Colour temperature (find the palette, then apply it)
+
+    /// Recalls the colour palette named for this temperature ("3200K") on the
+    /// selected fixtures. A global palette carries each fixture type's own CCT
+    /// value, so the deck never needs to know which channel that is.
+    private func runColourTemperature(_ kelvin: Int) async -> TitanResult {
+        let action = TitanAction.colourTemperature(kelvin: kelvin)
+        let start = Date()
+        guard let palettes = await handles(group: "Colours") else {
+            return finish(action, start, ok: false, status: nil, error: "Couldn't read Titan's colour palettes")
+        }
+        guard let palette = TitanPaletteMatch.palette(for: kelvin, in: palettes), let id = palette.titanId else {
+            return finish(action, start, ok: false, status: nil,
+                          error: "No colour palette named \(kelvin)K in Titan - record one (any name with \(kelvin)K in it)")
+        }
+        let result = await get(TitanEndpoints.applyPaletteURL(titanId: id, host: host, port: port))
+        return finish(action, start, ok: result.ok, status: result.status, error: result.error,
+                      detail: "palette \"\(palette.legend)\"")
+    }
+
     private func get(_ url: URL?) async -> (ok: Bool, status: Int?, error: String?) {
         guard let url else { return (false, nil, "No Titan host set") }
         do {
@@ -136,7 +157,13 @@ actor TitanClient {
 
     /// Playback handles with their Active flags, or nil if Titan didn't answer.
     func playbackHandles() async -> [PlaybackHandleState]? {
-        guard let url = TitanEndpoints.handlesURL(group: "Playbacks", host: host, port: port),
+        await handles(group: "Playbacks")
+    }
+
+    /// Every handle in a group ("Playbacks", "Colours", "Workspaces"), or nil
+    /// if Titan didn't answer.
+    func handles(group: String) async -> [PlaybackHandleState]? {
+        guard let url = TitanEndpoints.handlesURL(group: group, host: host, port: port),
               let (data, response) = try? await session.data(from: url),
               (response as? HTTPURLResponse)?.statusCode == 200 else { return nil }
         return TitanHandlesParser.parse(data)

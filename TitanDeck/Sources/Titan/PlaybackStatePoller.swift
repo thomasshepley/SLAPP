@@ -22,6 +22,8 @@ final class PlaybackStatePoller: ObservableObject {
 
     /// Called with the active user numbers whenever they change.
     var onChange: ((Set<Int>) -> Void)?
+    /// Called with Titan's workspace names (by user number) every 15 s.
+    var onWorkspaceNames: (([Int: String]) -> Void)?
 
     private static let enabledKey = "liveKeyState"
     private var task: Task<Void, Never>?
@@ -34,8 +36,13 @@ final class PlaybackStatePoller: ObservableObject {
     func start(client: TitanClient, isTitanReachable: @escaping @MainActor () -> Bool) {
         task?.cancel()
         task = Task { [weak self] in
+            var tick = 0
             while !Task.isCancelled {
                 guard let self else { return }
+                if tick % 15 == 0, isTitanReachable(), let workspaces = await client.handles(group: "Workspaces") {
+                    self.onWorkspaceNames?(TitanHandlesParser.legendsByUserNumber(workspaces))
+                }
+                tick += 1
                 if self.isEnabled, isTitanReachable(), let handles = await client.playbackHandles() {
                     if let active = TitanHandlesParser.activeUserNumbers(handles) {
                         self.support = .working

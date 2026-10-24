@@ -159,6 +159,20 @@ parameter is named `srcHandle`). Levels are `level_level=` (absolute, 0-1).
 | Keypad Exit | `Menu/ExitRootOrLatched` |
 | Intensity +/- | `Programmer/Editor/Fixtures/IncrementDimmer?value=5&timeDelta=1&shiftEnabled=false` (value assumed to be percent - unconfirmed) |
 | Version check | `GET /titan/get/System/SoftwareVersion` |
+| Colour temp preset | `GET /titan/handles/Colours`, find the palette whose legend says "3200K", then `Palette/ApplyPalette?handle_titanId=N&usePaletteTimes=false` |
+| Layout (workspace) | `Workspace/Apply?handle_userNumber=N`; names from `GET /titan/handles/Workspaces` (group name from community sources) |
+| One page of playbacks | `GET /titan/handles/Playbacks/<pageIndex>` (0-based); without the index, every page |
+
+Notes from the API research (Oct 2026, `api.avolites.com` 19.2 + Avolites
+support posts):
+- The WebAPI may run as its own user with its **own programmer and
+  selection** (avosupport.de). Fixtures selected at the desk then don't apply
+  to API calls; what the deck selects ("102 Enter") does. Test on the console.
+- `userNumber` in handle JSON may be an object (`userNumbers` / `hashCode`);
+  `TitanHandlesParser` reads those shapes too.
+- There's no documented way to read a fixture's current intensity.
+- Keypad levels: `@ @` = full; `@ 5` is 5% unless the user setting Channel
+  Levels is "Set In Tens" (`GET /titan/get/2/UserSettings/SingleDigitLevels`).
 
 The original build plan had wrong parameter names (`userNumber=`, `level=`,
 `bool=`). Don't reintroduce them. Titan versions before v12 use different

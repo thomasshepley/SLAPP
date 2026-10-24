@@ -236,6 +236,15 @@ struct KeyInspectorView: View {
             Stepper(value: $draft.percent, in: -100...100, step: 1) {
                 LabeledContent("Change", value: "\(draft.percent > 0 ? "+" : "")\(Int(draft.percent))%")
             }
+        case .workspace:
+            Stepper(value: $draft.playback, in: 1...9999) {
+                LabeledContent("Workspace") {
+                    TextField("Number", value: $draft.playback, format: .number)
+                        .keyboardType(.numberPad)
+                        .multilineTextAlignment(.trailing)
+                        .frame(maxWidth: 90)
+                }
+            }
         case .colourTemperature:
             Picker("Preset", selection: $draft.kelvin) {
                 ForEach(DeckFlow.cctPresets, id: \.self) { Text("\($0)K").tag($0) }
@@ -267,6 +276,8 @@ struct KeyInspectorView: View {
             Text("Recalls the colour palette in Titan named \(draft.kelvin)K on the selected fixtures. Make global colour palettes named 2700K, 3200K... once and every fixture type uses its own CCT channel.")
         case .colourPresets:
             Text("Shows the colour temperature keys, with a way back to the keypad.")
+        case .workspace:
+            Text("The workspace's user number in Titan (its saved window layout). Leave the label blank and the key shows the workspace's name from Titan.")
         case .mainMenu:
             Text("Shows the page's name. Tap for the next page; hold for 2 seconds for the menu of all pages.")
         default:

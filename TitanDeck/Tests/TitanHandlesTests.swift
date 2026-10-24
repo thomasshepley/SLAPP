@@ -12,8 +12,8 @@ final class TitanHandlesTests: XCTestCase {
         """
         let handles = try XCTUnwrap(TitanHandlesParser.parse(Data(json.utf8)))
         XCTAssertEqual(handles, [
-            PlaybackHandleState(titanId: 1689, userNumber: 3, active: true, legend: "Wash"),
-            PlaybackHandleState(titanId: 1690, userNumber: 4, active: false, legend: ""),
+            PlaybackHandleState(titanId: 1689, userNumber: 3, active: true, legend: "Wash", page: 0, index: 0),
+            PlaybackHandleState(titanId: 1690, userNumber: 4, active: false, legend: "", page: 0, index: 1),
         ])
         XCTAssertEqual(TitanHandlesParser.activeUserNumbers(handles), [3])
     }

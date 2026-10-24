@@ -137,6 +137,23 @@ each key land.
       red while the cue runs on Titan.
 - [ ] A key with no pressed look still flashes white when pressed.
 
+## 5c. Deck pages (0.13)
+
+- [ ] Every page: keys with nothing on them are black on the Stream Deck, not
+      left over from the page before.
+- [ ] Menu key shows the page name. Tap: next page, round and round. Hold 2 s:
+      the menu of all pages.
+- [ ] Keypad: 1 0 2 Enter. The deck shows the intensity keys plus CCT, with
+      Return to Keypad where Menu was. 1 @ 5 Enter does NOT switch.
+- [ ] In Titan, record global colour palettes named 2700K, 3200K, 5600K. On the
+      deck, select a fixture, CCT, 3200K: the fixture goes to 3200. A preset
+      with no palette flashes red (the log says which palette is missing).
+- [ ] Layouts page: keys show your workspace names; each brings its workspace
+      up on the Titan screen. Does the remote desktop follow?
+- [ ] Select on the desk, then nudge intensity on the deck: does it act on the
+      desk's selection? (The API may have its own programmer - note what happens.)
+- [ ] Numbers on the keypad are big and readable from arm's length.
+
 ## 6. Remote desktop
 
 - [ ] Settings → Remote desktop: PC address (blank uses the Titan address),

@@ -36,6 +36,10 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, unquote, urlparse
 
 VERSION = "19.2.0 (Fake Titan)"
+# Colour palettes named the way TitanDeck's CCT keys look for them, and some
+# workspaces (window layouts) for the Layouts page.
+COLOUR_PALETTES = ["2700K", "3200K", "4000K", "4500K", "5600K", "6000K", "6500K", "7500K", "10000K"]
+WORKSPACES = ["Programming", "Patch", "Playbacks", "Pixel map", "Shapes", "Output"]
 SCRIPT = "/titan/script/2/"
 
 USE_COLOUR = sys.stdout.isatty()
@@ -110,6 +114,10 @@ class FakeTitan:
             return 200, self.command_line, None
         if path == "/titan/handles/Playbacks":
             return 200, self.handles(), None
+        if path == "/titan/handles/Colours":
+            return 200, self.simple_handles("Colours", COLOUR_PALETTES, 2000), None
+        if path == "/titan/handles/Workspaces":
+            return 200, self.simple_handles("Workspaces", WORKSPACES, 3000), None
 
         if not path.startswith(SCRIPT):
             return 404, None, "unknown path"
@@ -139,6 +147,14 @@ class FakeTitan:
             return self.playback(function, q)
         if function == "Macros/Run":
             return 200, None, f"ran macro '{q.get('macroId', '')}'"
+        if function == "Palette/ApplyPalette":
+            return self.apply_palette(q)
+        if function == "Workspace/Apply":
+            n = q.get("handle_userNumber", "")
+            name = WORKSPACES[int(n) - 1] if n.isdigit() and 0 < int(n) <= len(WORKSPACES) else None
+            if not name:
+                return 404, None, f"no workspace {n} (1-{len(WORKSPACES)} exist)"
+            return 200, None, f"workspace {n} '{name}' on screen"
 
         return 404, None, "Fake Titan doesn't know this function"
 
@@ -191,6 +207,27 @@ class FakeTitan:
                 handle["properties"].append({"Key": "userNumber", "Value": n})
             out.append(handle)
         return out
+
+    def apply_palette(self, q):
+        try:
+            index = int(q.get("handle_titanId", "")) - 2000
+        except ValueError:
+            return 400, None, "missing handle_titanId"
+        if not 0 <= index < len(COLOUR_PALETTES):
+            return 404, None, f"no palette with titanId {q.get('handle_titanId')}"
+        if not self.selected:
+            return 200, None, f"palette '{COLOUR_PALETTES[index]}' but nothing is selected"
+        return 200, None, f"palette '{COLOUR_PALETTES[index]}' on fixture(s) {self.selected}"
+
+    def simple_handles(self, group, legends, first_id):
+        return [{
+            "handleLocation": {"group": group, "index": i, "page": 0},
+            "properties": [{"Key": "userNumber", "Value": i + 1}],
+            "titanId": first_id + i,
+            "type": "paletteHandle" if group == "Colours" else "workspaceHandle",
+            "Active": False,
+            "Legend": legend,
+        } for i, legend in enumerate(legends)]
 
     def status_line(self):
         live = [str(n) for n, level in sorted(self.playbacks.items()) if level > 0]

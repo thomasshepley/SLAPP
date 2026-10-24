@@ -107,6 +107,9 @@ final class AppState: ObservableObject {
         playbackState.onChange = { [weak self] active in
             self?.deck.setActivePlaybacks(active)
         }
+        playbackState.onWorkspaceNames = { [weak self] names in
+            self?.deck.setWorkspaceNames(names)
+        }
         playbackState.start(client: titan) { [weak self] in
             self?.heartbeat.health.isReachable ?? false
         }

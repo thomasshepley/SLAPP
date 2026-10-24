@@ -48,6 +48,7 @@ extension DeckProfile {
 
     static let digitColor = "#000000"
     static let menuColor = "#6A3FA0"
+    static let layoutColor = "#0E7C86"
     static let menuSymbol = "square.grid.2x2.fill"
 
     /// The shipped profile, laid out for a 15-key Stream Deck in portrait:
@@ -58,6 +59,8 @@ extension DeckProfile {
     ///     7     8     9       .    .    .         6500K 7500K 10000K  REL 1 REL 2 REL 3
     ///     Exit  0     Enter   .    .    .         .     .     .       REL 4 REL 5 REL 6
     ///     Clear Menu  @       Clear Menu .        Clear Menu  .       .     Menu  .
+    ///
+    /// Layouts: twelve keys recalling Titan workspaces 1-12, named from Titan.
     ///
     /// Menu (hold 2 s) opens the main menu of layouts. On any other deck size
     /// the same keys are placed in order with Menu on the last key.
@@ -125,6 +128,16 @@ extension DeckProfile {
             [nil, nil, nil],
             [clear, menu, nil],
         ])
+        func view(_ number: Int) -> KeyDefinition {
+            key("", layoutColor, .recallWorkspace(userNumber: number))
+        }
+        let layouts = page("Layouts", [
+            [view(1), view(2), view(3)],
+            [view(4), view(5), view(6)],
+            [view(7), view(8), view(9)],
+            [view(10), view(11), view(12)],
+            [nil, menu, nil],
+        ])
         let playbacks = page("Playbacks", [
             (1...3).map { key("GO\n\($0)", goColor, .playbackGo(userNumber: $0)) },
             (4...6).map { key("GO\n\($0)", goColor, .playbackGo(userNumber: $0)) },
@@ -133,7 +146,7 @@ extension DeckProfile {
             [nil, menu, nil],
         ])
 
-        return DeckProfile(name: "Default", keyCount: count, pages: [keypad, intensity, colour, playbacks],
+        return DeckProfile(name: "Default", keyCount: count, pages: [keypad, intensity, colour, playbacks, layouts],
                            isBuiltInDefault: true, orientation: orientation)
     }
 

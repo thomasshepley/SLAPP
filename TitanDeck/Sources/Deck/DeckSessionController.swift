@@ -34,6 +34,8 @@ final class DeckSessionController: ObservableObject {
     @Published private(set) var overlays: [Int: DeckRenderer.Overlay] = [:]
     /// User numbers of playbacks Titan reports as active (M8).
     @Published private(set) var activePlaybacks: Set<Int> = []
+    /// Titan's workspace names by user number, for workspace keys with no label.
+    @Published private(set) var workspaceNames: [Int: String] = [:]
     /// Latching keys that are switched on (their pressed look shows until pressed again).
     @Published private(set) var latchedKeys: Set<UUID> = []
     /// What's been typed on the deck's keypad, to spot "102 Enter".
@@ -61,7 +63,7 @@ final class DeckSessionController: ObservableObject {
 
     /// A key as drawn: the Menu key carries the current page's name.
     func displayedKey(at index: Int) -> KeyDefinition? {
-        DeckFlow.displayed(currentPage?.key(at: index), onPage: currentPage?.name)
+        DeckFlow.displayed(currentPage?.key(at: index), onPage: currentPage?.name, workspaceNames: workspaceNames)
     }
 
     func showMenu() {
@@ -245,6 +247,12 @@ final class DeckSessionController: ObservableObject {
         for key in page.keys where key.action?.playbackUserNumber.map({ changed.contains($0) }) == true {
             draw(logicalIndex: key.index)
         }
+    }
+
+    func setWorkspaceNames(_ names: [Int: String]) {
+        guard names != workspaceNames else { return }
+        workspaceNames = names
+        redraw()
     }
 
     func isLatched(_ key: KeyDefinition?) -> Bool {

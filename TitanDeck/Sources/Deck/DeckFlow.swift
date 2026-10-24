@@ -133,10 +133,22 @@ enum DeckFlow {
         (index + 1) % max(pageCount, 1)
     }
 
-    /// A key as it reads on a page: the Menu key shows the page's name.
-    static func displayed(_ key: KeyDefinition?, onPage pageName: String?) -> KeyDefinition? {
-        guard var key, key.action == .mainMenu, let pageName, !pageName.isEmpty else { return key }
-        key.label = pageName
+    /// A key as it reads on a page: the Menu key shows the page's name, and a
+    /// workspace key with no label shows the workspace's name from Titan.
+    static func displayed(_ key: KeyDefinition?, onPage pageName: String?,
+                          workspaceNames: [Int: String] = [:]) -> KeyDefinition? {
+        guard var key else { return nil }
+        switch key.action {
+        case .mainMenu?:
+            if let pageName, !pageName.isEmpty { key.label = pageName }
+        case .recallWorkspace(let number)?:
+            if key.label.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                let name = workspaceNames[number]?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                key.label = name.isEmpty ? "VIEW\n\(number)" : name
+            }
+        default:
+            break
+        }
         return key
     }
 

@@ -25,6 +25,7 @@ struct ActionDraft: Equatable {
         case mainMenu
         case colourTemperature
         case colourPresets
+        case workspace
 
         var id: String { rawValue }
 
@@ -49,6 +50,7 @@ struct ActionDraft: Equatable {
             case .mainMenu: return "Page name: tap for next page"
             case .colourTemperature: return "Colour temperature"
             case .colourPresets: return "Show colour temperature presets"
+            case .workspace: return "Titan layout (workspace)"
             }
         }
     }
@@ -84,6 +86,7 @@ struct ActionDraft: Equatable {
         case .mainMenu: kind = .mainMenu
         case .colourTemperature(let k): kind = .colourTemperature; kelvin = k
         case .colourPresets: kind = .colourPresets
+        case .recallWorkspace(let n): kind = .workspace; playback = n
         }
     }
 
@@ -115,6 +118,7 @@ struct ActionDraft: Equatable {
         case .mainMenu: return .mainMenu
         case .colourTemperature: return .colourTemperature(kelvin: min(max(kelvin, 1000), 20000))
         case .colourPresets: return .colourPresets
+        case .workspace: return .recallWorkspace(userNumber: number)
         }
     }
 }

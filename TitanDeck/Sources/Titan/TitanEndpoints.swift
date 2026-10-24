@@ -50,11 +50,18 @@ enum TitanEndpoints {
                 ("timeDelta", "1"),
                 ("shiftEnabled", "false"),
             ])
+        case .recallWorkspace(let n):
+            return script(host, port, "Workspace/Apply", [("handle_userNumber", "\(n)")])
         case .keypadEnter, .keypadClear, .colourTemperature:
             return nil   // several requests - TitanClient runs them
         case .switchPage, .openSettings, .nextPage, .previousPage, .mainMenu, .colourPresets:
             return nil
         }
+    }
+
+    /// Palette/ApplyPalette on the selection, without the palette's own times.
+    static func applyPaletteURL(titanId: Int, host: String, port: Int = defaultPort) -> URL? {
+        script(host, port, "Palette/ApplyPalette", [("handle_titanId", "\(titanId)"), ("usePaletteTimes", "false")])
     }
 
     /// GET /titan/get/System/SoftwareVersion - a cheap "are you there" check.

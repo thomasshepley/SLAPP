@@ -42,6 +42,8 @@ enum TitanAction: Codable, Hashable {
     case colourTemperature(kelvin: Int)
     /// Shows the colour temperature presets on the deck. Local.
     case colourPresets
+    /// Recalls a Titan workspace (a saved window layout / view) by user number.
+    case recallWorkspace(userNumber: Int)
 
     /// True for actions that go over the network to Titan.
     var isRemote: Bool {
@@ -80,6 +82,7 @@ enum TitanAction: Codable, Hashable {
         case .previousPage: return "Previous deck page"
         case .colourTemperature(let k): return "Colour temp \(k)K"
         case .colourPresets: return "Colour temperature presets"
+        case .recallWorkspace(let n): return "Workspace \(n)"
         }
     }
 }
