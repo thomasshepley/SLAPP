@@ -42,13 +42,20 @@ TitanDeck/
 │   ├── Remote/     RDPSession (Swift side), RDPView (canvas + touch mapping), RemoteView,
 │   │               RDPSettings, RDPGeometry, CertificateTrustStore (trust on first use)
 │   │   └── Bridge/ titan_rdp.c/.h - the only code that touches FreeRDP's C API
+│   ├── Companion/  The lighting companion, rebuilt natively (M12+):
+│   │   ├── Model/  Fixture (matches the old app's JSON), FixtureLibrary, CompanionUnits
+│   │   ├── Calc/   Photometry, Dimming, Stops, PowerBudget, Cable, GoboSync, Exposure,
+│   │   │           ColourMaths, Sun - pure maths ported from lighting-companion/src/services/calc
+│   │   └── Views/  CompanionView (split view), fixture library/detail/compare, one view per tool
 │   ├── Settings/   SettingsView, DeckEditorView (M4), KeyInspectorView (M4)
 │   └── Support/    Logger (Log.titan / Log.deck), HexColor
 ├── FreeRDP/        build.sh (FreeRDP + OpenSSL -> FreeRDPKit.xcframework), fetch.sh, versions.env
 ├── Vendor/         downloaded FreeRDPKit (gitignored) - never edit or commit
 ├── Watch/          watchOS app (GoView, WatchModel). Shares Titan/ + WatchCommand with the phone app
 ├── Tests/          XCTest unit tests (endpoints, profiles, editing, store, client)
-├── Tools/          fake_titan.py - pretend Titan WebAPI for testing without an AvoKey
+├── Resources/Companion/ fixtures.json (221 fixtures) + gels.json, exported from the old app
+├── Tools/          fake_titan.py - pretend Titan WebAPI for testing without an AvoKey;
+│                   export_companion_data.ts - regenerates Resources/Companion
 └── docs/           TESTFLIGHT_SETUP.md, TEST_PLAN.md
 ```
 
@@ -70,11 +77,18 @@ them together (e.g. `deck.onAction` -> `titan.perform`). Keep it that way.
 | M9 | iPhone + iPhone Duo: on-screen deck drawn from the same profiles (Stream Deck Kit is iPad-only), adaptive layouts, App Intents (Shortcuts, Siri, Action button, Control Center) | Built - needs testing on an iPhone. iPhone Duo simulator needs Xcode 27.1 |
 | M10 | Apple Watch GO button: hold-to-fire or double-tap gesture, via the iPhone app or direct HTTP | Built - needs testing on a Watch |
 | M11 | Default deck: 15-key Stream Deck in portrait - Avolites keypad (digits, Exit, Enter, Clear, @), Intensity +/-1/5/10%, Playbacks; Menu key (hold 2 s) opens a menu of layouts; Titan command line shown on the Deck tab | Built - test on Titan |
+| M12 | Companion tab, core: fixture library (search, filters, specs, DMX chart, compare), beam/photometry, stops, power + cable, colour + gels, camera, sun & gobo sync, units & mains | Built |
+| M13 | Companion: shows, patch builder (packer), universe plan, PDF cheat sheet, CSV / MA3 / Titan exports, `.slapp.json` import/export | Next |
+| M14 | Companion -> Titan: patch a show into Titan over the WebAPI (`Patch/SelectManufacturer`... `Fixtures/PatchFixturesToVacantHandles`), select / locate / highlight | Planned - DmxAssignment format and patch read-back unconfirmed |
+| M15 | Companion: plot tagging with PDFKit, GDTF import | Planned |
 
 ## Platform and design decisions
 
 - **Universal app (iPhone + iPad).** Tabs: Remote, Deck (on-screen deck),
-  Settings. Compact width opens on Deck. While the remote desktop is live the
+  Companion, Settings. Compact width opens on Deck. On iPhone the Remote tab is
+  off by default (Settings -> Remote desktop -> "Show the Remote tab"); the app
+  opens on the Companion there. That default uses the device idiom on purpose
+  (iPhone Duo open is still a phone), unlike layout, which uses size class. While the remote desktop is live the
   tab bar hides; the glass **Menu** button next to the connection pill is the
   way back (Deck / Settings / Disconnect). Connect-on-launch is off by default.
 - **Minimum OS is iOS/iPadOS 26.** Use iOS 26 APIs directly, without `#available` checks.

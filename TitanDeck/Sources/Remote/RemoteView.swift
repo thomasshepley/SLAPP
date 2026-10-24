@@ -104,6 +104,7 @@ struct RemoteView: View {
     private var menuButton: some View {
         Menu {
             Button("Deck", systemImage: "square.grid.3x3.fill") { appState.mode = .deck }
+            Button("Companion", systemImage: "lightbulb.2") { appState.mode = .companion }
             Button("Settings", systemImage: "gearshape") { appState.mode = .settings }
             Divider()
             Button("Disconnect", systemImage: "xmark.circle", role: .destructive) { session.disconnect() }

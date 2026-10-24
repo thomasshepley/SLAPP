@@ -1,5 +1,6 @@
 // Settings/SettingsView.swift
 import SwiftUI
+import UIKit
 import UniformTypeIdentifiers
 import StreamDeckSimulator
 
@@ -180,9 +181,12 @@ private struct RemoteDesktopSection: View {
     @ObservedObject var session: RDPSession
     @State private var password = ""
     @State private var confirmForget = false
+    @AppStorage(SettingsKeys.remoteDesktopEnabled)
+    private var remoteDesktopEnabled = UIDevice.current.userInterfaceIdiom != .phone
 
     var body: some View {
         Section {
+            Toggle("Show the Remote tab", isOn: $remoteDesktopEnabled)
             LabeledContent("PC address") {
                 TextField(appState.titanHost.isEmpty ? "e.g. 192.168.1.20" : "Same as Titan (\(appState.titanHost))",
                           text: $appState.rdpSettings.host)

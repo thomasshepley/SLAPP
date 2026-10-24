@@ -148,6 +148,20 @@ each key land.
       reinstalled one) at that address is refused with a certificate message.
       Settings → **Forget saved PC certificates** clears it.
 
+## 6b. Companion
+
+- [ ] **Companion** tab: the sidebar (iPad) lists Fixtures and the tools.
+- [ ] Fixtures: search "skypanel", filter by type or maker, open one: specs,
+      DMX modes chart (switch modes), the distance slider and falloff chart.
+      **Compare** with another fixture.
+- [ ] From a fixture, **Open in** Beam / Stops / Power pre-fills that tool.
+- [ ] Beam & Photometry, Stops (move the DMX slider, watch the curve chart),
+      Power & Cable (add fixtures, change distro, temperature), Colour & Gels,
+      Camera, Sun & Sync: numbers look sane.
+- [ ] Units & Mains: switch to imperial; distances show in ft and lux in fc.
+- [ ] iPhone: no Remote tab and it opens on Companion. Settings → Remote desktop
+      → "Show the Remote tab" brings it back.
+
 ## 7. Soak log
 
 - [ ] Settings → **Soak test log** lists the drop-out you caused in step 6,

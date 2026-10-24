@@ -29,6 +29,8 @@ targets:
     sources:
       - Sources
       - Resources/Assets.xcassets
+      # Companion fixture library and gels (Tools/export_companion_data.ts).
+      - Resources/Companion
     dependencies:
       - package: StreamDeckKit
         product: StreamDeckKit

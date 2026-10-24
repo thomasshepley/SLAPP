@@ -5,4 +5,7 @@ import Foundation
 /// run without the app's UI, so they read settings directly).
 enum SettingsKeys {
     static let titanHost = "titanHost"
+    /// Whether the Remote (desktop) tab is shown. Off by default on iPhone,
+    /// where the app is mainly the Companion and Titan commands.
+    static let remoteDesktopEnabled = "remoteDesktopEnabled"
 }

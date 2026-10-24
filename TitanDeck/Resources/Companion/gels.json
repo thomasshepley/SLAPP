@@ -1,0 +1,247 @@
+[
+ {
+  "manufacturer": "Lee",
+  "number": "201",
+  "name": "Full C.T. Blue",
+  "description": "Converts tungsten 3200K to daylight 5700K",
+  "miredShift": -131,
+  "swatchRgb": {
+   "r": 150,
+   "g": 190,
+   "b": 235
+  },
+  "id": "gel-Lee-201-0"
+ },
+ {
+  "manufacturer": "Lee",
+  "number": "202",
+  "name": "Half C.T. Blue",
+  "miredShift": -68,
+  "swatchRgb": {
+   "r": 180,
+   "g": 205,
+   "b": 235
+  },
+  "id": "gel-Lee-202-1"
+ },
+ {
+  "manufacturer": "Lee",
+  "number": "203",
+  "name": "Quarter C.T. Blue",
+  "miredShift": -35,
+  "swatchRgb": {
+   "r": 205,
+   "g": 220,
+   "b": 238
+  },
+  "id": "gel-Lee-203-2"
+ },
+ {
+  "manufacturer": "Lee",
+  "number": "204",
+  "name": "Full C.T. Orange",
+  "description": "Converts daylight 5700K to tungsten 3200K",
+  "miredShift": 167,
+  "swatchRgb": {
+   "r": 245,
+   "g": 180,
+   "b": 110
+  },
+  "id": "gel-Lee-204-3"
+ },
+ {
+  "manufacturer": "Lee",
+  "number": "205",
+  "name": "Half C.T. Orange",
+  "miredShift": 81,
+  "swatchRgb": {
+   "r": 248,
+   "g": 205,
+   "b": 150
+  },
+  "id": "gel-Lee-205-4"
+ },
+ {
+  "manufacturer": "Lee",
+  "number": "206",
+  "name": "Quarter C.T. Orange",
+  "miredShift": 42,
+  "swatchRgb": {
+   "r": 250,
+   "g": 222,
+   "b": 185
+  },
+  "id": "gel-Lee-206-5"
+ },
+ {
+  "manufacturer": "Rosco",
+  "number": "R3202",
+  "name": "Full Blue (CTB)",
+  "miredShift": -131,
+  "swatchRgb": {
+   "r": 150,
+   "g": 190,
+   "b": 235
+  },
+  "id": "gel-Rosco-R3202-6"
+ },
+ {
+  "manufacturer": "Rosco",
+  "number": "R3407",
+  "name": "Full CTO",
+  "miredShift": 167,
+  "swatchRgb": {
+   "r": 245,
+   "g": 180,
+   "b": 110
+  },
+  "id": "gel-Rosco-R3407-7"
+ },
+ {
+  "manufacturer": "Lee",
+  "number": "244",
+  "name": "Plus Green (Fluorescent 5700K)",
+  "description": "Adds green to match fluorescents",
+  "swatchRgb": {
+   "r": 200,
+   "g": 230,
+   "b": 160
+  },
+  "id": "gel-Lee-244-8"
+ },
+ {
+  "manufacturer": "Lee",
+  "number": "247",
+  "name": "Minus Green (Fluorescent 3600K)",
+  "description": "Removes green / adds magenta",
+  "swatchRgb": {
+   "r": 225,
+   "g": 175,
+   "b": 215
+  },
+  "id": "gel-Lee-247-9"
+ },
+ {
+  "manufacturer": "Lee",
+  "number": "216",
+  "name": "White Diffusion",
+  "description": "Full diffusion, ~1.6 stop loss",
+  "swatchRgb": {
+   "r": 240,
+   "g": 240,
+   "b": 240
+  },
+  "id": "gel-Lee-216-10"
+ },
+ {
+  "manufacturer": "Lee",
+  "number": "250",
+  "name": "Half White Diffusion",
+  "swatchRgb": {
+   "r": 245,
+   "g": 245,
+   "b": 245
+  },
+  "id": "gel-Lee-250-11"
+ },
+ {
+  "manufacturer": "Lee",
+  "number": "251",
+  "name": "Quarter White Diffusion",
+  "swatchRgb": {
+   "r": 248,
+   "g": 248,
+   "b": 248
+  },
+  "id": "gel-Lee-251-12"
+ },
+ {
+  "manufacturer": "Lee",
+  "number": "106",
+  "name": "Primary Red",
+  "swatchRgb": {
+   "r": 220,
+   "g": 20,
+   "b": 30
+  },
+  "id": "gel-Lee-106-13"
+ },
+ {
+  "manufacturer": "Lee",
+  "number": "101",
+  "name": "Yellow",
+  "swatchRgb": {
+   "r": 245,
+   "g": 220,
+   "b": 30
+  },
+  "id": "gel-Lee-101-14"
+ },
+ {
+  "manufacturer": "Lee",
+  "number": "124",
+  "name": "Dark Green",
+  "swatchRgb": {
+   "r": 20,
+   "g": 120,
+   "b": 60
+  },
+  "id": "gel-Lee-124-15"
+ },
+ {
+  "manufacturer": "Lee",
+  "number": "120",
+  "name": "Deep Blue",
+  "swatchRgb": {
+   "r": 20,
+   "g": 50,
+   "b": 160
+  },
+  "id": "gel-Lee-120-16"
+ },
+ {
+  "manufacturer": "Lee",
+  "number": "128",
+  "name": "Bright Pink",
+  "swatchRgb": {
+   "r": 225,
+   "g": 40,
+   "b": 130
+  },
+  "id": "gel-Lee-128-17"
+ },
+ {
+  "manufacturer": "Lee",
+  "number": "147",
+  "name": "Apricot",
+  "description": "Warm skin-friendly amber",
+  "swatchRgb": {
+   "r": 245,
+   "g": 175,
+   "b": 120
+  },
+  "id": "gel-Lee-147-18"
+ },
+ {
+  "manufacturer": "Rosco",
+  "number": "R26",
+  "name": "Light Red",
+  "swatchRgb": {
+   "r": 225,
+   "g": 60,
+   "b": 60
+  },
+  "id": "gel-Rosco-R26-19"
+ },
+ {
+  "manufacturer": "GAM",
+  "number": "720",
+  "name": "Caribbean Blue",
+  "swatchRgb": {
+   "r": 30,
+   "g": 150,
+   "b": 200
+  },
+  "id": "gel-GAM-720-20"
+ }
+]
