@@ -51,6 +51,8 @@ targets:
       properties:
         # Required by Stream Deck Kit to talk to the Elgato driver.
         com.apple.developer.driverkit.communicates-with-drivers: true
+        # Wi-Fi network name and access point in the connection details panel.
+        com.apple.developer.networking.wifi-info: true
     info:
       path: Resources/Info.plist
       properties:
@@ -73,6 +75,8 @@ targets:
           - UIInterfaceOrientationLandscapeRight
         UIApplicationSupportsIndirectInputEvents: true
         NSLocalNetworkUsageDescription: TitanDeck talks to the Titan PC on your show network to fire playbacks and show its screen.
+        # iOS only shares the Wi-Fi name and access point with apps allowed Location.
+        NSLocationWhenInUseUsageDescription: TitanDeck shows which Wi-Fi network and access point the iPad is on, to help diagnose the link to the Titan PC. It never records where you are.
         # Browsed only to detect whether Local Network access is allowed.
         NSBonjourServices:
           - _titandeck._tcp

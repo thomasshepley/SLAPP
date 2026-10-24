@@ -135,7 +135,15 @@ each key land.
       click; two-finger drag = scroll; three-finger long press = Settings.
 - [ ] Pull the PC's network for ~20 s, then put it back: a dimmed "Reconnecting"
       banner appears, then it comes back by itself.
-- [ ] Close and reopen TitanDeck: it reconnects without being asked.
+- [ ] **Menu** (top right, next to the status pill) → Deck / Settings takes you
+      out of the desktop; the Remote tab brings it back still connected.
+      Menu → Disconnect ends it.
+- [ ] Close and reopen TitanDeck: it does **not** connect by itself (unless
+      Settings → "Connect when TitanDeck opens" is on).
+- [ ] Tap the **Wi-Fi / Ethernet** part of the status pill: the connection panel
+      shows the iPad's address, whether Titan and the PC are on the same network,
+      and reply times. On Wi-Fi, **Allow Location** to see the network name and
+      access point (iOS's rule). Signal strength isn't available to apps.
 - [ ] Bonus security check: after one good connection, a different PC (or a
       reinstalled one) at that address is refused with a certificate message.
       Settings → **Forget saved PC certificates** clears it.

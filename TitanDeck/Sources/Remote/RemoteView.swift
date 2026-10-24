@@ -23,10 +23,17 @@ struct RemoteView: View {
                 }
             }
             .overlay(alignment: .topTrailing) {
-                ConnectionPill(heartbeat: appState.heartbeat, session: session,
-                               network: appState.network, localNetwork: appState.localNetwork)
-                    .padding(.top, 12)
-                    .padding(.trailing, 16)
+                HStack(spacing: 10) {
+                    if session.state == .connected {
+                        menuButton
+                    }
+                    ConnectionPill(heartbeat: appState.heartbeat, session: session,
+                                   network: appState.network, localNetwork: appState.localNetwork,
+                                   titanHost: appState.titanHost,
+                                   remoteHost: appState.rdpSettings.effectiveHost(titanHost: appState.titanHost))
+                }
+                .padding(.top, 12)
+                .padding(.trailing, 16)
             }
             .ignoresSafeArea()
             .onAppear {
@@ -90,6 +97,26 @@ struct RemoteView: View {
         .padding(28)
         .frame(maxWidth: .infinity)
         .glassEffect(.regular, in: .rect(cornerRadius: 28))
+    }
+
+    /// The way out of the full-screen desktop (the tab bar is hidden while it's
+    /// live). The session stays connected in the background.
+    private var menuButton: some View {
+        Menu {
+            Button("Deck", systemImage: "square.grid.3x3.fill") { appState.mode = .deck }
+            Button("Settings", systemImage: "gearshape") { appState.mode = .settings }
+            Divider()
+            Button("Disconnect", systemImage: "xmark.circle", role: .destructive) { session.disconnect() }
+        } label: {
+            Label("Menu", systemImage: "line.3.horizontal")
+                .font(.caption.weight(.semibold))
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
+        }
+        .menuStyle(.button)
+        .buttonStyle(.plain)
+        .glassEffect(.regular.interactive(), in: .capsule)
+        .accessibilityHint("Go to the deck or settings, or disconnect")
     }
 
     private var actionButtons: some View {

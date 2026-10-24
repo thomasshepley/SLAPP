@@ -16,6 +16,8 @@ final class NetworkMonitor: ObservableObject {
 
     @Published private(set) var interface: Interface = .none
     @Published private(set) var isSatisfied = false
+    /// BSD name of the interface in use ("en0"), for reading its address.
+    @Published private(set) var interfaceName: String?
 
     private let monitor = NWPathMonitor()
     private var started = false
@@ -37,6 +39,14 @@ final class NetworkMonitor: ObservableObject {
             } else {
                 interface = .other
             }
+            let name: String?
+            switch interface {
+            case .ethernet: name = path.availableInterfaces.first { $0.type == .wiredEthernet }?.name
+            case .wifi: name = path.availableInterfaces.first { $0.type == .wifi }?.name
+            case .cellular: name = path.availableInterfaces.first { $0.type == .cellular }?.name
+            case .other: name = path.availableInterfaces.first?.name
+            case .none: name = nil
+            }
             DispatchQueue.main.async {
                 MainActor.assumeIsolated {
                     guard let self else { return }
@@ -45,6 +55,7 @@ final class NetworkMonitor: ObservableObject {
                     }
                     self.interface = interface
                     self.isSatisfied = satisfied
+                    self.interfaceName = name
                 }
             }
         }
