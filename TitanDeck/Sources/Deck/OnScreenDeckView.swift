@@ -89,7 +89,7 @@ struct OnScreenDeckView: View {
                 let key = deck.currentPage?.key(at: index)
                 Image(uiImage: DeckRenderer.image(for: key, size: CGSize(width: 144, height: 144),
                                                   overlay: deck.overlays[index] ?? .none,
-                                                  isActive: deck.isActive(key)))
+                                                  isActive: deck.isActive(key), isLatched: deck.isLatched(key)))
                     .resizable()
                     .aspectRatio(1, contentMode: .fit)
                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))

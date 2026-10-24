@@ -125,6 +125,18 @@ each key land.
 - [ ] **Export profile** (AirDrop it to the Mac or save to Files), then
       **Import profile** brings it back.
 
+## 5b. Key styles (emoji, palette, pressed look)
+
+- [ ] Settings > Deck profile > tap a key > Icon > Emoji: pick 🔥 and clear the
+      label. The emoji fills the key on the preview and on the Stream Deck.
+- [ ] Colour > Custom colour: pick an orange, tap +. It joins the swatches, and
+      shows on another key's palette too. Long-press it > Remove from palette.
+- [ ] When pressed: turn it on, red, label "LIVE". While held: the key turns
+      red only while your finger is on it. Until pressed again: one press
+      turns it red, the next turns it back. While the playback is live (Go key):
+      red while the cue runs on Titan.
+- [ ] A key with no pressed look still flashes white when pressed.
+
 ## 6. Remote desktop
 
 - [ ] Settings → Remote desktop: PC address (blank uses the Titan address),

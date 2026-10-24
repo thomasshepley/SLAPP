@@ -31,6 +31,8 @@ final class DeckSessionController: ObservableObject {
     @Published private(set) var overlays: [Int: DeckRenderer.Overlay] = [:]
     /// User numbers of playbacks Titan reports as active (M8).
     @Published private(set) var activePlaybacks: Set<Int> = []
+    /// Latching keys that are switched on (their pressed look shows until pressed again).
+    @Published private(set) var latchedKeys: Set<UUID> = []
     private var started = false
     /// Running while the Menu key is held; opens the menu after 2 s.
     private var menuHoldTask: Task<Void, Never>?
@@ -147,7 +149,14 @@ final class DeckSessionController: ObservableObject {
 
     /// `index` is the logical key (as laid out in the profile).
     private func handleKey(_ index: Int, pressed: Bool) {
-        guard let key = currentPage?.key(at: index), let action = key.action else { return }
+        guard let key = currentPage?.key(at: index) else { return }
+
+        // A latching key flips its look on every press, action or not.
+        if pressed, key.pressedStyle?.resolvedMode == .latch {
+            if latchedKeys.contains(key.id) { latchedKeys.remove(key.id) } else { latchedKeys.insert(key.id) }
+            draw(logicalIndex: index)
+        }
+        guard let action = key.action else { return }
 
         guard pressed else {
             if action == .mainMenu {
@@ -216,6 +225,10 @@ final class DeckSessionController: ObservableObject {
         }
     }
 
+    func isLatched(_ key: KeyDefinition?) -> Bool {
+        key.map { latchedKeys.contains($0.id) } ?? false
+    }
+
     func isActive(_ key: KeyDefinition?) -> Bool {
         guard let number = key?.action?.playbackUserNumber else { return false }
         return activePlaybacks.contains(number)
@@ -243,7 +256,8 @@ final class DeckSessionController: ObservableObject {
         let logical = geometry.logicalIndex(forPhysical: physical)
         let key = logical.flatMap { currentPage?.key(at: $0) }
         let image = DeckRenderer.image(for: key, size: size, overlay: logical.flatMap { overlays[$0] } ?? .none,
-                                       isActive: isActive(key), quarterTurns: geometry.imageQuarterTurns)
+                                       isActive: isActive(key), isLatched: isLatched(key),
+                                       quarterTurns: geometry.imageQuarterTurns)
         device.setKeyImage(image, at: physical)
     }
 

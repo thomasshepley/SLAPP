@@ -9,15 +9,21 @@ struct KeyInspectorView: View {
 
     @State private var key: KeyDefinition
     @State private var draft: ActionDraft
+    @State private var previewPressed = false
+    @FocusState private var focusedField: Field?
+
+    private enum Field { case label, pressedLabel }
     private let isNew: Bool
     private let pageCount: Int
     private let onSave: (KeyDefinition) -> Void
     private let onClear: () -> Void
     private let onTest: (TitanAction) -> Void
 
-    static let swatches = ["#1E7D32", "#B23B1E", "#2D4FA3", "#C78A00", "#6A3FA0", "#0E7C86", "#2A2A2A", "#000000"]
     static let symbols = ["play.fill", "stop.fill", "pause.fill", "forward.end.fill", "arrow.right.square",
                           "arrow.left.square", "lightbulb.fill", "sun.max.fill", "bolt.fill", "sparkles"]
+    /// Quick picks for show work; the emoji keyboard has the rest.
+    static let emojis = ["💡", "🔥", "⚡️", "🚨", "🎆", "🌈", "☀️", "🌙", "❄️", "🌊", "⭐️", "🎬",
+                         "🎵", "🎤", "🚓", "🔴", "🟢", "🔵", "⚪️", "⛔️", "✅", "▶️", "⏹️", "⏸️"]
 
     init(key: KeyDefinition?, index: Int, pageCount: Int,
          onSave: @escaping (KeyDefinition) -> Void,
@@ -39,6 +45,17 @@ struct KeyInspectorView: View {
         result.action = draft.action
         let symbol = key.sfSymbol?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         result.sfSymbol = symbol.isEmpty ? nil : symbol
+        result.emoji = key.emoji.flatMap(KeyDefinition.cleanEmoji)
+        if var style = key.pressedStyle {
+            let label = style.label?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            style.label = label.isEmpty ? nil : style.label
+            style.emoji = style.emoji.flatMap(KeyDefinition.cleanEmoji)
+            let pressedSymbol = style.sfSymbol?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            style.sfSymbol = pressedSymbol.isEmpty ? nil : pressedSymbol
+            // "While live" only makes sense for a playback key.
+            if style.mode == .live, draft.action?.playbackUserNumber == nil { style.mode = .held }
+            result.pressedStyle = style
+        }
         return result
     }
 
@@ -49,6 +66,8 @@ struct KeyInspectorView: View {
                 Section {
                     TextField("Label", text: $key.label, axis: .vertical)
                         .lineLimit(1...3)
+                        .focused($focusedField, equals: .label)
+                        .wholeRowTapFocuses { focusedField = .label }
                 } header: {
                     Text("Label")
                 } footer: {
@@ -57,6 +76,7 @@ struct KeyInspectorView: View {
                 colourSection
                 iconSection
                 actionSection
+                pressedSection
                 Section {
                     Button("Test now", systemImage: "bolt.fill") {
                         if let action = draft.action { onTest(action) }
@@ -89,72 +109,81 @@ struct KeyInspectorView: View {
 
     private var previewSection: some View {
         Section {
-            HStack {
-                Spacer()
-                Image(uiImage: DeckRenderer.image(for: edited, size: CGSize(width: 96, height: 96)))
+            VStack(spacing: 10) {
+                Image(uiImage: DeckRenderer.image(for: edited, size: CGSize(width: 96, height: 96),
+                                                  overlay: previewPressed ? .pressed : .none,
+                                                  isLatched: previewPressed))
                     .resizable()
                     .frame(width: 120, height: 120)
                     .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                Spacer()
+                    .onLongPressGesture(minimumDuration: 0, maximumDistance: 40, perform: {}) { pressing in
+                        previewPressed = pressing
+                    }
+                if key.pressedStyle != nil {
+                    Picker("Preview", selection: $previewPressed) {
+                        Text("Normal").tag(false)
+                        Text("Pressed").tag(true)
+                    }
+                    .pickerStyle(.segmented)
+                    .frame(maxWidth: 260)
+                }
             }
+            .frame(maxWidth: .infinity)
             .listRowBackground(Color.clear)
         }
     }
 
     private var colourSection: some View {
-        Section("Colour") {
-            HStack(spacing: 12) {
-                ForEach(Self.swatches, id: \.self) { hex in
-                    Button {
-                        key.colorHex = hex
-                    } label: {
-                        Circle()
-                            .fill(Color(uiColor: UIColor(hex: hex)))
-                            .frame(width: 34, height: 34)
-                            .overlay(Circle().strokeBorder(.white.opacity(0.25)))
-                            .overlay {
-                                if key.colorHex.uppercased() == hex {
-                                    Circle().strokeBorder(.white, lineWidth: 3)
-                                }
-                            }
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Colour \(hex)")
-                }
-            }
-            ColorPicker("Custom colour", selection: colourBinding, supportsOpacity: false)
+        Section {
+            SwatchGrid(hex: $key.colorHex)
+        } header: {
+            Text("Colour")
+        } footer: {
+            Text("Add to palette keeps a custom colour with the swatches for every key. Long-press one of yours to remove it.")
         }
     }
 
     private var iconSection: some View {
         Section {
-            TextField("SF Symbol name (optional)", text: symbolBinding)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 16) {
-                    Button {
-                        key.sfSymbol = nil
-                    } label: {
-                        Image(systemName: "xmark.circle")
-                    }
-                    .accessibilityLabel("No icon")
-                    ForEach(Self.symbols, id: \.self) { name in
-                        Button {
-                            key.sfSymbol = name
-                        } label: {
-                            Image(systemName: name)
-                        }
-                        .accessibilityLabel(name)
-                    }
-                }
-                .font(.title3)
-                .buttonStyle(.borderless)
-            }
+            IconFields(sfSymbol: $key.sfSymbol, emoji: $key.emoji, emptyTitle: "None")
         } header: {
             Text("Icon")
         } footer: {
-            Text("Any SF Symbol name works. Browse them in Apple's free SF Symbols app.")
+            Text("Any SF Symbol name works (browse them in Apple's free SF Symbols app), or any emoji from the emoji keyboard. With no label, the icon fills the key.")
+        }
+    }
+
+    private var pressedSection: some View {
+        Section {
+            Toggle("Change the look when pressed", isOn: pressedEnabled)
+            if key.pressedStyle != nil {
+                Picker("Show it", selection: pressedMode) {
+                    ForEach(KeyDefinition.PressedStyle.Mode.allCases) { mode in
+                        if mode != .live || draft.action?.playbackUserNumber != nil {
+                            Text(mode.title).tag(mode)
+                        }
+                    }
+                }
+                SwatchGrid(hex: pressedColour)
+                TextField("Label (blank keeps the normal one)", text: pressedLabel, axis: .vertical)
+                    .lineLimit(1...3)
+                    .focused($focusedField, equals: .pressedLabel)
+                    .wholeRowTapFocuses { focusedField = .pressedLabel }
+                IconFields(sfSymbol: pressedBinding(\.sfSymbol), emoji: pressedBinding(\.emoji), emptyTitle: "Same")
+            }
+        } header: {
+            Text("When pressed")
+        } footer: {
+            Text(pressedFooter)
+        }
+    }
+
+    private var pressedFooter: String {
+        switch key.pressedStyle?.resolvedMode {
+        case nil: return "Give the key a second look: a different colour, label or icon."
+        case .held?: return "Shows while your finger is on the key."
+        case .latch?: return "Press once to switch to this look, press again to switch back. Good for on/off keys."
+        case .live?: return "Shows while the playback is running on Titan, so you can see what's up at a glance."
         }
     }
 
@@ -246,17 +275,185 @@ struct KeyInspectorView: View {
 
     // MARK: - Bindings
 
-    private var colourBinding: Binding<Color> {
+    private var pressedEnabled: Binding<Bool> {
         Binding(
-            get: { Color(uiColor: UIColor(hex: key.colorHex)) },
-            set: { key.colorHex = HexColor(UIColor($0)).hexString }
+            get: { key.pressedStyle != nil },
+            set: { on in
+                key.pressedStyle = on ? KeyDefinition.PressedStyle(mode: .held, colorHex: "#B23B1E") : nil
+                previewPressed = on
+            }
         )
     }
 
-    private var symbolBinding: Binding<String> {
+    private var pressedMode: Binding<KeyDefinition.PressedStyle.Mode> {
         Binding(
-            get: { key.sfSymbol ?? "" },
-            set: { key.sfSymbol = $0.isEmpty ? nil : $0 }
+            get: { key.pressedStyle?.resolvedMode ?? .held },
+            set: { key.pressedStyle?.mode = $0 }
         )
+    }
+
+    private var pressedColour: Binding<String> {
+        Binding(
+            get: { key.pressedStyle?.colorHex ?? key.colorHex },
+            set: { key.pressedStyle?.colorHex = $0 }
+        )
+    }
+
+    private var pressedLabel: Binding<String> {
+        Binding(
+            get: { key.pressedStyle?.label ?? "" },
+            set: { key.pressedStyle?.label = $0 }
+        )
+    }
+
+    private func pressedBinding(_ path: WritableKeyPath<KeyDefinition.PressedStyle, String?>) -> Binding<String?> {
+        Binding(
+            get: { key.pressedStyle?[keyPath: path] },
+            set: { key.pressedStyle?[keyPath: path] = $0 }
+        )
+    }
+}
+
+/// The palette: built-in swatches, then your saved colours, then a picker
+/// for anything else with a button to keep it.
+private struct SwatchGrid: View {
+    @Binding var hex: String
+    @AppStorage(DeckPalette.storageKey) private var stored = ""
+
+    private var custom: [String] { DeckPalette.decode(stored) }
+
+    var body: some View {
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 36), spacing: 12)], spacing: 12) {
+            ForEach(DeckPalette.builtIn + custom, id: \.self) { colour in
+                swatch(colour, isCustom: custom.contains(colour))
+            }
+        }
+        .padding(.vertical, 4)
+        HStack {
+            ColorPicker("Custom colour", selection: colourBinding, supportsOpacity: false)
+            Button("Add to palette", systemImage: "plus.circle.fill") {
+                withAnimation(.snappy) { stored = DeckPalette.encode(DeckPalette.adding(hex, to: custom)) }
+            }
+            .labelStyle(.iconOnly)
+            .font(.title2)
+            .buttonStyle(.borderless)
+            .disabled((DeckPalette.builtIn + custom).contains(hex.uppercased()))
+            .accessibilityLabel("Add this colour to the palette")
+        }
+    }
+
+    private func swatch(_ colour: String, isCustom: Bool) -> some View {
+        Button {
+            hex = colour
+        } label: {
+            Circle()
+                .fill(Color(uiColor: UIColor(hex: colour)))
+                .frame(width: 34, height: 34)
+                .overlay(Circle().strokeBorder(.white.opacity(0.25)))
+                .overlay {
+                    if hex.uppercased() == colour {
+                        Circle().strokeBorder(.white, lineWidth: 3)
+                    }
+                }
+        }
+        .buttonStyle(.plain)
+        .contextMenu {
+            if isCustom {
+                Button("Remove from palette", systemImage: "trash", role: .destructive) {
+                    withAnimation(.snappy) { stored = DeckPalette.encode(DeckPalette.removing(colour, from: custom)) }
+                }
+            }
+        }
+        .accessibilityLabel("Colour \(colour)")
+    }
+
+    private var colourBinding: Binding<Color> {
+        Binding(
+            get: { Color(uiColor: UIColor(hex: hex)) },
+            set: { hex = HexColor(UIColor($0)).hexString }
+        )
+    }
+}
+
+/// Icon choice: none (or "same" for the pressed look), an SF Symbol, or an emoji.
+private struct IconFields: View {
+    @Binding var sfSymbol: String?
+    @Binding var emoji: String?
+    let emptyTitle: String
+
+    private enum Kind: Hashable { case none, symbol, emoji }
+
+    private var kind: Binding<Kind> {
+        Binding(
+            get: { emoji != nil ? .emoji : sfSymbol != nil ? .symbol : .none },
+            set: { new in
+                switch new {
+                case .none:
+                    sfSymbol = nil
+                    emoji = nil
+                case .symbol:
+                    emoji = nil
+                    if sfSymbol == nil { sfSymbol = "lightbulb.fill" }
+                case .emoji:
+                    sfSymbol = nil
+                    if emoji == nil { emoji = "💡" }
+                }
+            }
+        )
+    }
+
+    var body: some View {
+        Picker("Icon", selection: kind) {
+            Text(emptyTitle).tag(Kind.none)
+            Text("Symbol").tag(Kind.symbol)
+            Text("Emoji").tag(Kind.emoji)
+        }
+        .pickerStyle(.segmented)
+        switch kind.wrappedValue {
+        case .none:
+            EmptyView()
+        case .symbol:
+            TextField("SF Symbol name", text: text($sfSymbol))
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+            quickPicks(KeyInspectorView.symbols) { name in
+                Button { sfSymbol = name } label: { Image(systemName: name) }
+                    .accessibilityLabel(name)
+            }
+        case .emoji:
+            TextField("Emoji", text: text($emoji))
+                .font(.title2)
+            quickPicks(KeyInspectorView.emojis) { character in
+                Button(character) { emoji = character }
+            }
+        }
+    }
+
+    private func quickPicks<Content: View>(_ items: [String], @ViewBuilder button: @escaping (String) -> Content) -> some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 16) {
+                ForEach(items, id: \.self) { button($0) }
+            }
+            .font(.title3)
+            .buttonStyle(.borderless)
+        }
+    }
+
+    private func text(_ value: Binding<String?>) -> Binding<String> {
+        Binding(get: { value.wrappedValue ?? "" }, set: { value.wrappedValue = $0 })
+    }
+}
+
+private extension View {
+    /// A multi-line TextField in a Form only takes taps on its text, so an
+    /// empty one is hard to hit. This makes the whole row bring up the keyboard.
+    func wholeRowTapFocuses(_ focus: @escaping () -> Void) -> some View {
+        frame(maxWidth: .infinity, minHeight: 36, alignment: .leading)
+            // Behind the field, so taps on the text still place the cursor.
+            .background {
+                Color.clear
+                    .contentShape(.rect)
+                    .onTapGesture(perform: focus)
+            }
     }
 }
