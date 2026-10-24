@@ -44,7 +44,7 @@ struct ActionDraft: Equatable {
             case .keypadExit: return "Keypad Exit"
             case .keypadClear: return "Keypad Clear"
             case .intensity: return "Intensity +/- %"
-            case .mainMenu: return "Main menu (hold 2 s)"
+            case .mainMenu: return "Page name: tap for next page"
             }
         }
     }

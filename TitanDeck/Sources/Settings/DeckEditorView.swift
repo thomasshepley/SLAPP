@@ -87,7 +87,7 @@ struct DeckEditorView: View {
         let columns = Array(repeating: GridItem(.flexible(), spacing: 10), count: profile.gridColumns)
         return LazyVGrid(columns: columns, spacing: 10) {
             ForEach(0..<profile.keyCount, id: \.self) { index in
-                let key = page?.key(at: index)
+                let key = DeckFlow.displayed(page?.key(at: index), onPage: page?.name)
                 Button {
                     editingKey = EditingKey(index: index)
                 } label: {

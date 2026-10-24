@@ -256,7 +256,7 @@ struct KeyInspectorView: View {
         case .intensity:
             Text("Nudges the selected fixtures' intensity. Negative numbers bring it down.")
         case .mainMenu:
-            Text("Hold for 2 seconds to open the menu of deck layouts.")
+            Text("Shows the page's name. Tap for the next page; hold for 2 seconds for the menu of all pages.")
         default:
             EmptyView()
         }

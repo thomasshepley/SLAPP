@@ -15,8 +15,11 @@ final class DeckSessionController: ObservableObject {
     @Published private(set) var device: StreamDeck?
     @Published private(set) var statusText = "Not started"
     @Published private(set) var currentPageIndex = 0
+    /// A page shown in place of the profile page: the main menu, or the
+    /// intensity keys after a keypad selection.
+    @Published private(set) var flowOverlay: DeckFlow.Overlay?
     /// True while the main menu of layouts is showing instead of a page.
-    @Published private(set) var isShowingMenu = false
+    var isShowingMenu: Bool { flowOverlay == .menu }
     @Published private(set) var profile: DeckProfile
 
     /// Called for every key whose action goes to Titan. The Int is the key index,
@@ -33,6 +36,8 @@ final class DeckSessionController: ObservableObject {
     @Published private(set) var activePlaybacks: Set<Int> = []
     /// Latching keys that are switched on (their pressed look shows until pressed again).
     @Published private(set) var latchedKeys: Set<UUID> = []
+    /// What's been typed on the deck's keypad, to spot "102 Enter".
+    private var keypad = DeckFlow.KeypadBuffer()
     private var started = false
     /// Running while the Menu key is held; opens the menu after 2 s.
     private var menuHoldTask: Task<Void, Never>?
@@ -43,27 +48,29 @@ final class DeckSessionController: ObservableObject {
         self.profile = profile
     }
 
-    /// What the deck is showing: a profile page, or the main menu.
+    /// What the deck is showing: a profile page, the main menu, or the
+    /// intensity keys after a selection.
     var currentPage: DeckPage? {
-        if isShowingMenu { return menuPage }
-        return profile.pages.indices.contains(currentPageIndex) ? profile.pages[currentPageIndex] : nil
+        switch flowOverlay {
+        case .menu?: return DeckFlow.menuPage(profile: profile)
+        case .selection(let returnTo)?: return DeckFlow.selectionPage(profile: profile, returnTo: returnTo)
+        case nil: return profile.pages.indices.contains(currentPageIndex) ? profile.pages[currentPageIndex] : nil
+        }
     }
 
-    /// The main menu: one key per layout (page), built from the profile so new
-    /// pages appear automatically. Pressing one opens that layout.
-    var menuPage: DeckPage {
-        let palette = ["#2D4FA3", "#1E7D32", "#8A5A00", "#6A3FA0", "#0E7C86", "#B23B1E"]
-        let keys = profile.pages.prefix(profile.keyCount).enumerated().map { index, page in
-            KeyDefinition(index: index, label: page.name, colorHex: palette[index % palette.count],
-                          action: .switchPage(index))
-        }
-        return DeckPage(name: "Main Menu", keys: Array(keys))
+    /// A key as drawn: the Menu key carries the current page's name.
+    func displayedKey(at index: Int) -> KeyDefinition? {
+        DeckFlow.displayed(currentPage?.key(at: index), onPage: currentPage?.name)
     }
 
     func showMenu() {
         menuHoldTask?.cancel()
         menuHoldTask = nil
-        isShowingMenu = true
+        show(.menu)
+    }
+
+    private func show(_ overlay: DeckFlow.Overlay?) {
+        flowOverlay = overlay
         overlays.removeAll()
         redraw()
     }
@@ -95,8 +102,8 @@ final class DeckSessionController: ObservableObject {
     /// Shows a page on the deck - used by the editor so the hardware mirrors the
     /// page being edited.
     func showPage(_ index: Int) {
-        guard profile.pages.indices.contains(index), index != currentPageIndex || isShowingMenu else { return }
-        isShowingMenu = false
+        guard profile.pages.indices.contains(index), index != currentPageIndex || flowOverlay != nil else { return }
+        flowOverlay = nil
         currentPageIndex = index
         overlays.removeAll()
         redraw()
@@ -159,10 +166,13 @@ final class DeckSessionController: ObservableObject {
         guard let action = key.action else { return }
 
         guard pressed else {
-            if action == .mainMenu {
-                // Let go before 2 s: no menu.
-                menuHoldTask?.cancel()
+            if action == .mainMenu, let hold = menuHoldTask {
+                // Let go before 2 s: a tap, so on to the next page.
+                hold.cancel()
                 menuHoldTask = nil
+                setOverlay(nil, at: index)
+                showPage(DeckFlow.nextPage(after: currentPageIndex, pageCount: profile.pages.count))
+                return
             }
             // Key up: clear the pressed highlight unless a failure flash is showing.
             if overlays[index] == .pressed { setOverlay(nil, at: index) }
@@ -190,6 +200,10 @@ final class DeckSessionController: ObservableObject {
         default:
             setOverlay(.pressed, at: index)
             onAction?(action, index)
+            // "102 Enter" selected fixtures: bring up the intensity keys.
+            if keypad.apply(action), flowOverlay == nil {
+                show(.selection(returnTo: currentPageIndex))
+            }
         }
     }
 
@@ -200,10 +214,10 @@ final class DeckSessionController: ObservableObject {
             return
         }
         setOverlay(.failure, at: index)
-        let page = currentPageIndex, menu = isShowingMenu
+        let page = currentPageIndex, shown = flowOverlay
         Task { @MainActor [weak self] in
             try? await Task.sleep(nanoseconds: 400_000_000)
-            guard let self, self.currentPageIndex == page, self.isShowingMenu == menu,
+            guard let self, self.currentPageIndex == page, self.flowOverlay == shown,
                   self.overlays[index] == .failure else { return }
             self.setOverlay(nil, at: index)
         }
@@ -254,8 +268,15 @@ final class DeckSessionController: ObservableObject {
         let size = device.capabilities.keySize ?? CGSize(width: 96, height: 96)
         let geometry = profile.geometry
         let logical = geometry.logicalIndex(forPhysical: physical)
-        let key = logical.flatMap { currentPage?.key(at: $0) }
-        let image = DeckRenderer.image(for: key, size: size, overlay: logical.flatMap { overlays[$0] } ?? .none,
+        let key = logical.flatMap(displayedKey(at:))
+        let overlay = logical.flatMap { overlays[$0] } ?? .none
+        guard key != nil || overlay != .none else {
+            // Nothing on this key: the deck's own fill, so it goes blank
+            // rather than keeping the last page's picture.
+            device.fillKey(.black, at: physical)
+            return
+        }
+        let image = DeckRenderer.image(for: key, size: size, overlay: overlay,
                                        isActive: isActive(key), isLatched: isLatched(key),
                                        quarterTurns: geometry.imageQuarterTurns)
         device.setKeyImage(image, at: physical)
