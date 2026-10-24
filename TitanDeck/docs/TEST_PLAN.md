@@ -148,6 +148,18 @@ each key land.
       reinstalled one) at that address is refused with a certificate message.
       Settings → **Forget saved PC certificates** clears it.
 
+## 6a. Keypad readout (Remote screen)
+
+- [ ] Connect the remote desktop, Stream Deck on the Keypad page. Type 102@30:
+      it appears bottom left in the black band, with a blinking cursor.
+- [ ] Enter: the line goes green, then slides to the right. Do 3 more: only the
+      last 3 stay, newest on the right and biggest.
+- [ ] Clear or Exit throws away the line being typed.
+- [ ] Switch the deck to another page: the readout goes once nothing's typed.
+- [ ] Unplug the Titan network and type: the line turns red.
+- [ ] Tap the status pill top right: it opens network details and never
+      shrinks to dots.
+
 ## 6b. Companion
 
 - [ ] **Companion** tab: the sidebar (iPad) lists Fixtures and the tools.

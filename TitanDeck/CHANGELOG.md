@@ -14,6 +14,17 @@ with every change that goes to `main`.
 - **Send newest rdpwrap.ini:** for a Titan PC with no internet, the iPad downloads the fix and hands it over.
 - **Files both ways:** Send to PC goes through the Host (no shared folder needed), and anything put in To iPad on the PC shows up under From PC, ready to preview or share. The shared folder still works as a fallback.
 
+## 0.4.2 - 2026-10-24 - Keypad readout
+
+- **Keypad readout on the Remote screen:** what you type on the Stream Deck keypad (like 102@30) shows in the black band under the desktop. Press Enter and it turns green and slides across to the last commands on the right, which keep the last three.
+- A command shows red if a key didn't reach Titan, so you know Titan's line might not match.
+- The status pill in the top corner no longer shrinks to dots. Tap it any time for network details.
+
+## 0.4.1 - 2026-10-24 - Beam fix
+
+- Fixed a crash opening Companion > Beam & Photometry (and fixture pages with photometry): the falloff chart's log scale now has a safe range.
+- The chart is left out, rather than crashing, if the output is set to 0.
+
 ## 0.4.0 - 2026-10-24 - Send to PC
 
 - **Send files to the Titan PC, AirDrop style:** the PC pulses when it's reachable; tap it to send. Add photos, files, or drag them in on iPad.
