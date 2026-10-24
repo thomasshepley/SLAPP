@@ -44,6 +44,8 @@ public enum FixAction
     SetNetworkPrivate,
     AddDefenderExclusion,
     InstallRdpWrapper,
+    /// <summary>Turns on Titan's UI WebAPI (port 4433) so TitanDeck sees the desk's selection. PC only.</summary>
+    EnableDeskLink,
 }
 
 public sealed record Check(string Id, string Title, CheckState State, string Detail, FixAction Fix = FixAction.None,
@@ -59,6 +61,7 @@ public sealed record Check(string Id, string Title, CheckState State, string Det
         FixAction.SetNetworkPrivate => "Make private",
         FixAction.AddDefenderExclusion => "Add exclusion",
         FixAction.InstallRdpWrapper => "Install",
+        FixAction.EnableDeskLink => "Turn on",
         _ => "",
     };
 }

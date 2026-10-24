@@ -5,6 +5,7 @@ using System.ServiceProcess;
 using Microsoft.Win32;
 using TitanDeckHost.Core.Api;
 using TitanDeckHost.Core.Rdp;
+using TitanDeckHost.Core.Titan;
 
 namespace TitanDeckHost.Service;
 
@@ -23,10 +24,12 @@ public sealed class Fixer
     private readonly HostPaths _paths;
     private readonly WindowsProbe _probe;
     private readonly ILogger<Fixer> _log;
+    private readonly DeskLink _deskLink;
     private readonly SemaphoreSlim _oneAtATime = new(1, 1);
 
-    public Fixer(HostPaths paths, WindowsProbe probe, ILogger<Fixer> log)
+    public Fixer(HostPaths paths, WindowsProbe probe, DeskLink deskLink, ILogger<Fixer> log)
     {
+        _deskLink = deskLink;
         _paths = paths;
         _probe = probe;
         _log = log;
@@ -48,6 +51,7 @@ public sealed class Fixer
                 FixAction.SetNetworkPrivate => $"Set {NetworkProfiles.MakeConnectedPrivate()} network(s) to Private.",
                 FixAction.AddDefenderExclusion => AddDefenderExclusion(),
                 FixAction.InstallRdpWrapper => await InstallRdpWrapper(),
+                FixAction.EnableDeskLink => EnableDeskLink(),
                 _ => throw new InvalidOperationException("Nothing to do."),
             };
             return new FixResponse(true, message);
@@ -146,6 +150,14 @@ public sealed class Fixer
     private const string RulePrefix = "TitanDeck - ";
 
     /// <summary>Private and domain networks only; never Public.</summary>
+    /// <summary>Edits Titan's own settings file, so only from the PC.</summary>
+    private string EnableDeskLink()
+    {
+        var message = _deskLink.Enable();
+        AddFirewallRules();
+        return message;
+    }
+
     private static string AddFirewallRules()
     {
         var rules = new (string Name, string Protocol, int Port)[]
@@ -155,6 +167,7 @@ public sealed class Fixer
             ("Titan WebAPI", "TCP", 4430),
             ("Host", "TCP", Protocol.NetworkPort),
             ("Host discovery", "UDP", 5353),
+            ("Desk link", "TCP", TitanUiConfig.ProxyPort),
         };
         foreach (var rule in rules)
         {

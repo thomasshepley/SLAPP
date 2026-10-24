@@ -4,6 +4,7 @@ using TitanDeckHost.Core.Files;
 using TitanDeckHost.Core.Pairing;
 using TitanDeckHost.Core.Rdp;
 using TitanDeckHost.Core.Sacn;
+using TitanDeckHost.Core.Titan;
 using TitanDeckHost.Service;
 
 var builder = WebApplication.CreateBuilder(new WebApplicationOptions
@@ -17,6 +18,7 @@ builder.WebHost.ConfigureKestrel(kestrel =>
 {
     kestrel.ListenAnyIP(Protocol.NetworkPort);
     kestrel.Listen(IPAddress.Loopback, Protocol.LocalPort);
+    kestrel.ListenAnyIP(TitanUiConfig.ProxyPort);   // desk link: Titan's UI WebAPI, passed through
     kestrel.Limits.MaxRequestBodySize = null;   // photos and videos from the iPad
 });
 
@@ -24,6 +26,7 @@ var paths = new HostPaths();
 builder.Services.AddSingleton(paths);
 builder.Services.AddSingleton(new PairingStore(paths.PairingFile));
 builder.Services.AddSingleton<WindowsProbe>();
+builder.Services.AddSingleton<DeskLink>();
 builder.Services.AddSingleton<Fixer>();
 builder.Services.AddHostedService<Advertiser>();
 builder.Services.AddSingleton<DmxUniverses>();
@@ -64,7 +67,7 @@ network.MapPost("/pair", (PairRequest request) =>
         : Results.Json(new { error = result.Error }, statusCode: StatusCodes.Status403Forbidden);
 });
 
-network.MapGet("/status", (WindowsProbe probe) => Status(probe, paths));
+network.MapGet("/status", (WindowsProbe probe, DeskLink desk) => Status(probe, desk, paths));
 
 network.MapPost("/fix", async (FixRequest request, Fixer fixer) =>
 {
@@ -156,6 +159,17 @@ network.MapPost("/outbox/{name}/received", (string name) =>
     return Results.Ok();
 });
 
+// --- Desk link (port 4434): Titan's UI WebAPI passed through, /titan/... only. ---
+
+app.Map("/titan/{**rest}", (HttpContext http, DeskLink desk) =>
+    http.Connection.LocalPort == TitanUiConfig.ProxyPort ? desk.Forward(http) : NotFound(http));
+
+static Task NotFound(HttpContext http)
+{
+    http.Response.StatusCode = StatusCodes.Status404NotFound;
+    return Task.CompletedTask;
+}
+
 // --- The Host window's API (127.0.0.1:4432 only). ---
 
 var local = app.MapGroup("/local").AddEndpointFilter(async (context, next) =>
@@ -166,7 +180,7 @@ var local = app.MapGroup("/local").AddEndpointFilter(async (context, next) =>
     return await next(context);
 });
 
-local.MapGet("/status", (WindowsProbe probe) => Status(probe, paths));
+local.MapGet("/status", (WindowsProbe probe, DeskLink desk) => Status(probe, desk, paths));
 
 local.MapGet("/pairing", () => PairingInfo(pairing));
 
@@ -218,13 +232,23 @@ static IResult DmxLevels(int universe, int start, int count, DmxUniverses store,
         levels.Priority, levels.Sources, (int)levels.Age.TotalMilliseconds));
 }
 
-static StatusResponse Status(WindowsProbe probe, HostPaths paths)
+static StatusResponse Status(WindowsProbe probe, DeskLink desk, HostPaths paths)
 {
     var facts = probe.Gather();
     var checks = RdpDiagnosis.Run(facts);
+    // Desk link is extra: it doesn't count towards remote desktop's overall state.
+    Check? deskCheck;
+    try
+    {
+        deskCheck = TitanUiConfig.Diagnose(desk.Configs().Select(c => c.State).ToList(), desk.UiAnswers(), facts.TitanRunning);
+    }
+    catch (Exception)
+    {
+        deskCheck = null;   // like every probe fact: one that can't be read doesn't sink the rest
+    }
     return new StatusResponse(
         RdpDiagnosis.Overall(checks).ToString().ToLowerInvariant(),
-        checks.Select(CheckDto.From).ToList(),
+        checks.Append(deskCheck).OfType<Check>().Select(CheckDto.From).ToList(),
         facts.IsHome ? "Windows Home" : facts.Edition,
         facts.WindowsVersion,
         facts.TermsrvVersion,
