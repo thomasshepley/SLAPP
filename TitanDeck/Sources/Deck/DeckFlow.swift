@@ -36,53 +36,77 @@ enum DeckFlow {
 
     // MARK: Keypad
 
-    /// What's been typed on the deck's keypad since the last Enter, Clear or Exit.
+    /// What's been typed on the deck's keypad since the last Enter, Clear or
+    /// Exit, and the fixture that leaves selected in Titan.
     struct KeypadBuffer: Equatable {
         private(set) var text = ""
-        /// The fixture number last selected with "number Enter".
-        private(set) var lastSelection: Int?
+        /// The fixture in the programmer, as far as the deck knows: "102 Enter"
+        /// and "102 @ 50 Enter" both leave 102 selected, "@ 50 Enter" keeps
+        /// whatever was, and a Clear with nothing typed drops it.
+        private(set) var selection: Int?
 
-        /// Feeds in a key's action. Returns true when it was an Enter that
-        /// selected fixtures: a plain number, no @ ("102 Enter").
-        mutating func apply(_ action: TitanAction) -> Bool {
+        enum Event: Equatable {
+            case none
+            /// A plain number then Enter ("102 Enter"): fixtures selected.
+            case selected
+            /// Clear with nothing typed: Titan cleared the programmer.
+            case clearedProgrammer
+        }
+
+        /// Feeds in a key's action and says what it did.
+        mutating func apply(_ action: TitanAction) -> Event {
             switch action {
             case .keypadDigit(let digit):
                 text += "\(min(max(digit, 0), 9))"
             case .keypadAt:
                 text += "@"
-            case .keypadClear, .keypadExit:
+            case .keypadClear:
+                // Like Titan: the first Clear empties the line, the next the programmer.
+                guard text.isEmpty else { text = ""; return .none }
+                selection = nil
+                return .clearedProgrammer
+            case .keypadExit:
                 text = ""
             case .keypadEnter:
-                let selected = !text.isEmpty && text.allSatisfy(\.isNumber)
-                if selected { lastSelection = Int(text) }
-                text = ""
-                return selected
+                defer { text = "" }
+                let fixture = text.prefix { $0 != "@" }
+                if !fixture.isEmpty, fixture.allSatisfy(\.isNumber), let number = Int(fixture) {
+                    selection = number
+                }
+                return !text.isEmpty && text.allSatisfy(\.isNumber) ? .selected : .none
             default:
                 break
             }
-            return false
+            return .none
         }
     }
 
     // MARK: Pages
 
     /// Shown after a selection: the profile's Intensity page (or, failing
-    /// that, the standard nudges) with Return to Keypad on its Menu key, and
-    /// a CCT key in the first free spot for the colour temperature presets.
+    /// that, the standard nudges) with Return to Keypad on the bottom right,
+    /// plus CCT (middle column, 4th row on the 15-key deck) and the hold-for-0%
+    /// flash above it. On other decks, or if those spots are taken, they go in
+    /// the first free spots.
     static func selectionPage(profile: DeckProfile, returnTo: Int) -> DeckPage {
         let source = page(named: "Intensity", in: profile)
             ?? profile.pages.first { page in page.keys.contains { $0.action.map(isIntensity) ?? false } }
         var keys = withReturnKey(source?.keys ?? defaultIntensityKeys(keyCount: profile.keyCount),
                                  keyCount: profile.keyCount, returnTo: returnTo)
-        let extras = [
-            KeyDefinition(index: 0, label: "CCT", colorHex: colourHex(kelvin: 4500),
-                          sfSymbol: "thermometer.sun.fill", action: .colourPresets),
-            KeyDefinition(index: 0, label: "HOLD\nFOR 0%", colorHex: "#000000",
-                          sfSymbol: "lightbulb.slash.fill", action: .flashSelection),
+        let threeWide = profile.keyCount == 15
+            && DeckGeometry(keyCount: 15, orientation: profile.orientation).logicalColumns == 3
+        let extras: [(key: KeyDefinition, spot: Int?)] = [
+            (KeyDefinition(index: 0, label: "CCT", colorHex: colourHex(kelvin: 4500),
+                           sfSymbol: "thermometer.sun.fill", action: .colourPresets), threeWide ? 10 : nil),
+            (KeyDefinition(index: 0, label: "HOLD\nFOR 0%", colorHex: "#000000",
+                           sfSymbol: "lightbulb.slash.fill", action: .flashSelection), threeWide ? 7 : nil),
         ]
-        for var extra in extras where !keys.contains(where: { $0.action == extra.action }) {
+        for (template, spot) in extras where !keys.contains(where: { $0.action == template.action }) {
             let used = Set(keys.map(\.index))
-            guard let free = (0 ..< profile.keyCount).first(where: { !used.contains($0) }) else { break }
+            let free = spot.flatMap { used.contains($0) ? nil : $0 }
+                ?? (0 ..< profile.keyCount).first { !used.contains($0) }
+            guard let free else { break }
+            var extra = template
             extra.index = free
             keys.append(extra)
         }
@@ -134,14 +158,23 @@ enum DeckFlow {
         profile.pages.first { $0.name.caseInsensitiveCompare(name) == .orderedSame }
     }
 
-    /// Puts Return to Keypad where the Menu key was (or on the last key).
+    /// Swaps the Menu key for Return to Keypad on the bottom right key.
     private static func withReturnKey(_ source: [KeyDefinition], keyCount: Int, returnTo: Int) -> [KeyDefinition] {
-        var keys = source
-        let returnIndex = keys.first { $0.action == .mainMenu }?.index ?? max(keyCount - 1, 0)
-        keys.removeAll { $0.index == returnIndex }
+        let returnIndex = max(keyCount - 1, 0)
+        var keys = source.filter { $0.action != .mainMenu && $0.index != returnIndex }
         keys.append(KeyDefinition(index: returnIndex, label: "Return to Keypad", colorHex: DeckProfile.pageColor,
-                                  sfSymbol: "circle.grid.3x3.fill", action: .switchPage(returnTo)))
+                                  sfSymbol: returnSymbol, action: .switchPage(returnTo)))
         return keys
+    }
+
+    /// A return-key arrow, for the way back to the keypad.
+    static let returnSymbol = "arrow.turn.down.left"
+
+    /// The page with the keypad's digits on it, for going back after a Clear.
+    static func keypadPageIndex(in profile: DeckProfile) -> Int? {
+        profile.pages.firstIndex { page in
+            page.keys.contains { if case .keypadDigit? = $0.action { true } else { false } }
+        }
     }
 
     /// The main menu: one key per page, so new pages appear by themselves.

@@ -143,8 +143,15 @@ each key land.
       left over from the page before.
 - [ ] Menu key shows the page name. Tap: next page, round and round. Hold 2 s:
       the menu of all pages.
-- [ ] Keypad: 1 0 2 Enter. The deck shows the intensity keys plus CCT, with
-      Return to Keypad where Menu was. 1 @ 5 Enter does NOT switch.
+- [ ] Keypad: 1 0 2 Enter. The deck shows the intensity keys, CCT in the
+      middle column 4th row, and Return to Keypad bottom right. 1 @ 5 Enter
+      does NOT switch.
+- [ ] Remote screen, top left: "Currently Selected: 102" after 1 0 2 Enter, and
+      101 after 1 0 1 @ 5 0 Enter. Is 101 really still selected on Titan?
+- [ ] Clear on the selection page: back to the keypad, Currently Selected gone,
+      and Titan's programmer empty. With digits typed, the first Clear only
+      empties the line.
+- [ ] CLEAR and ENTER each fit on one line.
 - [ ] In Titan, record global colour palettes named 2700K, 3200K, 5600K. On the
       deck, select a fixture, CCT, 3200K: the fixture goes to 3200. A preset
       with no palette flashes red (the log says which palette is missing).
@@ -199,14 +206,14 @@ each key land.
       reinstalled one) at that address is refused with a certificate message.
       Settings → **Forget saved PC certificates** clears it.
 
-## 6a. Keypad readout (Remote screen)
+## 6a. Keypad Log (Remote screen)
 
-- [ ] Connect the remote desktop, Stream Deck on the Keypad page. Type 102@30:
-      it appears bottom left in the black band, with a blinking cursor.
+- [ ] Connect the remote desktop, Stream Deck on the Keypad page. The black band
+      says KEYPAD LOG. Type 102@30: it appears bottom left, no blinking cursor.
 - [ ] Enter: the line goes green, then slides to the right. Do 3 more: only the
       last 3 stay, newest on the right and biggest.
 - [ ] Clear or Exit throws away the line being typed.
-- [ ] Switch the deck to another page: the readout goes once nothing's typed.
+- [ ] Switch the deck to another page: the Keypad Log goes once nothing's typed.
 - [ ] Unplug the Titan network and type: the line turns red.
 - [ ] Tap the status pill top right: it opens network details and never
       shrinks to dots.

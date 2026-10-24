@@ -40,8 +40,8 @@ final class KeypadReadoutStore: ObservableObject {
     }
 }
 
-/// The keypad readout in the black band under the remote desktop: what's
-/// being typed on the left, the last three commands on the right.
+/// The Keypad Log in the black band under the remote desktop: what's being
+/// typed on the left, the last three commands on the right.
 struct KeypadReadoutBar: View {
     @ObservedObject var store: KeypadReadoutStore
     /// Height available; the text scales to it.
@@ -59,7 +59,7 @@ struct KeypadReadoutBar: View {
     var body: some View {
         HStack(alignment: .center, spacing: 24) {
             VStack(alignment: .leading, spacing: 2) {
-                if showsCaptions { caption("KEYPAD") }
+                if showsCaptions { caption("KEYPAD LOG") }
                 typing
             }
             Spacer(minLength: 16)
@@ -82,19 +82,14 @@ struct KeypadReadoutBar: View {
             CommandText(text: flashing.text, size: fontSize, colour: .green, weight: .bold)
                 .matchedGeometryEffect(id: flashing.id, in: namespace)
         } else if let current = readout.current {
-            HStack(spacing: 4) {
-                CommandText(text: current.text, size: fontSize,
-                            colour: current.delivery == .failed ? .red : .white, weight: .semibold)
-                    .matchedGeometryEffect(id: current.id, in: namespace)
-                BlinkingCaret(height: fontSize * 0.9)
-            }
-        } else {
-            HStack(spacing: 4) {
-                BlinkingCaret(height: fontSize * 0.9)
-                Text("Type on the keypad")
-                    .font(.system(size: fontSize * 0.5, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.3))
-            }
+            CommandText(text: current.text, size: fontSize,
+                        colour: current.delivery == .failed ? .red : .white, weight: .semibold)
+                .matchedGeometryEffect(id: current.id, in: namespace)
+        } else if !showsCaptions {
+            // Too short for the caption: name the band instead.
+            Text("Keypad Log")
+                .font(.system(size: fontSize * 0.5, weight: .medium))
+                .foregroundStyle(.white.opacity(0.3))
         }
     }
 
@@ -137,7 +132,7 @@ struct KeypadReadoutBar: View {
         var parts: [String] = []
         if let current = readout.current { parts.append("Typing \(current.text)") }
         if let last = readout.lastCommand { parts.append("Last command \(last.text)") }
-        return parts.isEmpty ? "Keypad readout, empty" : parts.joined(separator: ", ")
+        return parts.isEmpty ? "Keypad log, empty" : parts.joined(separator: ", ")
     }
 }
 
@@ -153,19 +148,5 @@ private struct CommandText: View {
             .foregroundStyle(colour)
             .lineLimit(1)
             .fixedSize()
-    }
-}
-
-private struct BlinkingCaret: View {
-    let height: CGFloat
-    @State private var on = false
-
-    var body: some View {
-        RoundedRectangle(cornerRadius: 1.5)
-            .fill(Color.white.opacity(on ? 0.85 : 0.15))
-            .frame(width: 3, height: height)
-            .onAppear {
-                withAnimation(.easeInOut(duration: 0.55).repeatForever(autoreverses: true)) { on = true }
-            }
     }
 }

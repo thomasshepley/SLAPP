@@ -109,8 +109,9 @@ enum DeckRenderer {
         return top + bounds.height + rect.height * 0.01
     }
 
-    /// Centres the label, shrinking the font until it fits. `big` labels use
-    /// heavy rounded type, like the numbers on a console keypad.
+    /// Centres the label, shrinking the font until it fits: no taller than the
+    /// key and every word on one line, so "CLEAR" never breaks into "CLEA / R".
+    /// `big` labels use heavy rounded type, like the numbers on a console keypad.
     private static func drawLabel(_ label: String, in rect: CGRect, maxFontSize: CGFloat, big: Bool = false,
                                   ink: UIColor = .white) {
         guard !label.isEmpty else { return }
@@ -118,9 +119,11 @@ enum DeckRenderer {
         paragraph.alignment = .center
         paragraph.lineBreakMode = .byWordWrapping
 
+        let words = label.split(whereSeparator: \.isWhitespace).map { String($0) as NSString }
         var fontSize = maxFontSize
         var attributes: [NSAttributedString.Key: Any] = [:]
         var bounds = CGRect.zero
+        var widestWord: CGFloat = 0
         repeat {
             attributes = [
                 .font: big ? roundedFont(size: fontSize) : UIFont.systemFont(ofSize: fontSize, weight: .bold),
@@ -129,8 +132,9 @@ enum DeckRenderer {
             ]
             bounds = (label as NSString).boundingRect(with: CGSize(width: rect.width, height: .greatestFiniteMagnitude),
                                                       options: [.usesLineFragmentOrigin], attributes: attributes, context: nil)
+            widestWord = words.map { $0.size(withAttributes: attributes).width }.max() ?? 0
             fontSize -= 1
-        } while bounds.height > rect.height && fontSize > 8
+        } while (bounds.height > rect.height || widestWord > rect.width) && fontSize > 8
 
         let drawRect = CGRect(x: rect.minX, y: rect.minY + (rect.height - bounds.height) / 2,
                               width: rect.width, height: bounds.height)

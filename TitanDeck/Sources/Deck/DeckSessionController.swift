@@ -48,6 +48,9 @@ final class DeckSessionController: ObservableObject {
     @Published private(set) var latchedKeys: Set<UUID> = []
     /// What's been typed on the deck's keypad, to spot "102 Enter".
     private var keypad = DeckFlow.KeypadBuffer()
+    /// The fixture the deck's keypad left selected in Titan ("102 Enter",
+    /// "102 @ 50 Enter"), or nil after a Clear. Shown on the Remote screen.
+    @Published private(set) var selectedFixture: Int?
     private var started = false
     /// Running while the Menu key is held; opens the menu after 2 s.
     private var menuHoldTask: Task<Void, Never>?
@@ -256,9 +259,17 @@ final class DeckSessionController: ObservableObject {
         default:
             setOverlay(.pressed, at: index)
             onAction?(action, index)
-            // "102 Enter" selected fixtures: bring up the intensity keys.
-            if keypad.apply(action), flowOverlay == nil {
+            let event = keypad.apply(action)
+            if selectedFixture != keypad.selection { selectedFixture = keypad.selection }
+            switch event {
+            case .selected where flowOverlay == nil:
+                // "102 Enter" selected fixtures: bring up the intensity keys.
                 show(.selection(returnTo: currentPageIndex))
+            case .clearedProgrammer:
+                // Nothing's selected any more, so back to the keypad.
+                if let keypadPage = DeckFlow.keypadPageIndex(in: profile) { showPage(keypadPage) }
+            default:
+                break
             }
         }
     }
@@ -266,7 +277,7 @@ final class DeckSessionController: ObservableObject {
     /// The fade for the flash key: from the rule covering the fixture last
     /// selected on the keypad, else none.
     private var flashFade: Double? {
-        DeckCues.flashFade(forFixture: keypad.lastSelection, rules: flashFadeRules)
+        DeckCues.flashFade(forFixture: keypad.selection, rules: flashFadeRules)
     }
 
     /// A press on one of the Connect Cue / fade pickers.
