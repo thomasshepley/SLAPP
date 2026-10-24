@@ -140,6 +140,7 @@ struct FixtureDetailView: View {
     let library: FixtureLibrary
     @AppStorage(CompanionSettings.unitsKey) private var unitSystem: UnitSystem = .metric
     @State private var modeName: String = ""
+    @State private var showingAllModes = false
     @State private var distance: Double = 3
     @State private var comparing = false
 
@@ -233,18 +234,36 @@ struct FixtureDetailView: View {
     private var modeCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("DMX modes")
+                Text(fixture.modes.count == 1 ? "DMX mode" : "DMX modes (\(fixture.modes.count))")
                     .font(.title3.weight(.semibold))
                 Spacer()
                 Picker("Mode", selection: $modeName) {
                     ForEach(fixture.modes) { mode in
-                        Text("\(mode.name) (\(mode.channelCount) ch)").tag(mode.name)
+                        Text("\(mode.title) (\(mode.channelCount) ch)").tag(mode.name)
                     }
                 }
                 .pickerStyle(.menu)
             }
             if let mode {
+                ModeHeader(mode: mode)
                 DmxChart(mode: mode)
+            }
+            if fixture.modes.count > 1 {
+                DisclosureGroup("Every mode", isExpanded: $showingAllModes) {
+                    VStack(spacing: 0) {
+                        ForEach(fixture.modes) { item in
+                            Button {
+                                withAnimation(.snappy) { modeName = item.name }
+                            } label: {
+                                ModeListRow(mode: item, isSelected: item.name == mode?.name)
+                            }
+                            .buttonStyle(.plain)
+                            if item.id != fixture.modes.last?.id { Divider() }
+                        }
+                    }
+                    .padding(.top, 6)
+                }
+                .font(.callout.weight(.semibold))
             }
         }
         .padding()
@@ -274,6 +293,88 @@ struct FixtureDetailView: View {
             }
             .buttonStyle(.bordered)
         }
+    }
+}
+
+/// The chosen mode's number and brief, big enough to read off at a glance.
+private struct ModeHeader: View {
+    let mode: FixtureMode
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 12) {
+            if let number = mode.number {
+                ModeNumberBadge(number: number, size: 52)
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                Text(mode.shortName)
+                    .font(.headline)
+                    .fixedSize(horizontal: false, vertical: true)
+                if let detail = mode.detail {
+                    Text(detail)
+                        .font(.callout)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Text(footprint)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private var footprint: String {
+        var parts = ["\(mode.channelCount) channels"]
+        if let cells = mode.repeatCells, let size = mode.cellSize, cells > 1 {
+            parts.append("\(cells) cells of \(size)")
+        }
+        return parts.joined(separator: " · ")
+    }
+}
+
+private struct ModeNumberBadge: View {
+    let number: String
+    var size: CGFloat = 36
+
+    var body: some View {
+        Text(number)
+            .font(.system(size: size * 0.42, weight: .bold, design: .rounded).monospacedDigit())
+            .minimumScaleFactor(0.5)
+            .lineLimit(1)
+            .foregroundStyle(.black)
+            .frame(width: size, height: size)
+            .background(Color.yellow.gradient, in: .rect(cornerRadius: size * 0.26))
+            .accessibilityLabel("Mode \(number)")
+    }
+}
+
+/// One line of the full mode list: number, name and brief, footprint.
+private struct ModeListRow: View {
+    let mode: FixtureMode
+    let isSelected: Bool
+
+    var body: some View {
+        HStack(spacing: 12) {
+            if let number = mode.number {
+                ModeNumberBadge(number: number)
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                Text(mode.shortName)
+                    .font(.callout.weight(isSelected ? .semibold : .regular))
+                if let detail = mode.detail {
+                    Text(detail)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            Text("\(mode.channelCount) ch")
+                .font(.callout.monospacedDigit())
+                .foregroundStyle(.secondary)
+            Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                .foregroundStyle(isSelected ? Color.accentColor : Color.secondary.opacity(0.4))
+        }
+        .padding(.vertical, 8)
+        .contentShape(.rect)
     }
 }
 
@@ -322,7 +423,7 @@ struct DmxChart: View {
 
     private var slots: [Slot] {
         var result: [Slot] = []
-        for channel in mode.channels.sorted(by: { $0.offset < $1.offset }) {
+        for channel in mode.allChannels.sorted(by: { $0.offset < $1.offset }) {
             for part in 0 ..< channel.slotCount {
                 let label = part == 0 ? channel.label : "\(channel.label) \(part == 1 ? "fine" : "ultra")"
                 result.append(Slot(number: channel.offset + part + 1, label: label,

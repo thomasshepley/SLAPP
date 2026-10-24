@@ -45,12 +45,82 @@ struct Fixture: Codable, Hashable, Identifiable {
 
 struct FixtureMode: Codable, Hashable, Identifiable {
     var name: String
+    /// The manufacturer's mode number, where they number them (Astera's "89").
+    var number: String?
+    /// The manufacturer's short brief of what the mode covers ("Dim CCT GM RGB CRO").
+    var summary: String?
     /// DMX footprint.
     var channelCount: Int
     var channels: [DmxChannel]
     var powerW: Double?
+    /// Big pixel modes list one cell: `cellSize` slots from `cellStart` are
+    /// cell 1, and the block repeats straight after to make `repeatCells`
+    /// cells in all. Channels after the cells sit at their true offsets.
+    var repeatCells: Int?
+    var cellSize: Int?
+    var cellStart: Int?
 
     var id: String { name }
+
+    /// "Mode 89 · D CCT GM CRO RGB", or just the name for fixtures that
+    /// don't number their modes.
+    var title: String {
+        guard let number, !number.isEmpty else { return name }
+        return shortName.isEmpty ? numberTitle : "\(numberTitle) · \(shortName)"
+    }
+
+    /// "Mode 89", or the number as is when it's a code like Panalux's "P4".
+    var numberTitle: String {
+        guard let number else { return "" }
+        return number.allSatisfy(\.isNumber) ? "Mode \(number)" : number
+    }
+
+    /// The name without "Mode 89" in front. Astera names repeat the number
+    /// ("Mode 107 D CCT GM CRO RGB S (4 px, strobe per cell)"); ARRI's don't.
+    var shortName: String {
+        guard let number, !number.isEmpty else { return name }
+        guard let prefix = ["Mode \(number)", number].first(where: { name.hasPrefix($0 + " ") || name == $0 }) else { return name }
+        let rest = name.dropFirst(prefix.count).trimmingCharacters(in: CharacterSet(charactersIn: " -·:"))
+        return rest.isEmpty ? (summary ?? "") : rest
+    }
+
+    /// The brief, when it says more than the name already does.
+    var detail: String? {
+        guard let summary, !summary.isEmpty, !shortName.contains(summary) else { return nil }
+        return summary
+    }
+
+    /// Every channel, with repeated pixel cells written out.
+    var allChannels: [DmxChannel] {
+        guard let repeatCells, let cellSize, repeatCells > 1, cellSize > 0 else { return channels }
+        let end = channels.map { $0.offset + $0.slotCount }.max() ?? 0
+        let start = cellStart ?? end - cellSize
+        guard start >= 0 else { return channels }
+        let cell = channels.filter { $0.offset >= start && $0.offset < start + cellSize }
+        var result = channels
+        for index in 1 ..< repeatCells {
+            result += cell.map { channel in
+                var copy = channel
+                copy.offset += index * cellSize
+                copy.label = Self.label(channel.label, cell: index + 1)
+                return copy
+            }
+        }
+        return result.sorted { $0.offset < $1.offset }
+    }
+
+    /// Cell 1's label for another cell: "Cell 1 Red" becomes "Cell 7 Red",
+    /// "LE1 Dimmer" "LE4 Dimmer"; anything else gets the cell in front.
+    static func label(_ label: String, cell: Int) -> String {
+        for prefix in ["Cell ", "Pixel ", "Zone ", "Engine ", "Segment ", "Section ", "Head ", "LE", "Px"] {
+            let marker = prefix + "1"
+            guard label.hasPrefix(marker) else { continue }
+            let rest = label.dropFirst(marker.count)
+            if rest.first?.isNumber == true { continue }
+            return "\(prefix)\(cell)\(rest)"
+        }
+        return "Cell \(cell) \(label)"
+    }
 }
 
 struct DmxChannel: Codable, Hashable {

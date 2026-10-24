@@ -384,6 +384,28 @@
   "selectableHz": [],
   "source": ""
  },
+ "fx-aputure-nova-ii-1x1": {
+  "confidence": "published",
+  "defaultHz": null,
+  "flickerFreeUpToFps": null,
+  "highSpeedMode": null,
+  "kind": "pwm",
+  "notes": "Aputure lists NOVA II as flicker-free above 15% intensity; no PWM Hz or fps limit published.",
+  "pwmBelowPercent": 15,
+  "selectableHz": [],
+  "source": "https://help.aputure.com/en/what-are-the-frame-rate-capabilities-of-aputure-fixtures-for-high-speed-shooting"
+ },
+ "fx-aputure-nova-ii-2x1": {
+  "confidence": "published",
+  "defaultHz": null,
+  "flickerFreeUpToFps": null,
+  "highSpeedMode": null,
+  "kind": "pwm",
+  "notes": "Aputure lists NOVA II as flicker-free above 15% intensity; no PWM Hz or fps limit published.",
+  "pwmBelowPercent": 15,
+  "selectableHz": [],
+  "source": "https://help.aputure.com/en/what-are-the-frame-rate-capabilities-of-aputure-fixtures-for-high-speed-shooting"
+ },
  "fx-aputure-nova-p300c": {
   "confidence": "published",
   "defaultHz": 20000,
@@ -439,6 +461,72 @@
    22000
   ],
   "source": "https://help.aputure.com/en/nova-p600c-p300c/light-configuration-settings"
+ },
+ "fx-aputure-storm-1000c": {
+  "confidence": "published",
+  "defaultHz": null,
+  "flickerFreeUpToFps": 250,
+  "highSpeedMode": true,
+  "kind": "pwm",
+  "notes": "Good to 250 fps natively; for higher frame rates turn on High-Speed Mode (20% minimum intensity, no FX). No PWM Hz published.",
+  "pwmBelowPercent": null,
+  "selectableHz": [],
+  "source": "https://help.aputure.com/en/what-are-the-frame-rate-capabilities-of-aputure-fixtures-for-high-speed-shooting"
+ },
+ "fx-aputure-storm-1200x": {
+  "confidence": "published",
+  "defaultHz": null,
+  "flickerFreeUpToFps": 250,
+  "highSpeedMode": true,
+  "kind": "pwm",
+  "notes": "Good to 250 fps natively; for higher frame rates turn on High-Speed Mode (20% minimum intensity, no FX). No PWM Hz published.",
+  "pwmBelowPercent": null,
+  "selectableHz": [],
+  "source": "https://help.aputure.com/en/what-are-the-frame-rate-capabilities-of-aputure-fixtures-for-high-speed-shooting"
+ },
+ "fx-aputure-storm-400x": {
+  "confidence": "published",
+  "defaultHz": null,
+  "flickerFreeUpToFps": 750,
+  "highSpeedMode": true,
+  "kind": "pwm",
+  "notes": "Aputure rates it good up to 750 fps; the menu also has a High-Speed Mode. No PWM Hz published.",
+  "pwmBelowPercent": null,
+  "selectableHz": [],
+  "source": "https://help.aputure.com/en/what-are-the-frame-rate-capabilities-of-aputure-fixtures-for-high-speed-shooting"
+ },
+ "fx-aputure-storm-700x": {
+  "confidence": "published",
+  "defaultHz": null,
+  "flickerFreeUpToFps": 250,
+  "highSpeedMode": true,
+  "kind": "pwm",
+  "notes": "Good to 250 fps natively; High-Speed Mode runs flicker-free for high speed but limits intensity to 40-100% with no FX. No PWM Hz published.",
+  "pwmBelowPercent": null,
+  "selectableHz": [],
+  "source": "https://help.aputure.com/en/what-are-the-frame-rate-capabilities-of-aputure-fixtures-for-high-speed-shooting"
+ },
+ "fx-aputure-storm-80c": {
+  "confidence": "published",
+  "defaultHz": null,
+  "flickerFreeUpToFps": 750,
+  "highSpeedMode": null,
+  "kind": "pwm",
+  "notes": "Aputure rates it good up to 750 fps; no PWM Hz published.",
+  "pwmBelowPercent": null,
+  "selectableHz": [],
+  "source": "https://help.aputure.com/en/what-are-the-frame-rate-capabilities-of-aputure-fixtures-for-high-speed-shooting"
+ },
+ "fx-aputure-storm-xt52": {
+  "confidence": "published",
+  "defaultHz": null,
+  "flickerFreeUpToFps": null,
+  "highSpeedMode": true,
+  "kind": "pwm",
+  "notes": "Aputure says flicker-free at any frame rate at 20% output or more (its help centre says 15%); High-Speed Mode is in the menu, off by default. No PWM Hz published.",
+  "pwmBelowPercent": 20,
+  "selectableHz": [],
+  "source": "https://aputure.com/products/storm-xt52"
  },
  "fx-arri-150": {
   "confidence": "published",
@@ -844,6 +932,28 @@
   ],
   "source": "https://astera-led.com/wp-content/uploads/AX10_SpotMax_Technical_Reference_Manual_V1.pdf"
  },
+ "fx-astera-ax2-100-pixelbar": {
+  "confidence": "published",
+  "defaultHz": null,
+  "flickerFreeUpToFps": null,
+  "highSpeedMode": null,
+  "kind": "pwm",
+  "notes": "Astera's datasheet says it uses its flicker-free (scrambled) PWM; no Hz published, so test at your frame rate and shutter.",
+  "pwmBelowPercent": null,
+  "selectableHz": [],
+  "source": "https://astera-led.com/wp-content/uploads/Datasheet_AX2_PixelBar_V1-1.pdf"
+ },
+ "fx-astera-ax2-50-pixelbar": {
+  "confidence": "published",
+  "defaultHz": null,
+  "flickerFreeUpToFps": null,
+  "highSpeedMode": null,
+  "kind": "pwm",
+  "notes": "Astera's datasheet says it uses its flicker-free (scrambled) PWM; no Hz published, so test at your frame rate and shutter.",
+  "pwmBelowPercent": null,
+  "selectableHz": [],
+  "source": "https://astera-led.com/wp-content/uploads/Datasheet_AX2_PixelBar_V1-1.pdf"
+ },
  "fx-astera-ax3-lightdrop": {
   "confidence": "published",
   "defaultHz": 599.4,
@@ -873,6 +983,21 @@
    1205
   ],
   "source": "https://astera-led.com/wp-content/uploads/AX5_TriplePAR_Technical_Reference_Manual_V1.pdf"
+ },
+ "fx-astera-ax7-spotlite": {
+  "confidence": "family",
+  "defaultHz": 599.4,
+  "flickerFreeUpToFps": null,
+  "highSpeedMode": null,
+  "kind": "pwm",
+  "notes": "Astera says AsteraApp Anti-Flicker adjusts the AX7's PWM rate; assumed same as AX3/AX5/AX10 (default 599.4 Hz, settable 200-1205 Hz).",
+  "pwmBelowPercent": null,
+  "selectableHz": [
+   200,
+   599.4,
+   1205
+  ],
+  "source": "https://astera-led.com/wp-content/uploads/FP1_TitanTube_Technical_Reference_Manual_V1.pdf"
  },
  "fx-astera-ax9-powerpar": {
   "confidence": "family",
@@ -907,6 +1032,17 @@
   "selectableHz": [],
   "source": "https://www.cxnetwork.com.au/astera-control/"
  },
+ "fx-astera-hyperion-tube": {
+  "confidence": "family",
+  "defaultHz": null,
+  "flickerFreeUpToFps": null,
+  "highSpeedMode": null,
+  "kind": "pwm",
+  "notes": "Assumed same as Titan Tube: scrambled PWM designed not to flicker on camera, and app Anti-Flicker has no effect; no Hz published.",
+  "pwmBelowPercent": null,
+  "selectableHz": [],
+  "source": "https://astera-led.com/wp-content/uploads/FP1_TitanTube_Technical_Reference_Manual_V1.pdf"
+ },
  "fx-astera-leofresnel": {
   "confidence": "family",
   "defaultHz": null,
@@ -918,7 +1054,7 @@
   "selectableHz": [],
   "source": "https://www.cxnetwork.com.au/astera-control/"
  },
- "fx-astera-meteorlite": {
+ "fx-astera-lunabulb": {
   "confidence": "family",
   "defaultHz": null,
   "flickerFreeUpToFps": null,
@@ -951,7 +1087,7 @@
   "selectableHz": [],
   "source": "https://www.cxnetwork.com.au/astera-control/"
  },
- "fx-astera-plutoflood": {
+ "fx-astera-plutofresnel": {
   "confidence": "family",
   "defaultHz": null,
   "flickerFreeUpToFps": null,
@@ -962,7 +1098,40 @@
   "selectableHz": [],
   "source": "https://www.cxnetwork.com.au/astera-control/"
  },
- "fx-astera-plutofresnel": {
+ "fx-astera-quikbeam": {
+  "confidence": "family",
+  "defaultHz": null,
+  "flickerFreeUpToFps": null,
+  "highSpeedMode": null,
+  "kind": "pwm",
+  "notes": "Astera says all its fixtures use scrambled PWM to avoid camera flicker, and the AsteraApp can set a PWM frequency from your frame rate; no model-specific Hz published.",
+  "pwmBelowPercent": null,
+  "selectableHz": [],
+  "source": "https://www.cxnetwork.com.au/astera-control/"
+ },
+ "fx-astera-quikpunch": {
+  "confidence": "family",
+  "defaultHz": null,
+  "flickerFreeUpToFps": null,
+  "highSpeedMode": null,
+  "kind": "pwm",
+  "notes": "Astera says all its fixtures use scrambled PWM to avoid camera flicker, and the AsteraApp can set a PWM frequency from your frame rate; no model-specific Hz published.",
+  "pwmBelowPercent": null,
+  "selectableHz": [],
+  "source": "https://www.cxnetwork.com.au/astera-control/"
+ },
+ "fx-astera-quikspot": {
+  "confidence": "family",
+  "defaultHz": null,
+  "flickerFreeUpToFps": null,
+  "highSpeedMode": null,
+  "kind": "pwm",
+  "notes": "Astera says all its fixtures use scrambled PWM to avoid camera flicker, and the AsteraApp can set a PWM frequency from your frame rate; no model-specific Hz published.",
+  "pwmBelowPercent": null,
+  "selectableHz": [],
+  "source": "https://www.cxnetwork.com.au/astera-control/"
+ },
+ "fx-astera-solabulb": {
   "confidence": "family",
   "defaultHz": null,
   "flickerFreeUpToFps": null,
@@ -983,6 +1152,17 @@
   "pwmBelowPercent": null,
   "selectableHz": [],
   "source": "https://astera-led.com/wp-content/uploads/FP1_TitanTube_Technical_Reference_Manual_V1.pdf"
+ },
+ "fx-ayrton-diablo": {
+  "confidence": "published",
+  "defaultHz": null,
+  "flickerFreeUpToFps": null,
+  "highSpeedMode": null,
+  "kind": "pwm",
+  "notes": "Ayrton's datasheet claims flicker-free source management suitable for TV; no PWM Hz or menu setting published.",
+  "pwmBelowPercent": null,
+  "selectableHz": [],
+  "source": "https://www.ayrton.eu/produit/diablo/"
  },
  "fx-bbs-area-48-soft": {
   "confidence": "family",
@@ -1005,6 +1185,155 @@
   "pwmBelowPercent": null,
   "selectableHz": [],
   "source": "https://www.lightequip.com/media/1b/de/d0/1670584999/BBS_Catalogue_2020.pdf"
+ },
+ "fx-chauvet-maverick-force-1-spot": {
+  "confidence": "published",
+  "defaultHz": null,
+  "flickerFreeUpToFps": null,
+  "highSpeedMode": null,
+  "kind": "pwm",
+  "notes": "PWM Option menu selects 600, 1200, 4000, 6000 or 15000 Hz; default not published, pick 6000 or 15000 Hz for camera work.",
+  "pwmBelowPercent": null,
+  "selectableHz": [
+   600,
+   1200,
+   4000,
+   6000,
+   15000
+  ],
+  "source": "https://chauvetprofessional.com/wp-content/uploads/2020/12/Maverick-Force-1-Spot_UM_Rev9.pdf"
+ },
+ "fx-chauvet-maverick-mk3-spot": {
+  "confidence": "published",
+  "defaultHz": null,
+  "flickerFreeUpToFps": null,
+  "highSpeedMode": null,
+  "kind": "pwm",
+  "notes": "PWM Option menu selects 600, 1200, 2000, 4000, 6000 or 15000 Hz; Chauvet says use 6000 or 15000 Hz with the TV25/TV35 fan modes.",
+  "pwmBelowPercent": null,
+  "selectableHz": [
+   600,
+   1200,
+   2000,
+   4000,
+   6000,
+   15000
+  ],
+  "source": "https://chauvetprofessional.com/wp-content/uploads/2019/02/Maverick_MK3_Spot_UM_Rev7.pdf"
+ },
+ "fx-chauvet-maverick-storm-1-spot": {
+  "confidence": "published",
+  "defaultHz": null,
+  "flickerFreeUpToFps": null,
+  "highSpeedMode": null,
+  "kind": "pwm",
+  "notes": "PWM Option menu selects 600, 1200, 2000, 4000, 6000 or 15000 Hz; default not published, pick 6000 or 15000 Hz for camera work.",
+  "pwmBelowPercent": null,
+  "selectableHz": [
+   600,
+   1200,
+   2000,
+   4000,
+   6000,
+   15000
+  ],
+  "source": "https://chauvetprofessional.com/wp-content/uploads/2019/09/Maverick_Storm_1_Spot_UM_Rev3.pdf"
+ },
+ "fx-chauvet-maverick-storm-1-wash": {
+  "confidence": "published",
+  "defaultHz": null,
+  "flickerFreeUpToFps": null,
+  "highSpeedMode": null,
+  "kind": "pwm",
+  "notes": "PWM Option menu selects 600, 1200, 2000, 4000, 6000 or 15000 Hz; default not published, pick 6000 or 15000 Hz for camera work.",
+  "pwmBelowPercent": null,
+  "selectableHz": [
+   600,
+   1200,
+   2000,
+   4000,
+   6000,
+   15000
+  ],
+  "source": "https://chauvetprofessional.com/wp-content/uploads/2018/10/Maverick_Storm_1_Wash_UM_ML5_Rev3.pdf"
+ },
+ "fx-chauvet-rogue-r2x-spot": {
+  "confidence": "published",
+  "defaultHz": null,
+  "flickerFreeUpToFps": null,
+  "highSpeedMode": null,
+  "kind": "pwm",
+  "notes": "PWM Option menu selects 600, 1200, 6000 or 15000 Hz; default not published, pick 6000 or 15000 Hz for camera work.",
+  "pwmBelowPercent": null,
+  "selectableHz": [
+   600,
+   1200,
+   6000,
+   15000
+  ],
+  "source": "https://chauvetprofessional.com/wp-content/uploads/2018/10/ROGUE_R2X_Spot_UM_Rev6.pdf"
+ },
+ "fx-chauvet-rogue-r2x-wash": {
+  "confidence": "published",
+  "defaultHz": null,
+  "flickerFreeUpToFps": null,
+  "highSpeedMode": null,
+  "kind": "pwm",
+  "notes": "PWM Option menu selects 600, 1200, 2000, 4000, 6000 or 15000 Hz; default not published, pick 6000 or 15000 Hz for camera work.",
+  "pwmBelowPercent": null,
+  "selectableHz": [
+   600,
+   1200,
+   2000,
+   4000,
+   6000,
+   15000
+  ],
+  "source": "https://chauvetprofessional.com/wp-content/uploads/2019/10/Rogue_R2X_Wash_UM_Rev9.pdf"
+ },
+ "fx-claypaky-b-eye-k20": {
+  "confidence": "none",
+  "defaultHz": null,
+  "flickerFreeUpToFps": null,
+  "highSpeedMode": null,
+  "kind": "unknown",
+  "notes": "No PWM or refresh setting in the K20 menu and no Hz or fps figure published; test at your frame rate and shutter.",
+  "pwmBelowPercent": null,
+  "selectableHz": [],
+  "source": "https://www.claypaky.it/products/a-leda-b-eye-k20/"
+ },
+ "fx-claypaky-mythos-2": {
+  "confidence": "none",
+  "defaultHz": null,
+  "flickerFreeUpToFps": null,
+  "highSpeedMode": null,
+  "kind": "hmiElectronic",
+  "notes": "Osram Sirius HRI 440W discharge lamp, assumed on a flicker-free electronic ballast; Claypaky publishes no ballast frequency or fps figure.",
+  "pwmBelowPercent": null,
+  "selectableHz": [],
+  "source": "https://www.claypaky.it/en/news/mythos_2_now_with_a_new_osram_lamp_and_unprecedented_cost_performance_ratio/"
+ },
+ "fx-claypaky-sharpy": {
+  "confidence": "published",
+  "defaultHz": null,
+  "flickerFreeUpToFps": null,
+  "highSpeedMode": null,
+  "kind": "hmiElectronic",
+  "notes": "Discharge lamp on an electronic ballast fitted as standard; no ballast frequency or fps figure published.",
+  "pwmBelowPercent": null,
+  "selectableHz": [],
+  "source": "https://www.claypaky.it/products/sharpy-legacy/"
+ },
+ "fx-claypaky-sharpy-plus": {
+  "confidence": "none",
+  "defaultHz": null,
+  "flickerFreeUpToFps": null,
+  "highSpeedMode": null,
+  "kind": "hmiElectronic",
+  "notes": "Osram Sirius HRI 330W X8 discharge lamp, assumed on a flicker-free electronic ballast; no ballast frequency or fps figure published.",
+  "pwmBelowPercent": null,
+  "selectableHz": [],
+  "source": "https://www.claypaky.it/products/sharpy-plus/"
  },
  "fx-creamsource-doppio": {
   "confidence": "family",
@@ -1039,6 +1368,17 @@
   "selectableHz": [],
   "source": "https://creamsource.com/product/spacex/"
  },
+ "fx-creamsource-vortex24": {
+  "confidence": "published",
+  "defaultHz": null,
+  "flickerFreeUpToFps": 5000,
+  "highSpeedMode": true,
+  "kind": "pwm",
+  "notes": "Creamsource quotes frame rates up to 5,000 fps; switch to High Speed mode above 200 fps (shutter-dependent). No PWM Hz published.",
+  "pwmBelowPercent": null,
+  "selectableHz": [],
+  "source": "https://creamsource.com/product/vortex24/"
+ },
  "fx-creamsource-vortex4": {
   "confidence": "published",
   "defaultHz": null,
@@ -1046,17 +1386,6 @@
   "highSpeedMode": true,
   "kind": "pwm",
   "notes": "Switch to High Speed mode above 200 fps; Vortex is flicker-free to 5,000 fps in High Speed (shutter-dependent). FrameSync only needed for strobes. No PWM Hz published.",
-  "pwmBelowPercent": null,
-  "selectableHz": [],
-  "source": "https://knowledge.creamsource.com/is-sync-required-for-shooting-high-speed-on-creamsource-lights"
- },
- "fx-creamsource-vortex4-mini": {
-  "confidence": "family",
-  "defaultHz": null,
-  "flickerFreeUpToFps": 5000,
-  "highSpeedMode": true,
-  "kind": "pwm",
-  "notes": "Assumed same as Vortex: High Speed mode above 200 fps, flicker-free to 5,000 fps. No PWM Hz published.",
   "pwmBelowPercent": null,
   "selectableHz": [],
   "source": "https://knowledge.creamsource.com/is-sync-required-for-shooting-high-speed-on-creamsource-lights"
@@ -1156,17 +1485,6 @@
   "highSpeedMode": null,
   "kind": "unknown",
   "notes": "Rosco datasheet: flicker-free up to 4,000 fps; no PWM Hz published.",
-  "pwmBelowPercent": null,
-  "selectableHz": [],
-  "source": "https://goknight.com/content/documentation/Rosco_DMG_SL1_DataSheet%20(1).pdf"
- },
- "fx-dmg-mix-sl1-plus": {
-  "confidence": "family",
-  "defaultHz": null,
-  "flickerFreeUpToFps": 4000,
-  "highSpeedMode": null,
-  "kind": "unknown",
-  "notes": "Assumed same as SL1 MIX: flicker-free up to 4,000 fps per Rosco; no Hz published.",
   "pwmBelowPercent": null,
   "selectableHz": [],
   "source": "https://goknight.com/content/documentation/Rosco_DMG_SL1_DataSheet%20(1).pdf"
@@ -1305,6 +1623,78 @@
    25000
   ],
   "source": "https://cdn01.4wall.com/cms/rentals/files/f60fb0de45612e.pdf"
+ },
+ "fx-glp-impression-x4": {
+  "confidence": "published",
+  "defaultHz": 600,
+  "flickerFreeUpToFps": null,
+  "highSpeedMode": null,
+  "kind": "pwm",
+  "notes": "PWM 600 Hz default, adjustable about 582-618 Hz on the Special channel or the PWM Frequ. Adj. menu to tune out banding.",
+  "pwmBelowPercent": null,
+  "selectableHz": [
+   582,
+   600,
+   618
+  ],
+  "source": "https://glp.de/files/products/impression-x4-product-data/GLP_impression_X4_User_Manual_EN_Rev_20211203-01.pdf"
+ },
+ "fx-glp-impression-x4-bar-20": {
+  "confidence": "published",
+  "defaultHz": null,
+  "flickerFreeUpToFps": null,
+  "highSpeedMode": null,
+  "kind": "pwm",
+  "notes": "Set PWM frequency menu offers 600 or 1200 Hz; default not stated, use 1200 Hz for camera work.",
+  "pwmBelowPercent": null,
+  "selectableHz": [
+   600,
+   1200
+  ],
+  "source": "https://glp.de/files/products/impression-x4-bar-20-product-data/impression_X4_Bar_20_User_Manual_v1.8_EN.pdf"
+ },
+ "fx-glp-impression-x4-l": {
+  "confidence": "none",
+  "defaultHz": null,
+  "flickerFreeUpToFps": null,
+  "highSpeedMode": null,
+  "kind": "unknown",
+  "notes": "No PWM setting or Hz published in the X4 L manual or DMX chart; test at your frame rate and shutter.",
+  "pwmBelowPercent": null,
+  "selectableHz": [],
+  "source": "https://glp.de/files/products/impression-x4-l-product-data/GLP_impression_X4_L_User_Manual_EN_Rev_B_20191219.pdf"
+ },
+ "fx-glp-impression-x4-s": {
+  "confidence": "family",
+  "defaultHz": 600,
+  "flickerFreeUpToFps": null,
+  "highSpeedMode": null,
+  "kind": "pwm",
+  "notes": "X4 S has a PWM Frequ. Adj. menu and DMX PWM change but no Hz published; assumed same as impression X4 (600 Hz default, about 582-618 Hz).",
+  "pwmBelowPercent": null,
+  "selectableHz": [
+   582,
+   600,
+   618
+  ],
+  "source": "https://glp.de/files/products/impression-x4-s-product-data/impression_X4_S_v1.5_EN.pdf"
+ },
+ "fx-glp-jdc1": {
+  "confidence": "published",
+  "defaultHz": 600,
+  "flickerFreeUpToFps": null,
+  "highSpeedMode": null,
+  "kind": "pwm",
+  "notes": "PWM 600 Hz default, adjustable 582-618 Hz in 1 Hz steps or set to 1200 or 2400 Hz in the menu.",
+  "pwmBelowPercent": null,
+  "selectableHz": [
+   582,
+   600,
+   618,
+   1200,
+   2400
+  ],
+  "source": "https://glp.de/files/products/jdc1-product-data/GLP_JDC1_User_Manual_EN_Rev20240830-01.pdf"
  },
  "fx-godox-fv150": {
   "confidence": "none",
@@ -1647,6 +2037,17 @@
   "selectableHz": [],
   "source": ""
  },
+ "fx-kinoflo-celeb-250-dmx": {
+  "confidence": "none",
+  "defaultHz": null,
+  "flickerFreeUpToFps": null,
+  "highSpeedMode": null,
+  "kind": "unknown",
+  "notes": "Kino Flo calls its LED drivers flicker-free but publishes no PWM Hz or fps rating; test for high speed.",
+  "pwmBelowPercent": null,
+  "selectableHz": [],
+  "source": ""
+ },
  "fx-kinoflo-celeb-450-dmx": {
   "confidence": "none",
   "defaultHz": null,
@@ -1654,6 +2055,17 @@
   "highSpeedMode": null,
   "kind": "unknown",
   "notes": "Kino Flo calls its LED drivers flicker-free but publishes no PWM Hz or fps rating (Celeb manual checked); test for high speed.",
+  "pwmBelowPercent": null,
+  "selectableHz": [],
+  "source": ""
+ },
+ "fx-kinoflo-celeb-450q-dmx": {
+  "confidence": "none",
+  "defaultHz": null,
+  "flickerFreeUpToFps": null,
+  "highSpeedMode": null,
+  "kind": "unknown",
+  "notes": "Kino Flo calls its LED drivers flicker-free but publishes no PWM Hz or fps rating; test for high speed.",
   "pwmBelowPercent": null,
   "selectableHz": [],
   "source": ""
@@ -1690,6 +2102,28 @@
   "pwmBelowPercent": null,
   "selectableHz": [],
   "source": ""
+ },
+ "fx-kinoflo-diva-lite-31-led": {
+  "confidence": "none",
+  "defaultHz": null,
+  "flickerFreeUpToFps": null,
+  "highSpeedMode": null,
+  "kind": "unknown",
+  "notes": "Kino Flo calls its LED drivers flicker-free but publishes no PWM Hz or fps rating; test for high speed.",
+  "pwmBelowPercent": null,
+  "selectableHz": [],
+  "source": ""
+ },
+ "fx-kinoflo-diva-lite-41-led": {
+  "confidence": "none",
+  "defaultHz": null,
+  "flickerFreeUpToFps": null,
+  "highSpeedMode": null,
+  "kind": "unknown",
+  "notes": "Kino Flo calls its LED drivers flicker-free but publishes no PWM Hz or fps rating; test for high speed.",
+  "pwmBelowPercent": null,
+  "selectableHz": [],
+  "source": "https://kinoflo.com/diva-lite-41-led"
  },
  "fx-kinoflo-freestyle-21": {
   "confidence": "none",
@@ -1812,6 +2246,17 @@
   "selectableHz": [],
   "source": "https://www.avbroadcast.fr/media/productfile/l/i/litepanels-gemini-2x1-brochure.pdf"
  },
+ "fx-martin-mac-aura-pxl": {
+  "confidence": "published",
+  "defaultHz": 1200,
+  "flickerFreeUpToFps": null,
+  "highSpeedMode": null,
+  "kind": "pwm",
+  "notes": "LED refresh is fixed at 1200 Hz for beam and aura; Martin says the driver frequency suits all camera applications.",
+  "pwmBelowPercent": null,
+  "selectableHz": [],
+  "source": "https://www.martin.com/en-US/site_elements/mac-aura-pxl-spec-sheet-82b749a1-c29e-4d0a-8022-4d155a08cf94"
+ },
  "fx-martin-mac-aura-xb": {
   "confidence": "published",
   "defaultHz": 1200,
@@ -1823,6 +2268,20 @@
   "selectableHz": [],
   "source": "https://www.martin.com/en-US/site_elements/martin-mac-aura-xb-user-manual"
  },
+ "fx-martin-mac-encore-performance-cld": {
+  "confidence": "published",
+  "defaultHz": 3000,
+  "flickerFreeUpToFps": null,
+  "highSpeedMode": null,
+  "kind": "pwm",
+  "notes": "LED PWM 3000 Hz by default; the PWM Slider FX on the FX channel lowers it to 2000 Hz if you see banding.",
+  "pwmBelowPercent": null,
+  "selectableHz": [
+   2000,
+   3000
+  ],
+  "source": "https://www.martin.com/en-US/site_elements/martin-mac-encore-performance-user-guide"
+ },
  "fx-martin-mac-encore-performance-ww": {
   "confidence": "published",
   "defaultHz": null,
@@ -1833,6 +2292,43 @@
   "pwmBelowPercent": null,
   "selectableHz": [],
   "source": "https://www.martin.com/en-US/site_elements/mac-encore-performance-spec-sheets"
+ },
+ "fx-martin-mac-ultra-performance": {
+  "confidence": "published",
+  "defaultHz": 3000,
+  "flickerFreeUpToFps": null,
+  "highSpeedMode": true,
+  "kind": "pwm",
+  "notes": "LED PWM 3000 Hz by default, adjustable 2400-3000 Hz via FX channels, or FX speed 255 for High-speed PWM mode at 24 kHz (firmware 1.2.0+, not stored).",
+  "pwmBelowPercent": null,
+  "selectableHz": [
+   2400,
+   3000,
+   24000
+  ],
+  "source": "https://www.martin.com/en-US/site_elements/martin-mac-ultra-performance-user-safety-and-installation-manual"
+ },
+ "fx-martin-mac-viper-performance": {
+  "confidence": "published",
+  "defaultHz": null,
+  "flickerFreeUpToFps": null,
+  "highSpeedMode": null,
+  "kind": "hmiElectronic",
+  "notes": "1000 W discharge lamp on an electronic ballast; no ballast frequency or fps figure published.",
+  "pwmBelowPercent": null,
+  "selectableHz": [],
+  "source": "https://www.martin.com/en-US/site_elements/mac-viper-performance-spec-sheet-english"
+ },
+ "fx-martin-mac-viper-profile": {
+  "confidence": "published",
+  "defaultHz": null,
+  "flickerFreeUpToFps": null,
+  "highSpeedMode": null,
+  "kind": "hmiElectronic",
+  "notes": "Martin specifies an electronic flicker-free ballast; no ballast frequency or fps figure published.",
+  "pwmBelowPercent": null,
+  "selectableHz": [],
+  "source": "https://www.martin.com/en-US/site_elements/martin-user-guide-safety-and-installation-manual"
  },
  "fx-mole-10k-tener": {
   "confidence": "published",
@@ -2428,6 +2924,39 @@
   "selectableHz": [],
   "source": ""
  },
+ "fx-panalux-sonara-3-2": {
+  "confidence": "published",
+  "defaultHz": null,
+  "flickerFreeUpToFps": 10000,
+  "highSpeedMode": null,
+  "kind": "pwm",
+  "notes": "Panalux says Sonara is validated flicker-free at any dim level up to 10,000 fps (Phantom and Alexa Mini tests); no PWM Hz published.",
+  "pwmBelowPercent": null,
+  "selectableHz": [],
+  "source": "https://uk.panavision.com/lighting/lighting-products/heads/product-detail/hinwiar-sonara-3-2"
+ },
+ "fx-panalux-sonara-4-1": {
+  "confidence": "published",
+  "defaultHz": null,
+  "flickerFreeUpToFps": 10000,
+  "highSpeedMode": null,
+  "kind": "pwm",
+  "notes": "Panalux says Sonara is validated flicker-free at any dim level up to 10,000 fps (Phantom and Alexa Mini tests); no PWM Hz published.",
+  "pwmBelowPercent": null,
+  "selectableHz": [],
+  "source": "https://www.panavision.com/lighting/lighting-products/heads/product-detail/hio8qar-sonara-4-1"
+ },
+ "fx-panalux-sonara-4-4": {
+  "confidence": "published",
+  "defaultHz": null,
+  "flickerFreeUpToFps": 10000,
+  "highSpeedMode": null,
+  "kind": "pwm",
+  "notes": "Panalux says Sonara is validated flicker-free at any dim level up to 10,000 fps (Phantom and Alexa Mini tests); no PWM Hz published.",
+  "pwmBelowPercent": null,
+  "selectableHz": [],
+  "source": "https://uk.panavision.com/lighting/product-detail/hin98ar-sonara-4-4"
+ },
  "fx-quasar-crossfade": {
   "confidence": "none",
   "defaultHz": null,
@@ -2493,6 +3022,109 @@
   "pwmBelowPercent": null,
   "selectableHz": [],
   "source": ""
+ },
+ "fx-robe-esprite": {
+  "confidence": "published",
+  "defaultHz": 600,
+  "flickerFreeUpToFps": null,
+  "highSpeedMode": null,
+  "kind": "pwm",
+  "notes": "LED PWM selectable 300, 600 (default), 1200 or 2400 Hz in the Frequency Setup menu or on DMX, with fine adjust around the chosen value; go higher for fast shutters.",
+  "pwmBelowPercent": null,
+  "selectableHz": [
+   300,
+   600,
+   1200,
+   2400
+  ],
+  "source": "https://www.robe.cz/esprite"
+ },
+ "fx-robe-forte": {
+  "confidence": "published",
+  "defaultHz": 600,
+  "flickerFreeUpToFps": null,
+  "highSpeedMode": null,
+  "kind": "pwm",
+  "notes": "LED PWM selectable 300, 600 (default), 1200 or 2400 Hz in the Frequency Setup menu or on DMX, with fine adjust around the chosen value; go higher for fast shutters.",
+  "pwmBelowPercent": null,
+  "selectableHz": [
+   300,
+   600,
+   1200,
+   2400
+  ],
+  "source": "https://www.robe.cz/forte"
+ },
+ "fx-robe-ledbeam-150": {
+  "confidence": "published",
+  "defaultHz": 300,
+  "flickerFreeUpToFps": null,
+  "highSpeedMode": null,
+  "kind": "pwm",
+  "notes": "LED Freq menu: Standard 300 Hz (default) or High 600 Hz, plus 6 fine-adjust steps either way (also on DMX); use High for camera work.",
+  "pwmBelowPercent": null,
+  "selectableHz": [
+   300,
+   600
+  ],
+  "source": "https://www.robe.cz/ledbeam-150"
+ },
+ "fx-robe-megapointe": {
+  "confidence": "none",
+  "defaultHz": null,
+  "flickerFreeUpToFps": null,
+  "highSpeedMode": null,
+  "kind": "hmiElectronic",
+  "notes": "Discharge lamp, assumed on a flicker-free electronic ballast; Robe publishes no ballast frequency or fps figure.",
+  "pwmBelowPercent": null,
+  "selectableHz": [],
+  "source": "https://www.robe.cz/megapointe"
+ },
+ "fx-robe-spiider": {
+  "confidence": "published",
+  "defaultHz": 300,
+  "flickerFreeUpToFps": null,
+  "highSpeedMode": null,
+  "kind": "pwm",
+  "notes": "LED Freq menu: Standard 300 Hz (default) or High 600 Hz, plus 6 fine-adjust steps either way (also on DMX); use High for camera work.",
+  "pwmBelowPercent": null,
+  "selectableHz": [
+   300,
+   600
+  ],
+  "source": "https://www.robe.cz/spiider"
+ },
+ "fx-robe-t1-profile": {
+  "confidence": "published",
+  "defaultHz": 600,
+  "flickerFreeUpToFps": null,
+  "highSpeedMode": null,
+  "kind": "pwm",
+  "notes": "LED PWM selectable 300, 600 (default), 1200 or 2400 Hz in the Frequency Setup menu or on DMX, with fine adjust around the chosen value; go higher for fast shutters.",
+  "pwmBelowPercent": null,
+  "selectableHz": [
+   300,
+   600,
+   1200,
+   2400
+  ],
+  "source": "https://www.robe.cz/t1-profile"
+ },
+ "fx-robe-t2-profile": {
+  "confidence": "published",
+  "defaultHz": 600,
+  "flickerFreeUpToFps": null,
+  "highSpeedMode": null,
+  "kind": "pwm",
+  "notes": "LED PWM selectable 300, 600 (default), 1200 or 2400 Hz in the Frequency Setup menu or on DMX, with fine adjust around the chosen value; go higher for fast shutters.",
+  "pwmBelowPercent": null,
+  "selectableHz": [
+   300,
+   600,
+   1200,
+   2400
+  ],
+  "source": "https://www.robe.cz/t2-profile"
  },
  "fx-rotolight-aeos-2-pro": {
   "confidence": "family",

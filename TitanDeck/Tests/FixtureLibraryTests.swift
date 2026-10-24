@@ -18,7 +18,7 @@ final class FixtureLibraryTests: XCTestCase {
 
     func testEveryFixtureAndGelDecodes() throws {
         let library = try library()
-        XCTAssertEqual(library.fixtures.count, 221)
+        XCTAssertEqual(library.fixtures.count, 270)
         XCTAssertGreaterThan(library.gels.count, 1000, "the full LEE, Rosco and GAM books")
         XCTAssertGreaterThan(library.manufacturers.count, 10)
     }
@@ -27,11 +27,67 @@ final class FixtureLibraryTests: XCTestCase {
         for fixture in try library().fixtures {
             XCTAssertFalse(fixture.modes.isEmpty, fixture.name)
             XCTAssertNotNil(fixture.photometry(for: nil), fixture.name)
+            XCTAssertEqual(Set(fixture.modes.map(\.name)).count, fixture.modes.count, "\(fixture.name): mode names repeat")
             for mode in fixture.modes {
-                let used = mode.channels.map { $0.offset + $0.slotCount }.max() ?? 0
-                XCTAssertLessThanOrEqual(used, mode.channelCount, "\(fixture.name) / \(mode.name)")
+                let place = "\(fixture.name) / \(mode.name)"
+                var taken = Set<Int>()
+                for channel in mode.allChannels {
+                    for slot in channel.offset ..< channel.offset + channel.slotCount {
+                        XCTAssertTrue(taken.insert(slot).inserted, "\(place): slot \(slot + 1) used twice")
+                    }
+                }
+                XCTAssertLessThanOrEqual(taken.max().map { $0 + 1 } ?? 0, mode.channelCount, place)
             }
         }
+    }
+
+    func testAsteraModesAreNumbered() throws {
+        let astera = try library().fixtures.filter { $0.manufacturer == "Astera" }
+        XCTAssertFalse(astera.isEmpty)
+        for fixture in astera {
+            for mode in fixture.modes {
+                XCTAssertNotNil(mode.number, "\(fixture.name) / \(mode.name)")
+                XCTAssertTrue(mode.title.hasPrefix("Mode "), mode.title)
+            }
+        }
+    }
+
+    func testModeTitleAndPixelCells() {
+        let cell = [
+            DmxChannel(offset: 1, resolution: 8, attribute: .red, label: "Cell 1 Red"),
+            DmxChannel(offset: 2, resolution: 8, attribute: .green, label: "Cell 1 Green"),
+            DmxChannel(offset: 3, resolution: 8, attribute: .blue, label: "Blue"),
+        ]
+        let mode = FixtureMode(name: "Mode 21 Dim RGB (16 px)", number: "21", summary: "Dim RGB",
+                               channelCount: 49, channels: [DmxChannel(offset: 0, resolution: 8, attribute: .intensity, label: "Dimmer")] + cell,
+                               repeatCells: 16, cellSize: 3)
+        XCTAssertEqual(mode.title, "Mode 21 · Dim RGB (16 px)")
+        XCTAssertNil(mode.detail, "Astera's brief is already in the name")
+        let arri = FixtureMode(name: "CCT 8 bit", number: "2", summary: "Dimmer, CCT, GM, fan", channelCount: 6, channels: [])
+        XCTAssertEqual(arri.title, "Mode 2 · CCT 8 bit")
+        XCTAssertEqual(arri.detail, "Dimmer, CCT, GM, fan")
+        let all = mode.allChannels
+        XCTAssertEqual(all.count, 49)
+        XCTAssertEqual(all.last?.offset, 48)
+        XCTAssertEqual(all.first { $0.offset == 46 }?.label, "Cell 16 Red")
+        XCTAssertEqual(all.first { $0.offset == 6 }?.label, "Cell 2 Blue")
+
+        // Zones in the middle, control channels after them (SkyPanel style).
+        let zoned = FixtureMode(name: "LE", number: "24", channelCount: 25, channels: [
+            DmxChannel(offset: 0, resolution: 16, attribute: .intensity, label: "LE1 Dimmer"),
+            DmxChannel(offset: 2, resolution: 8, attribute: .cct, label: "LE1 CCT"),
+            DmxChannel(offset: 24, resolution: 8, attribute: .control, label: "Fan"),
+        ], repeatCells: 8, cellSize: 3, cellStart: 0)
+        let zones = zoned.allChannels
+        XCTAssertEqual(zones.map { $0.slotCount }.reduce(0, +), 25)
+        XCTAssertEqual(zones.first { $0.offset == 21 }?.label, "LE8 Dimmer")
+        XCTAssertEqual(zones.last?.label, "Fan")
+        XCTAssertEqual(FixtureMode.label("Zone 1 Red", cell: 12), "Zone 12 Red")
+        XCTAssertEqual(FixtureMode.label("Cell 10 Red", cell: 2), "Cell 2 Cell 10 Red")
+
+        XCTAssertEqual(FixtureMode(name: "Standard", channelCount: 4, channels: []).title, "Standard")
+        XCTAssertEqual(FixtureMode(name: "Mode 5", number: "5", channelCount: 4, channels: []).title, "Mode 5")
+        XCTAssertEqual(FixtureMode(name: "P4 RGBW", number: "P4", channelCount: 4, channels: []).title, "P4 · RGBW")
     }
 
     func testSearch() throws {

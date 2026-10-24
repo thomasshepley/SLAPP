@@ -62,10 +62,15 @@ TitanDeck/
 ├── Vendor/         downloaded FreeRDPKit (gitignored) - never edit or commit
 ├── Watch/          watchOS app (GoView, WatchModel). Shares Titan/ + WatchCommand with the phone app
 ├── Tests/          XCTest unit tests (endpoints, profiles, editing, store, client)
-├── Resources/Companion/ fixtures.json (221 fixtures, from the old app), gels.json (LEE/Rosco/GAM,
+├── Resources/Companion/ fixtures.json (270 fixtures; DMX modes from the makers' charts, merged by
+│                   Tools/merge_fixture_modes.py), gels.json (LEE/Rosco/GAM,
 │                   built by Tools/import_gels.py), flicker.json (researched refresh rates by fixture id)
 ├── Tools/          fake_titan.py - pretend Titan WebAPI for testing without an AvoKey;
-│                   export_companion_data.ts - regenerates Resources/Companion
+│                   export_companion_data.ts - regenerates Resources/Companion;
+│                   merge_fixture_modes.py - checks researched DMX modes (footprints add up,
+│                   no clashing slots) and folds them in. Modes carry the maker's number and
+│                   brief ("Mode 89 · D CCT GM CRO RGB"); big pixel modes list cell 1 with
+│                   repeatCells / cellSize / cellStart
 └── docs/           TESTFLIGHT_SETUP.md, TEST_PLAN.md
 ```
 

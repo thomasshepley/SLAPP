@@ -86,8 +86,17 @@ struct CompanionView: View {
     }
 }
 
-/// Loads the bundled library once, the first time the Companion opens.
+/// Loads the bundled library once. It's several megabytes of DMX modes, so
+/// the app warms it up in the background at launch rather than making the
+/// first Companion tap wait.
 enum CompanionLibrary {
     static let shared = FixtureLibrary.bundled()
     static let flicker = FlickerLibrary.bundled()
+
+    static func warmUp() {
+        Task.detached(priority: .utility) {
+            _ = shared
+            _ = flicker
+        }
+    }
 }
