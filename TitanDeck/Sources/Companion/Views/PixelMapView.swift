@@ -180,7 +180,7 @@ private struct PixelFace: View {
     /// Each cell's number at the middle of its pixels, when there's room.
     private func drawNumbers(in context: inout GraphicsContext, size: CGSize) {
         let pixels = Dictionary(uniqueKeysWithValues: layout.pixels.map { ($0.id, $0) })
-        let spacing = sqrt(size.width * size.height / Double(max(cells.count, 1)))
+        let spacing = (Double(size.width * size.height) / Double(max(cells.count, 1))).squareRoot()
         guard spacing >= 14 else { return }
         let fontSize = min(16, max(9, spacing * 0.4))
         for cell in cells {
@@ -240,7 +240,7 @@ private struct PixelFace: View {
             let centre = CGPoint(x: rect.midX, y: rect.midY)
             let radius = min(rect.width, rect.height) / 2
             for corner in 0 ..< 6 {
-                let angle = Double(corner) * .pi / 3 + .pi / 6
+                let angle = CGFloat(corner) * .pi / 3 + .pi / 6
                 let point = CGPoint(x: centre.x + radius * cos(angle), y: centre.y + radius * sin(angle))
                 if corner == 0 { path.move(to: point) } else { path.addLine(to: point) }
             }
