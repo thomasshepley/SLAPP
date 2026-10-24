@@ -71,7 +71,7 @@ final class AppState: ObservableObject {
         playbackState = PlaybackStatePoller()
         watch = WatchBridge()
         fileDrop = FileDropStore()
-        host = HostStore()
+        self.host = HostStore()
         titan = TitanClient(host: host)
         let store = ProfileStore()
         self.store = store
