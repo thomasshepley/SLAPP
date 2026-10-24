@@ -11,7 +11,6 @@ struct ColourToolView: View {
     @State private var minK: Double = 2700
     @State private var maxK: Double = 6500
     @State private var duv: Double = 0.0015
-    @State private var gelSearch = ""
 
     private var suggestion: ColourMaths.GelSuggestion { ColourMaths.suggestGel(from: sourceK, to: targetK) }
 
@@ -32,33 +31,18 @@ struct ColourToolView: View {
             }
 
             Section {
-                ForEach(gels) { gel in
-                    HStack(spacing: 12) {
-                        RoundedRectangle(cornerRadius: 8)
-                            .fill(Color(red: Double(gel.swatchRgb.r) / 255, green: Double(gel.swatchRgb.g) / 255,
-                                        blue: Double(gel.swatchRgb.b) / 255))
-                            .frame(width: 34, height: 34)
-                            .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(.separator))
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("\(gel.manufacturer) \(gel.number)").font(.body.weight(.medium))
-                            Text(gel.name).font(.caption).foregroundStyle(.secondary)
-                        }
-                        Spacer()
-                        if let shift = gel.miredShift {
-                            Text("\(shift > 0 ? "+" : "")\(Int(shift))")
-                                .font(.callout.monospacedDigit())
-                                .foregroundStyle(shift > 0 ? Color.orange : Color.blue)
-                        }
-                    }
+                NavigationLink {
+                    GelLibraryView(library: library)
+                } label: {
+                    Label("Browse all \(library.gels.count) gels", systemImage: CompanionSection.gels.symbol)
                 }
-                TextField("Search gels", text: $gelSearch)
             } header: {
                 Text("Gels")
             } footer: {
-                Text("Mired shift: + warms, - cools. Swatches are approximate.")
+                Text("LEE, Rosco (E-Colour+, Roscolux, Cinegel) and GAM, with transmission and mired shift.")
             }
 
-            ColourConverterSection()
+            ColourConverterSection(library: library)
 
             Section {
                 NumberField(title: "Warmest", value: $minK, unit: "K", places: 0)
@@ -82,13 +66,6 @@ struct ColourToolView: View {
         .navigationTitle(CompanionSection.colour.title)
     }
 
-    private var gels: [Gel] {
-        let words = gelSearch.lowercased().split(separator: " ")
-        return library.gels.filter { gel in
-            let text = "\(gel.manufacturer) \(gel.number) \(gel.name)".lowercased()
-            return words.allSatisfy { text.contains($0) }
-        }
-    }
 
     /// Green/magenta: a light can sit a bit green or pink of a true white.
     /// Colour meters show it as Duv; this says what it looks like and which

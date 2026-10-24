@@ -233,7 +233,13 @@ struct FlickerLibrary {
 
     /// Researched data if there is any, otherwise a typical profile for its type.
     func profile(for fixture: Fixture) -> FlickerProfile {
-        if let known = profiles[fixture.id], known.kind != .unknown || known.defaultHz != nil { return known }
-        return Flicker.typicalProfile(category: fixture.category, model: fixture.model)
+        let typical = Flicker.typicalProfile(category: fixture.category, model: fixture.model)
+        guard let known = profiles[fixture.id] else { return typical }
+        if known.kind != .unknown || known.defaultHz != nil { return known }
+        // Nothing on how it pulses, but keep what was found (claims, notes).
+        var merged = known
+        merged.kind = typical.kind
+        if merged.notes == nil { merged.notes = typical.notes }
+        return merged
     }
 }
