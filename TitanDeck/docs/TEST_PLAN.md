@@ -163,13 +163,23 @@ each key land.
 ## 6b. Companion
 
 - [ ] **Companion** tab: the sidebar (iPad) lists Fixtures and the tools.
+- [ ] Fixtures: a list of manufacturers, A-Z. Tap one to open its fixtures.
+      Drag down the letter strip on the right: a big letter follows your
+      finger and the list jumps. Searching opens every matching maker.
 - [ ] Fixtures: search "skypanel", filter by type or maker, open one: specs,
       DMX modes chart (switch modes), the distance slider and falloff chart.
       **Compare** with another fixture.
 - [ ] From a fixture, **Open in** Beam / Stops / Power pre-fills that tool.
 - [ ] Beam & Photometry, Stops (move the DMX slider, watch the curve chart),
-      Power & Cable (add fixtures, change distro, temperature), Colour & Gels,
-      Camera, Sun & Sync: numbers look sane.
+      Power & Cable (add fixtures, change distro, temperature): numbers look sane.
+- [ ] Colour & Gels: Enter RGB, move the sliders or type numbers: HSI updates
+      live. Switch to Enter HSI: same colour, now set by hue/sat/intensity.
+      Hex in and out. Green / magenta: a + Duv says "looks green, use Minus Green".
+- [ ] Flicker: pick an HMI, set 24 fps 180°: "Will flicker", and the fix says
+      172.8°. Tap 172.8°: "No flicker". Pick an LED, dim it to 10% at 240 fps.
+- [ ] Sun: tap the map to move the pin; search a place; the location button.
+      Scrub the time slider: the sun line on the map swings round. Sunrise /
+      Golden / Noon / Sunset buttons jump the slider.
 - [ ] Units & Mains: switch to imperial; distances show in ft and lux in fc.
 - [ ] iPhone: no Remote tab and it opens on Companion. Settings → Remote desktop
       → "Show the Remote tab" brings it back.

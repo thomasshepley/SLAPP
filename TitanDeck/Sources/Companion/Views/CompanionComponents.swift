@@ -3,7 +3,7 @@ import SwiftUI
 
 /// The Companion's sections, in sidebar order.
 enum CompanionSection: String, CaseIterable, Identifiable, Hashable {
-    case fixtures, beam, stops, power, colour, camera, sun, settings
+    case fixtures, beam, stops, power, colour, flicker, sun, settings
 
     var id: Self { self }
 
@@ -14,8 +14,8 @@ enum CompanionSection: String, CaseIterable, Identifiable, Hashable {
         case .stops: return "Stops"
         case .power: return "Power & Cable"
         case .colour: return "Colour & Gels"
-        case .camera: return "Camera"
-        case .sun: return "Sun & Sync"
+        case .flicker: return "Flicker"
+        case .sun: return "Sun"
         case .settings: return "Units & Mains"
         }
     }
@@ -27,7 +27,7 @@ enum CompanionSection: String, CaseIterable, Identifiable, Hashable {
         case .stops: return "plusminus.circle.fill"
         case .power: return "bolt.fill"
         case .colour: return "paintpalette.fill"
-        case .camera: return "camera.aperture"
+        case .flicker: return "camera.aperture"
         case .sun: return "sun.horizon.fill"
         case .settings: return "gearshape.fill"
         }
@@ -40,7 +40,7 @@ enum CompanionSection: String, CaseIterable, Identifiable, Hashable {
         case .stops: return .indigo
         case .power: return .red
         case .colour: return .pink
-        case .camera: return .teal
+        case .flicker: return .teal
         case .sun: return .blue
         case .settings: return .gray
         }
@@ -53,8 +53,8 @@ enum CompanionSection: String, CaseIterable, Identifiable, Hashable {
         case .stops: return "DMX for each stop up or down"
         case .power: return "Load, distro and cable sizing"
         case .colour: return "Mired, CTO/CTB, HSI and tint"
-        case .camera: return "Exposure, flicker and ND"
-        case .sun: return "Golden hour, blue hour and gobo tempo"
+        case .flicker: return "Will it flicker on camera, and the fix"
+        case .sun: return "Sun path on a map, golden and blue hour"
         case .settings: return "Metric or imperial, 50 or 60 Hz"
         }
     }
@@ -243,6 +243,8 @@ extension Fixture {
 /// One fixture in a list: icon, model, manufacturer and key numbers.
 struct FixtureRow: View {
     let fixture: Fixture
+    /// Off inside a manufacturer's group, where the name is already the heading.
+    var showsManufacturer = true
 
     var body: some View {
         HStack(spacing: 12) {
@@ -261,7 +263,7 @@ struct FixtureRow: View {
     }
 
     private var details: String {
-        var parts = [fixture.manufacturer, fixture.footprintSummary]
+        var parts = showsManufacturer ? [fixture.manufacturer, fixture.footprintSummary] : [fixture.category ?? "", fixture.footprintSummary].filter { !$0.isEmpty }
         if let watts = fixture.powerW { parts.append("\(Int(watts)) W") }
         return parts.joined(separator: " · ")
     }

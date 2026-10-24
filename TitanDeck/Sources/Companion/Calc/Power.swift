@@ -75,20 +75,3 @@ enum Cable {
         ratings.first { deratedCapacity(csaMm2: $0.csaMm2, ambient: celsius) >= amps }
     }
 }
-
-/// Gobo rotation from tempo: one revolution per beat, or per bar.
-enum GoboSync {
-    enum Mode: String, CaseIterable, Identifiable {
-        case beat = "Per beat"
-        case bar = "Per bar"
-        var id: Self { self }
-    }
-
-    static func rpm(bpm: Double, mode: Mode, beatsPerBar: Int = 4) -> Double {
-        round(mode == .beat ? bpm : bpm / Double(beatsPerBar), places: 2)
-    }
-
-    static func bpm(rpm: Double, mode: Mode, beatsPerBar: Int = 4) -> Double {
-        round(mode == .beat ? rpm : rpm * Double(beatsPerBar), places: 2)
-    }
-}

@@ -1,49 +1,72 @@
 // Companion/Views/FixtureLibraryView.swift
 import SwiftUI
+import UIKit
 
-/// Every fixture, grouped by manufacturer, searchable and filterable by type.
+/// Every fixture, by manufacturer: a list of makers (A-Z, with a letter
+/// index down the side) that each expand to their fixtures. Searching or
+/// filtering opens every matching maker.
 struct FixtureLibraryView: View {
     let library: FixtureLibrary
     @State private var search = ""
     @State private var category: String?
     @State private var manufacturer: String?
+    @State private var expanded: Set<String> = []
 
     private var results: [Fixture] {
         library.search(search, category: category, manufacturer: manufacturer)
     }
 
-    private var groups: [(manufacturer: String, fixtures: [Fixture])] {
-        Dictionary(grouping: results, by: \.manufacturer)
-            .map { ($0.key, $0.value) }
-            .sorted { $0.manufacturer.localizedCaseInsensitiveCompare($1.manufacturer) == .orderedAscending }
-    }
+    /// Searching or filtering: show the fixtures, not a list of closed makers.
+    private var isNarrowed: Bool { !search.isEmpty || category != nil || manufacturer != nil }
+
+    private var byManufacturer: [String: [Fixture]] { Dictionary(grouping: results, by: \.manufacturer) }
 
     var body: some View {
-        List {
-            if category != nil || manufacturer != nil {
-                Section {
-                    filterChips
+        let groups = byManufacturer
+        let sections = LetterIndex.sections(Array(groups.keys))
+        ScrollViewReader { proxy in
+            List {
+                if category != nil || manufacturer != nil {
+                    Section {
+                        filterChips
+                    }
                 }
-            }
-            ForEach(groups, id: \.manufacturer) { group in
-                Section {
-                    ForEach(group.fixtures) { fixture in
-                        NavigationLink(value: fixture) {
-                            FixtureRow(fixture: fixture)
+                ForEach(sections, id: \.letter) { section in
+                    Section {
+                        ForEach(section.names, id: \.self) { maker in
+                            DisclosureGroup(isExpanded: expansion(for: maker)) {
+                                ForEach(groups[maker] ?? []) { fixture in
+                                    NavigationLink(value: fixture) {
+                                        FixtureRow(fixture: fixture, showsManufacturer: false)
+                                    }
+                                }
+                            } label: {
+                                ManufacturerRow(name: maker, count: groups[maker]?.count ?? 0)
+                            }
+                            .id(maker == section.names.first ? Self.anchor(section.letter) : maker)
+                        }
+                    } header: {
+                        Text(section.letter)
+                    } footer: {
+                        if section.letter == sections.last?.letter {
+                            Text("\(results.count) of \(library.fixtures.count) fixtures from \(groups.count) manufacturers")
                         }
                     }
-                } header: {
-                    Text(group.manufacturer)
-                } footer: {
-                    if group.manufacturer == groups.last?.manufacturer {
-                        Text("\(results.count) of \(library.fixtures.count) fixtures")
-                    }
                 }
             }
-        }
-        .overlay {
-            if results.isEmpty {
-                ContentUnavailableView.search(text: search)
+            .listStyle(.insetGrouped)
+            .overlay(alignment: .trailing) {
+                if !isNarrowed && sections.count > 3 {
+                    LetterIndexStrip(available: sections.map(\.letter)) { letter in
+                        proxy.scrollTo(Self.anchor(letter), anchor: .top)
+                    }
+                    .padding(.trailing, 2)
+                }
+            }
+            .overlay {
+                if results.isEmpty {
+                    ContentUnavailableView.search(text: search)
+                }
             }
         }
         .searchable(text: $search, prompt: "Model, manufacturer or type")
@@ -62,11 +85,28 @@ struct FixtureLibraryView: View {
                         Text("All manufacturers").tag(String?.none)
                         ForEach(library.manufacturers, id: \.self) { Text($0).tag(Optional($0)) }
                     }
+                    if !expanded.isEmpty {
+                        Divider()
+                        Button("Collapse All", systemImage: "rectangle.compress.vertical") {
+                            withAnimation { expanded.removeAll() }
+                        }
+                    }
                 } label: {
                     Label("Filter", systemImage: category == nil && manufacturer == nil
                           ? "line.3.horizontal.decrease.circle" : "line.3.horizontal.decrease.circle.fill")
                 }
             }
+        }
+    }
+
+    private static func anchor(_ letter: String) -> String { "letter-\(letter)" }
+
+    /// Open while searching or filtering; otherwise whatever you tapped open.
+    private func expansion(for maker: String) -> Binding<Bool> {
+        Binding {
+            isNarrowed || expanded.contains(maker)
+        } set: { open in
+            if open { expanded.insert(maker) } else { expanded.remove(maker) }
         }
     }
 
@@ -303,5 +343,87 @@ struct DmxChart: View {
             seen.append(channel.attribute.family)
         }
         return seen
+    }
+}
+
+/// A manufacturer heading in the library: name and how many fixtures.
+private struct ManufacturerRow: View {
+    let name: String
+    let count: Int
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Text(String(name.prefix(1)).uppercased())
+                .font(.headline)
+                .foregroundStyle(.white)
+                .frame(width: 34, height: 34)
+                .background(Color.yellow.gradient.opacity(0.85), in: .rect(cornerRadius: 9))
+            Text(name)
+                .font(.body.weight(.semibold))
+            Spacer()
+            Text("\(count)")
+                .font(.callout.monospacedDigit())
+                .foregroundStyle(.secondary)
+        }
+        .padding(.trailing, 14)   // clear of the letter index
+    }
+}
+
+/// The A-Z strip down the right: tap or drag to jump. Letters with nothing
+/// are dimmed and snap to the nearest that has.
+private struct LetterIndexStrip: View {
+    let available: [String]
+    let jump: (String) -> Void
+    @State private var current: String?
+
+    var body: some View {
+        GeometryReader { geometry in
+            VStack(spacing: 0) {
+                ForEach(LetterIndex.alphabet, id: \.self) { letter in
+                    Text(letter)
+                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                        .foregroundStyle(available.contains(letter) ? Color.accentColor : Color.secondary.opacity(0.4))
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+            }
+            .contentShape(.rect)
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { value in
+                        let fraction = value.location.y / max(geometry.size.height, 1)
+                        guard let letter = LetterIndex.letter(atFraction: fraction, available: available),
+                              letter != current else { return }
+                        current = letter
+                        jump(letter)
+                        UISelectionFeedbackGenerator().selectionChanged()
+                    }
+                    .onEnded { _ in
+                        withAnimation(.easeOut(duration: 0.3).delay(0.3)) { current = nil }
+                    }
+            )
+        }
+        .frame(width: 20)
+        .frame(maxHeight: 520)
+        .padding(.vertical, 8)
+        .background(.ultraThinMaterial.opacity(current == nil ? 0 : 1), in: .capsule)
+        .overlay(alignment: .leading) {
+            if let current {
+                Text(current)
+                    .font(.system(size: 44, weight: .bold, design: .rounded))
+                    .frame(width: 76, height: 76)
+                    .glassEffect(.regular, in: .rect(cornerRadius: 18))
+                    .offset(x: -96)
+                    .transition(.scale.combined(with: .opacity))
+            }
+        }
+        .accessibilityElement()
+        .accessibilityLabel("Letter index")
+        .accessibilityAdjustableAction { direction in
+            let letters = available
+            let index = current.flatMap { letters.firstIndex(of: $0) } ?? 0
+            let next = direction == .increment ? min(letters.count - 1, index + 1) : max(0, index - 1)
+            current = letters[next]
+            jump(letters[next])
+        }
     }
 }

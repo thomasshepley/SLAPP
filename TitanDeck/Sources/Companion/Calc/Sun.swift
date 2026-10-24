@@ -75,6 +75,18 @@ enum Sun {
         return Position(azimuth: mod(azimuth + 180, 360), elevation: elevation)
     }
 
+    /// The point `metres` away along a compass bearing, for drawing the sun's
+    /// direction on a map (great-circle, fine at these distances).
+    static func destination(latitude: Double, longitude: Double, bearing: Double, metres: Double)
+        -> (latitude: Double, longitude: Double) {
+        let earthRadius = 6_371_000.0
+        let angular = metres / earthRadius
+        let lat1 = radians(latitude), lon1 = radians(longitude), theta = radians(bearing)
+        let lat2 = asin(sin(lat1) * cos(angular) + cos(lat1) * sin(angular) * cos(theta))
+        let lon2 = lon1 + atan2(sin(theta) * sin(angular) * cos(lat1), cos(angular) - sin(lat1) * sin(lat2))
+        return (degrees(lat2), mod(degrees(lon2) + 540, 360) - 180)
+    }
+
     // MARK: - NOAA
 
     private static func solarParameters(_ date: Date) -> (declination: Double, equationOfTime: Double) {
