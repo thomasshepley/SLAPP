@@ -11,6 +11,7 @@ with every change that goes to `main`.
 
 - Removed 19 library entries for lights that don't exist, so you won't patch a fixture that isn't real: Nanlux Evoke 300, 300B, 600, 600B and 900, Dyno 300C and 1200B, TK-200B, TK-300, TK-450B and TK-600; Nanlite Forza 300C; Knowled M400D and M400Bi; Aputure LS 300x II, LS 1200d and LS 600c (only the Pro versions exist); ARRI SkyPanel X61; Quasar Q50.
 - The real models are all still there, with their DMX modes and flicker data.
+- TestFlight builds are flowing again: 0.8, 0.9 and 0.10 never reached TestFlight because Apple's signing-certificate limit was full. This build brings all of them, including the Astera mode numbers and every DMX mode from the makers' charts.
 
 ## 0.10.0 - 2026-10-24 - Every DMX mode
 
