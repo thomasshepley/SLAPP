@@ -7,6 +7,16 @@ the GitHub Actions run that built it. The top entry is shown in the app
 so add an entry - and bump `MARKETING_VERSION` in `project.yml` to match -
 with every change that goes to `main`.
 
+## 0.11.0 - 2026-10-24 - Pixel maps
+
+- **Pixel maps:** pixel and zone modes now show the fixture's face with every cell coloured and numbered, laid out the way the manufacturer's manual draws it. 33 fixtures so far: SkyPanels, Creamsource Vortex, Astera tubes, bars and HydraPanel, PavoTubes, amaran PT, INFINIBAR, MT Pro, GLP X4 Bar and X4 L, JDC1, B-EYE K20, MAC Aura PXL, Spiider, Maverick Storm 1 Wash and Rogue R2X Wash.
+- **Vortex Zone Orientation:** Bars and Split modes show both the vertical and horizontal layout, matching the setting on the fixture.
+- **Tap a cell** to see which DMX channels drive it. The DMX chart below dims everything else, so you can see at a glance where cell 7 lives.
+- Switch modes and the map regroups: 8 zones become 4 or 2, 16 pixels become 8 or 4, just as the fixture does.
+- Fixtures with more than one set of pixels (beam and aura, plate and beam) get a switch between them.
+- Where a manual doesn't say which end cell 1 is, the map says so, so you know to check it on the rig.
+- **Fixed:** FX Library > Add > From Photos now opens the Photos picker. It did nothing before.
+
 ## 0.10.1 - 2026-10-24 - Fixture library tidy-up
 
 - Removed 19 library entries for lights that don't exist, so you won't patch a fixture that isn't real: Nanlux Evoke 300, 300B, 600, 600B and 900, Dyno 300C and 1200B, TK-200B, TK-300, TK-450B and TK-600; Nanlite Forza 300C; Knowled M400D and M400Bi; Aputure LS 300x II, LS 1200d and LS 600c (only the Pro versions exist); ARRI SkyPanel X61; Quasar Q50.

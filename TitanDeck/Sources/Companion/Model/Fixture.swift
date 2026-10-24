@@ -103,6 +103,7 @@ struct FixtureMode: Codable, Hashable, Identifiable {
                 var copy = channel
                 copy.offset += index * cellSize
                 copy.label = Self.label(channel.label, cell: index + 1)
+                if channel.cell != nil { copy.cell = index + 1 }
                 return copy
             }
         }
@@ -131,6 +132,11 @@ struct DmxChannel: Codable, Hashable {
     var attribute: ChannelAttribute
     var label: String
     var ranges: [DmxRange]?
+    /// The pixel cell this channel drives (1-based, in DMX order), for pixel
+    /// and zone modes. Tagged by Tools/tag_pixel_cells.py.
+    var cell: Int?
+    /// Which set of pixels, on fixtures with more than one ("Beam", "Aura").
+    var cellGroup: String?
 
     var slotCount: Int { max(1, resolution / 8) }
 }

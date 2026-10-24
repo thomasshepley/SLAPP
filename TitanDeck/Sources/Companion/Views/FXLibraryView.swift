@@ -14,6 +14,7 @@ struct FXLibraryView: View {
     @State private var search = ""
     @State private var category: FXItem.Category?
     @State private var photoSelection: [PhotosPickerItem] = []
+    @State private var choosingPhotos = false
     @State private var importing = false
     @State private var selecting = false
     @State private var chosen: Set<UUID> = []
@@ -91,6 +92,8 @@ struct FXLibraryView: View {
             Task { await store.add(files.map(\.url)) }
             return !files.isEmpty
         } isTargeted: { dropTargeted = $0 }
+        .photosPicker(isPresented: $choosingPhotos, selection: $photoSelection, maxSelectionCount: 30,
+                      matching: .any(of: [.videos, .images]))
         .fileImporter(isPresented: $importing, allowedContentTypes: [.movie, .video, .image, .gif],
                       allowsMultipleSelection: true) { result in
             if case .success(let urls) = result { Task { await store.add(urls) } }
@@ -115,10 +118,10 @@ struct FXLibraryView: View {
 
     private var addMenu: some View {
         Menu {
-            PhotosPicker(selection: $photoSelection, maxSelectionCount: 30,
-                         matching: .any(of: [.videos, .images])) {
-                Label("From Photos", systemImage: "photo.on.rectangle")
-            }
+            // A PhotosPicker inside a Menu never appears (the menu takes its
+            // sheet away as it closes), so the menu only flips a flag and the
+            // picker hangs off the screen itself.
+            Button("From Photos", systemImage: "photo.on.rectangle") { choosingPhotos = true }
             Button("From Files", systemImage: "folder") { importing = true }
         } label: {
             Label("Add", systemImage: "plus")

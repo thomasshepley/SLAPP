@@ -70,7 +70,11 @@ TitanDeck/
 │                   merge_fixture_modes.py - checks researched DMX modes (footprints add up,
 │                   no clashing slots) and folds them in. Modes carry the maker's number and
 │                   brief ("Mode 89 · D CCT GM CRO RGB"); big pixel modes list cell 1 with
-│                   repeatCells / cellSize / cellStart
+│                   repeatCells / cellSize / cellStart;
+│                   tag_pixel_cells.py - stamps each pixel-mode channel with its cell (and
+│                   cellGroup on multi-set fixtures). Run it after merge_fixture_modes.py.
+│                   pixel-layouts.json (by fixture id) holds each pixel fixture's face and
+│                   how cells group its pixels, from the manuals; PixelMapView draws it
 └── docs/           TESTFLIGHT_SETUP.md, TEST_PLAN.md
 ```
 

@@ -141,6 +141,8 @@ struct FixtureDetailView: View {
     @AppStorage(CompanionSettings.unitsKey) private var unitSystem: UnitSystem = .metric
     @State private var modeName: String = ""
     @State private var showingAllModes = false
+    @State private var selectedCell: PixelLayout.Cell.ID?
+    @State private var layoutOption = 0
     @State private var distance: Double = 3
     @State private var comparing = false
 
@@ -177,6 +179,10 @@ struct FixtureDetailView: View {
             }
         }
         .onAppear { if modeName.isEmpty { modeName = fixture.modes.first?.name ?? "" } }
+        .onChange(of: modeName) { _, _ in
+            selectedCell = nil
+            layoutOption = 0
+        }
     }
 
     private var header: some View {
@@ -246,7 +252,14 @@ struct FixtureDetailView: View {
             }
             if let mode {
                 ModeHeader(mode: mode)
-                DmxChart(mode: mode)
+                let layout = library.pixelLayouts[fixture.id]
+                let cells = layout?.cells(for: mode, option: layoutOption) ?? []
+                if let layout, !cells.isEmpty {
+                    PixelMapView(layout: layout, cells: cells, options: layout.options(for: mode),
+                                 option: $layoutOption, selected: $selectedCell)
+                        .padding(.vertical, 4)
+                }
+                DmxChart(mode: mode, highlight: cells.first { $0.id == selectedCell })
             }
             if fixture.modes.count > 1 {
                 DisclosureGroup("Every mode", isExpanded: $showingAllModes) {
@@ -382,6 +395,8 @@ private struct ModeListRow: View {
 /// channels span two slots.
 struct DmxChart: View {
     let mode: FixtureMode
+    /// A pixel cell to pick out: its channels stay bright, the rest fade.
+    var highlight: PixelLayout.Cell? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -399,8 +414,11 @@ struct DmxChart: View {
                     .padding(8)
                     .background(slot.colour.opacity(slot.isFine ? 0.08 : 0.16), in: .rect(cornerRadius: 10))
                     .overlay {
-                        RoundedRectangle(cornerRadius: 10).strokeBorder(slot.colour.opacity(0.35), lineWidth: 1)
+                        RoundedRectangle(cornerRadius: 10)
+                            .strokeBorder(slot.isPicked ? Color.primary : slot.colour.opacity(0.35),
+                                          lineWidth: slot.isPicked ? 2 : 1)
                     }
+                    .opacity(highlight == nil || slot.isPicked ? 1 : 0.3)
                 }
             }
             HStack(spacing: 14) {
@@ -419,15 +437,17 @@ struct DmxChart: View {
         let label: String
         let colour: Color
         let isFine: Bool
+        var isPicked = false
     }
 
     private var slots: [Slot] {
         var result: [Slot] = []
         for channel in mode.allChannels.sorted(by: { $0.offset < $1.offset }) {
+            let picked = highlight.map { channel.cell == $0.number && (channel.cellGroup ?? "") == $0.group } ?? false
             for part in 0 ..< channel.slotCount {
                 let label = part == 0 ? channel.label : "\(channel.label) \(part == 1 ? "fine" : "ultra")"
                 result.append(Slot(number: channel.offset + part + 1, label: label,
-                                   colour: channel.attribute.family.colour, isFine: part > 0))
+                                   colour: channel.attribute.family.colour, isFine: part > 0, isPicked: picked))
             }
         }
         // Slots the mode reserves but doesn't describe.
