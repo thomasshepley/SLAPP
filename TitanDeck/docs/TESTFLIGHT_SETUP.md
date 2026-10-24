@@ -122,3 +122,6 @@ log. The usual culprits:
   isn't ticked on the app ID (step 3).
 - **"No suitable application records were found"**: the app record from
   step 4 doesn't exist yet, or uses a different bundle ID.
+- **Errors naming `uk.co.elexproductions.titandeck.watchkitapp`**: the Watch
+  app's ID. The Admin key normally registers it automatically. If not, add it
+  in Identifiers the same way as step 3 (no capabilities needed).

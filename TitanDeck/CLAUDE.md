@@ -156,9 +156,9 @@ key images. Never index hardware keys with profile indices directly.
 
 ## Build, test, ship
 
-- No Stream Deck in the iPad Simulator? Debug builds have Settings -> "Show
-  on-screen Stream Deck (debug)", Stream Deck Kit's virtual deck. It goes through
-  the same code path as real hardware.
+- No Stream Deck in the iPad Simulator? Settings -> "Show virtual Stream Deck"
+  (every build, TestFlight included) opens Stream Deck Kit's virtual deck. It
+  goes through the same code path as real hardware.
 
 - Unit tests: run the `TitanDeck` scheme's tests (Cmd-U) on an iPad simulator.
 - GitHub Actions (`.github/workflows/titandeck.yml`) regenerates the project,

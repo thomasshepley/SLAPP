@@ -68,10 +68,11 @@ TitanDeck/
 - **Stream Deck Kit API** is checked against the 1.3.0 source. Key presses come
   through `StreamDeck.inputEventHandler`, and images go out with
   `setKeyImage(_:at:)`.
-- **Default profile** is laid out for 32 keys, as the plan specifies. If a
-  smaller deck is plugged in while the profile is still the untouched default,
-  it re-flows so the page key stays on the last key. Edited profiles are
-  never touched.
+- **Default profile** is for a 15-key Stream Deck mounted in portrait: Keypad,
+  Intensity and Playbacks pages, with a Menu key (hold 2 s) that opens a menu
+  of layouts. If a different-sized deck is plugged in while the profile is
+  still the untouched default, it re-flows to fit. Edited profiles are never
+  touched.
 - **Settings** is a tab next to the remote view for now. A deck key with the
   `openSettings` action also switches to it. The three-finger long-press comes
   with the RDP view in M5/M6.
@@ -87,8 +88,8 @@ TitanDeck/
    to set its label, colour, icon and action (Go, Release, fader level, macro,
    page changes, custom WebAPI path). The page menu adds, duplicates, renames,
    moves and deletes pages. Edits save straight away and show on the deck.
-4. No Stream Deck to hand, or running in the iPad Simulator? Debug builds have
-   Settings → **Show on-screen Stream Deck (debug)**.
-5. Plug in the Stream Deck. Page 1 shows GO 1-16 (green) and page 2 shows
-   REL 1-16 (red). The last key flips between pages. A key flashes red if
-   Titan doesn't answer within 500 ms.
+4. No Stream Deck to hand, or running in the iPad Simulator? Settings → **Show
+   virtual Stream Deck**.
+5. Plug in the Stream Deck. Page 1 is the Avolites keypad (1-9, Exit 0 Enter,
+   Clear Menu @). Hold Menu for 2 s to switch to Intensity or Playbacks. A key
+   flashes red if Titan doesn't answer within 500 ms.

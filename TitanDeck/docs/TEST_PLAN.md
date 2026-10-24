@@ -48,8 +48,8 @@ open TitanDeck.xcodeproj
 
 ## 4. Deck: keypad, intensity, menu
 
-Use the **Deck** tab, or Settings → **Show on-screen Stream Deck (debug)**
-(15-key model). The debug deck is drawn in landscape like the real hardware, so
+Use the **Deck** tab, or Settings → **Show virtual Stream Deck**
+(15-key model). The virtual deck is drawn in landscape like the real hardware, so
 with portrait mounting its labels are sideways. That's correct for a deck on
 its side. The Deck tab shows the portrait layout upright.
 
@@ -73,7 +73,7 @@ each key land.
 - [ ] Playbacks page: GO / REL 1-6.
 - [ ] A key pointed at something that fails flashes **red**.
 - [ ] Settings → Stream Deck → **Deck mounted**: switch between the two
-      portrait options and landscape; the debug deck's images turn to match.
+      portrait options and landscape; the virtual deck's images turn to match.
 - [ ] **Light keys for live playbacks** (Settings): with Playbacks showing,
       fire playback 1 from Titan itself. GO 1 / REL 1 should get a white frame
       and bar. **(unconfirmed: whether Titan reports playback user numbers -
