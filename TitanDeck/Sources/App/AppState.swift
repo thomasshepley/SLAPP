@@ -50,8 +50,10 @@ final class AppState: ObservableObject {
     let playbackState: PlaybackStatePoller
     /// Apple Watch GO button, iPhone side (M10).
     let watch: WatchBridge
-    /// Files queued for the PC's shared folder (M16).
+    /// Files queued for the PC (M16), through the Host or the shared folder.
     let fileDrop: FileDropStore
+    /// TitanDeck Host on the PC: pairing, PC health, files both ways (M18).
+    let host: HostStore
     private var logSubscriptions = Set<AnyCancellable>()
     private let store: ProfileStore
 
@@ -69,6 +71,7 @@ final class AppState: ObservableObject {
         playbackState = PlaybackStatePoller()
         watch = WatchBridge()
         fileDrop = FileDropStore()
+        host = HostStore()
         titan = TitanClient(host: host)
         let store = ProfileStore()
         self.store = store
