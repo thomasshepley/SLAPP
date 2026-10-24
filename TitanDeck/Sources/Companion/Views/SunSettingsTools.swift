@@ -104,7 +104,7 @@ struct SunToolView: View {
         if let rise = times.sunrise, let set = times.sunset {
             bands.append(("Day", rise, set, .cyan.opacity(0.35)))
         }
-        for (_, window, colour) in [("Blue", times.blueMorning, Color.blue), ("Blue", times.blueEvening, .blue),
+        for (name, window, colour) in [("Blue", times.blueMorning, Color.blue), ("Blue", times.blueEvening, .blue),
                                         ("Golden", times.goldenMorning, .yellow), ("Golden", times.goldenEvening, .yellow)] {
             if let window { bands.append((name, min(window.start, window.end), max(window.start, window.end), colour)) }
         }
