@@ -35,3 +35,4 @@ TitanDeckHost/**/bin/
 TitanDeckHost/**/obj/
 TitanDeckHost/publish/
 TitanDeckHost/out/
+__pycache__/
