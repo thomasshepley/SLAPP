@@ -140,20 +140,23 @@ actor TitanClient {
 
     // MARK: - Flash (hold to 0%)
 
-    /// Down: straight to 0%, or -5% steps spread over `seconds` (SetDimmerLevel
-    /// takes no time). Back: release the selection's controls over `seconds`,
-    /// so they return to whatever they were before the deck touched them.
+    /// Down with no fade: Titan's own FlashOut, and back with ClearFlash, which
+    /// puts the fixtures back exactly as they were. With a fade: -5% steps
+    /// spread over `seconds` (SetDimmerLevel takes no time), and back by
+    /// releasing the selection's controls over `seconds`.
     private func runFlash(down: Bool, seconds: Double?) async -> TitanResult {
         let action = TitanAction.dimmerFlash(down: down, seconds: seconds)
         let start = Date()
         flashRamp?.cancel()
         flashRamp = nil
-        guard down else {
-            let result = await get(TitanEndpoints.releaseSelectionURL(seconds: seconds ?? 0, host: host, port: port))
+        guard let seconds, seconds > 0 else {
+            let url = down ? TitanEndpoints.flashOutURL(host: host, port: port)
+                           : TitanEndpoints.clearFlashURL(host: host, port: port)
+            let result = await get(url)
             return finish(action, start, ok: result.ok, status: result.status, error: result.error)
         }
-        guard let seconds, seconds > 0 else {
-            let result = await get(TitanEndpoints.setDimmerLevelURL(percent: 0, host: host, port: port))
+        guard down else {
+            let result = await get(TitanEndpoints.releaseSelectionURL(seconds: seconds, host: host, port: port))
             return finish(action, start, ok: result.ok, status: result.status, error: result.error)
         }
         let steps = (count: 20, interval: seconds / 20)
@@ -231,6 +234,45 @@ actor TitanClient {
               let (data, response) = try? await session.data(from: url),
               (response as? HTTPURLResponse)?.statusCode == 200 else { return nil }
         return TitanHandlesParser.parse(data)
+    }
+
+    // MARK: - Selection and patch (desk link, live intensity)
+
+    /// Titan ids of everything selected, or nil if Titan didn't answer or the
+    /// answer couldn't be read. On the desk link client, the operator's selection.
+    func selectedFixtureIds() async -> [Int]? {
+        guard let data = await body(TitanEndpoints.selectedFixtureIdsURL(host: host, port: port)) else { return nil }
+        let ids = TitanSelectionParser.titanIds(from: data)
+        if ids == nil { Log.titan("Couldn't read the selection from: \(String(decoding: data.prefix(200), as: UTF8.self))") }
+        return ids
+    }
+
+    /// titanId -> fixture user number, or nil if Titan didn't answer.
+    func fixtureUserNumbers() async -> [Int: Int]? {
+        await handles(group: "Fixtures").map(TitanSelectionParser.userNumbers)
+    }
+
+    /// The Patch route to a fixture's address (experimental, off by default):
+    /// select it in this WebAPI user's own selection if asked to, copy its
+    /// address into the patch editor's properties, read them back. Never call
+    /// this on the desk link client: the operator's own Patch must stay shut.
+    func patchedAddress(selecting fixture: Int?) async -> (address: DmxAddress?, raw: String?) {
+        if let fixture {
+            guard await get(TitanEndpoints.selectFixturesURL(userNumbers: [fixture], host: host, port: port)).ok else {
+                return (nil, nil)
+            }
+        }
+        guard await get(TitanEndpoints.addressFromSelectionURL(host: host, port: port)).ok,
+              let data = await body(TitanEndpoints.currentDmxAssignmentURL(host: host, port: port)) else { return (nil, nil) }
+        let raw = String(decoding: data.prefix(300), as: UTF8.self)
+        Log.titan("Patch/CurrentDmxAssignment answered: \(raw)")
+        return (DmxAddress.parse(data), raw)
+    }
+
+    private func body(_ url: URL?) async -> Data? {
+        guard let url, let (data, response) = try? await session.data(from: url),
+              (response as? HTTPURLResponse)?.statusCode == 200 else { return nil }
+        return data
     }
 
     private static func elapsed(since start: Date) -> Int {

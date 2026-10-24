@@ -122,6 +122,24 @@ struct HostRdpQualityRequest: Codable, Equatable {
 }
 
 /// `{ "error": "..." }`, which the Host sends with a 4xx.
+/// `GET /api/v1/dmx` (Host 0.3+): universes heard over sACN, the ones it's
+/// listening to, and why it can't listen, if it can't.
+struct HostDmxSummary: Codable, Equatable {
+    let universes: [Int]
+    let listening: [Int]
+    let problem: String?
+}
+
+/// `GET /api/v1/dmx/{universe}?start=&count=`: live levels, 0-255, from `start`.
+struct HostDmxLevels: Codable, Equatable {
+    let universe: Int
+    let start: Int
+    let levels: [Int]
+    let priority: Int
+    let sources: [String]
+    let ageMs: Int
+}
+
 struct HostErrorBody: Codable {
     var error: String?
     var message: String?

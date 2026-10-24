@@ -164,6 +164,9 @@ parameter is named `srcHandle`). Levels are `level_level=` (absolute, 0-1).
 | Fire a picked cue | `Playbacks/FirePlaybackAtLevel?handle_titanId=N&level_level=1&alwaysRefire=false` |
 | Cue fade time | `Playbacks/Editor/CueSelection/SelectCueByNumber?handle_titanId=N&cueNumber=1`, then POST `/titan/set/2/Playbacks/Editor/Times/CueFadeInTime` (or `CueFadeOutTime`), body the seconds as text. **Experimental:** body format undocumented |
 | Flash to 0 | `Programmer/Editor/Fixtures/SetDimmerLevel?level=0` (no time, so a faded flash is 20 `IncrementDimmer` steps of -5); back with `ClearSelectedControls?release=true&releaseTime=S` |
+| Desk selection (desk link) | `Selection/Context/Global/GetAllSelectedFixtureIds` on Titan's UI WebAPI (TitanDeck port 4434 via the Host, Titan 4433); returns titan ids, mapped with `/titan/handles/Fixtures` |
+| Flash, no fade | `Programmer/Editor/Fixtures/FlashOut`, then `ClearFlash` |
+| Patch address (experimental, off) | 4430 only: `Selection/Context/Global/SelectFixturesFromHandles?handleList_userNumberList=N` (when linked), `Patch/Repatch/SetDmxAddressesFromSelectedFixture`, `GET /titan/get/2/Patch/CurrentDmxAssignment` (format unknown) |
 | One page of playbacks | `GET /titan/handles/Playbacks/<pageIndex>` (0-based); without the index, every page |
 
 Notes from the API research (Oct 2026, `api.avolites.com` 19.2 + Avolites
@@ -173,8 +176,18 @@ support posts):
   to API calls; what the deck selects ("102 Enter") does. Test on the console.
 - `userNumber` in handle JSON may be an object (`userNumbers` / `hashCode`);
   `TitanHandlesParser` reads those shapes too.
-- There's no documented way to read a fixture's current intensity, so the
-  flash key can't show it, and "back to where it was" is a programmer release.
+- There's no documented way to read a fixture's current intensity from the
+  WebAPI. `IntensityReader` reads it from Titan's sACN through TitanDeck Host
+  and learns each fixture's intensity channels from what moves when the deck
+  nudges or flashes it (`IntensityLearning`).
+- **Desk link** (`App/DeskLink.swift`): port 4430 is its own user with its own
+  programmer and selection (Avolites, 2021: selection is "just handled in the
+  user interface"). `webapi.enabled` in Titan's .exe.config (Titan 14+,
+  documented for all consoles in v17.0) starts a WebAPI inside Titan's UI that
+  shares the operator's selection and programmer. TitanDeck Host turns it on
+  at 4433 and proxies it on 4434. While linked, `AppState.fire` sends deck
+  actions there. **Never send Patch calls to the desk link** (Titan's Patch
+  menu holds the programmer); the Host proxy refuses them too.
 - Keypad levels: `@ @` = full; `@ 5` is 5% unless the user setting Channel
   Levels is "Set In Tens" (`GET /titan/get/2/UserSettings/SingleDigitLevels`).
 

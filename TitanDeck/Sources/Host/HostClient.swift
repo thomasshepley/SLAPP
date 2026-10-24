@@ -84,6 +84,23 @@ struct HostClient: Sendable {
         try check(response, body: data)
     }
 
+    // MARK: - Live levels from sACN (Host 0.3+)
+
+    /// The sACN universes the Host hears.
+    func dmxSummary() async throws -> HostDmxSummary {
+        var request = try request("dmx")
+        request.timeoutInterval = 2
+        return try await send(request)
+    }
+
+    /// Levels (0-255) of one universe from `start` (1-based).
+    func dmx(universe: Int, start: Int = 1, count: Int = 512) async throws -> HostDmxLevels {
+        var request = try request("dmx/\(universe)", query: [URLQueryItem(name: "start", value: "\(start)"),
+                                                               URLQueryItem(name: "count", value: "\(count)")])
+        request.timeoutInterval = 1
+        return try await send(request)
+    }
+
     // MARK: - Files
 
     /// Uploads a file into the PC's To PC folder. Returns the name it was saved as.

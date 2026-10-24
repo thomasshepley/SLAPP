@@ -170,14 +170,14 @@ private struct SelectedFixtureChip: View {
     @ObservedObject var deck: DeckSessionController
 
     var body: some View {
-        if let fixture = deck.selectedFixture {
+        if let fixture = deck.selectionLabel {
             // Same look as the Menu button and the connection pill opposite.
             HStack(spacing: 5) {
                 Image(systemName: "scope")
                     .foregroundStyle(.secondary)
                 Text("Currently Selected:")
                     .foregroundStyle(.secondary)
-                Text("\(fixture)")
+                Text(fixture)
                     .contentTransition(.numericText())
             }
             .font(.caption.weight(.semibold).monospacedDigit())

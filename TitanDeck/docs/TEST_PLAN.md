@@ -183,7 +183,32 @@ each key land.
       set in the programmer before the flash is lost - note it.)
 - [ ] Flash with a fixture selected on the desk (not on the deck): what happens?
 
-## 6. Remote desktop
+## 5e. Desk link and live intensity (0.16, needs Host 0.4)
+
+Before you start: on the Titan PC, back up Titan's .exe.config yourself too.
+
+- [ ] TitanDeck Host > Desk selection for TitanDeck says Off. Turn on. Restart
+      Titan. It says On. (Note which .exe.config it changed - tell Claude.)
+- [ ] On the PC: `netstat -an | findstr 4433`. Is it 127.0.0.1 or 0.0.0.0?
+- [ ] TitanDeck Settings > Desk link: Status says Linked.
+- [ ] Select a fixture in a Layout on the desk: within a second the deck
+      shows the intensity keys and the Remote screen says Currently Selected.
+      Select 10 fixtures: it says "101-110". Clear on the desk: keys go away.
+- [ ] Same from the Fixtures window, and from the desk keypad (101 Enter).
+- [ ] Does Titan's UI feel any slower with the desk link on? (It polls
+      about 3 times a second.)
+- [ ] Linked: deck +5% changes the fixture you selected on the desk, and
+      the desk's programmer shows it. Clear on the desk clears it.
+- [ ] Deck keypad while linked: does 101 @ 50 show on the desk's command line?
+- [ ] Live intensity: with the fixture selected, nudge +5% once. The flash
+      key changes to its level (e.g. "55%") and follows a fader or cue live.
+- [ ] Hold HOLD FOR 0% (no fade rule): fixture goes out, comes back exactly.
+- [ ] Settings > Desk link > Find addresses with Patch ON: select a new
+      fixture. Does Titan's Patch window open or stop the programmer
+      anywhere (desk or deck)? Turn it off again if it does.
+- [ ] Unplug the PC's network for 5 s: Status says not answering, the deck
+      still works (on its own WebAPI user), and it re-links when plugged back.
+
 
 - [ ] Settings → Remote desktop: PC address (blank uses the Titan address),
       Windows user and password, then **Connect**.
