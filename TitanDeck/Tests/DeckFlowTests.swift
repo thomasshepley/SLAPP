@@ -5,33 +5,58 @@ import XCTest
 final class DeckFlowTests: XCTestCase {
     func testANumberAndEnterIsASelection() {
         var keypad = DeckFlow.KeypadBuffer()
-        XCTAssertFalse(keypad.apply(.keypadDigit(1)))
-        XCTAssertFalse(keypad.apply(.keypadDigit(0)))
-        XCTAssertFalse(keypad.apply(.keypadDigit(2)))
-        XCTAssertTrue(keypad.apply(.keypadEnter), "102 Enter selects fixture 102")
+        XCTAssertEqual(keypad.apply(.keypadDigit(1)), .none)
+        XCTAssertEqual(keypad.apply(.keypadDigit(0)), .none)
+        XCTAssertEqual(keypad.apply(.keypadDigit(2)), .none)
+        XCTAssertEqual(keypad.apply(.keypadEnter), .selected, "102 Enter selects fixture 102")
         XCTAssertEqual(keypad.text, "")
+        XCTAssertEqual(keypad.selection, 102)
+    }
+
+    func testTheSelectionFollowsTitan() {
+        var keypad = DeckFlow.KeypadBuffer()
+        func type(_ actions: TitanAction...) -> DeckFlow.KeypadBuffer.Event {
+            actions.map { keypad.apply($0) }.last ?? .none
+        }
+        XCTAssertEqual(type(.keypadDigit(1), .keypadDigit(0), .keypadDigit(1), .keypadAt, .keypadDigit(5),
+                            .keypadDigit(0), .keypadEnter), .none, "101 @ 50 sets a level, no page change")
+        XCTAssertEqual(keypad.selection, 101, "but Titan keeps 101 selected")
+        _ = type(.keypadAt, .keypadDigit(8), .keypadEnter)
+        XCTAssertEqual(keypad.selection, 101, "@ 8 on its own acts on the same selection")
+        _ = type(.keypadDigit(7), .keypadEnter)
+        XCTAssertEqual(keypad.selection, 7)
+
+        XCTAssertEqual(type(.keypadDigit(3), .keypadClear), .none, "the first Clear empties the line")
+        XCTAssertEqual(keypad.selection, 7)
+        XCTAssertEqual(type(.keypadClear), .clearedProgrammer, "the next clears the programmer")
+        XCTAssertNil(keypad.selection)
+        _ = type(.keypadDigit(4), .keypadExit, .keypadEnter)
+        XCTAssertNil(keypad.selection, "Exit drops what's typed")
     }
 
     func testAnythingWithAtIsNotASelection() {
         var keypad = DeckFlow.KeypadBuffer()
         for action: TitanAction in [.keypadDigit(1), .keypadAt, .keypadDigit(5)] { _ = keypad.apply(action) }
-        XCTAssertFalse(keypad.apply(.keypadEnter), "1 @ 5 sets a level, it doesn't select")
-        XCTAssertFalse(keypad.apply(.keypadEnter), "Enter on an empty line selects nothing")
+        XCTAssertEqual(keypad.apply(.keypadEnter), .none, "1 @ 5 sets a level, it doesn't select")
+        XCTAssertEqual(keypad.apply(.keypadEnter), .none, "Enter on an empty line selects nothing")
 
         _ = keypad.apply(.keypadDigit(7))
         _ = keypad.apply(.keypadClear)
-        XCTAssertFalse(keypad.apply(.keypadEnter), "Clear empties the line")
+        XCTAssertEqual(keypad.apply(.keypadEnter), .none, "Clear empties the line")
         _ = keypad.apply(.keypadDigit(7))
         _ = keypad.apply(.playbackGo(userNumber: 1))
-        XCTAssertTrue(keypad.apply(.keypadEnter), "other keys don't disturb what's typed")
+        XCTAssertEqual(keypad.apply(.keypadEnter), .selected, "other keys don't disturb what's typed")
     }
 
     func testSelectionPageIsTheIntensityPageWithAWayBack() throws {
         let profile = DeckProfile.makeDefault()
         let page = DeckFlow.selectionPage(profile: profile, returnTo: 0)
-        let back = try XCTUnwrap(page.key(at: 13), "where Menu sits on the 15-key layout")
+        let back = try XCTUnwrap(page.key(at: 14), "bottom right")
         XCTAssertEqual(back.label, "Return to Keypad")
         XCTAssertEqual(back.action, .switchPage(0))
+        XCTAssertEqual(back.sfSymbol, DeckFlow.returnSymbol)
+        XCTAssertNil(page.key(at: 13), "Menu's spot is left empty")
+        XCTAssertEqual(page.key(at: 12)?.action, .keypadClear)
         XCTAssertEqual(page.key(at: 0)?.action, .adjustIntensity(percent: 1))
         XCTAssertFalse(page.keys.contains { $0.action == .mainMenu })
         XCTAssertEqual(Set(page.keys.map(\.index)).count, page.keys.count, "one key per position")
@@ -112,12 +137,18 @@ final class DeckColourTests: XCTestCase {
         let profile = DeckProfile.makeDefault()
         let selection = DeckFlow.selectionPage(profile: profile, returnTo: 0)
         let cct = try XCTUnwrap(selection.keys.first { $0.action == .colourPresets })
-        XCTAssertEqual(cct.index, 6, "the first free spot on the Intensity page")
+        XCTAssertEqual(cct.index, 10, "middle column, 4th row")
+
+        var landscape = profile
+        landscape.orientation = .landscape
+        XCTAssertEqual(DeckFlow.selectionPage(profile: landscape, returnTo: 0).keys
+            .first { $0.action == .colourPresets }?.index, 6, "5 wide: the first free spot")
+        XCTAssertEqual(DeckFlow.keypadPageIndex(in: profile), 0)
 
         let colour = DeckFlow.colourPage(profile: profile, returnTo: 0)
         XCTAssertEqual(colour.key(at: 0)?.action, .colourTemperature(kelvin: 2700))
         XCTAssertEqual(colour.key(at: 8)?.action, .colourTemperature(kelvin: 10000))
-        XCTAssertEqual(colour.key(at: 13)?.action, .switchPage(0))
+        XCTAssertEqual(colour.key(at: 14)?.action, .switchPage(0))
         XCTAssertEqual(DeckFlow.cctKeys(keyCount: 6).count, 5, "leaves room for the way back")
     }
 

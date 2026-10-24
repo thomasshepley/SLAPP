@@ -85,8 +85,8 @@ final class DeckCuesTests: XCTestCase {
 
         var keypad = DeckFlow.KeypadBuffer()
         for action: TitanAction in [.keypadDigit(4), .keypadDigit(5)] { _ = keypad.apply(action) }
-        XCTAssertTrue(keypad.apply(.keypadEnter))
-        XCTAssertEqual(keypad.lastSelection, 45)
+        XCTAssertEqual(keypad.apply(.keypadEnter), .selected)
+        XCTAssertEqual(keypad.selection, 45)
     }
 
     func testSelectionOffersFlash() {

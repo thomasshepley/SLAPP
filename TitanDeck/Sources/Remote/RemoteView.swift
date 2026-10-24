@@ -30,6 +30,12 @@ struct RemoteView: View {
                         .allowsHitTesting(false)   // display only; touches go to the desktop
                 }
             }
+            .overlay(alignment: .topLeading) {
+                SelectedFixtureChip(deck: appState.deck)
+                    .padding(.top, 12)
+                    .padding(.leading, 16)
+                    .allowsHitTesting(false)   // touches go through to the desktop
+            }
             .overlay(alignment: .topTrailing) {
                 HStack(spacing: 10) {
                     if session.state == .connected {
@@ -154,6 +160,32 @@ struct RemoteView: View {
             }
             Button("Settings", systemImage: "gearshape") { appState.mode = .settings }
                 .buttonStyle(.glass)
+        }
+    }
+}
+
+/// "Currently Selected: 101" in the top left: the fixture the deck's keypad
+/// left in Titan's programmer. Gone after a Clear empties the programmer.
+private struct SelectedFixtureChip: View {
+    @ObservedObject var deck: DeckSessionController
+
+    var body: some View {
+        if let fixture = deck.selectedFixture {
+            HStack(spacing: 6) {
+                Text("Currently Selected:")
+                    .foregroundStyle(.secondary)
+                Text("\(fixture)")
+                    .fontWeight(.bold)
+                    .monospacedDigit()
+                    .contentTransition(.numericText())
+            }
+            .font(.subheadline)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+            .glassEffect(.regular, in: .capsule)
+            .animation(.snappy, value: fixture)
+            .transition(.opacity)
+            .accessibilityElement(children: .combine)
         }
     }
 }

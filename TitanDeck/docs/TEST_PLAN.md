@@ -143,8 +143,15 @@ each key land.
       left over from the page before.
 - [ ] Menu key shows the page name. Tap: next page, round and round. Hold 2 s:
       the menu of all pages.
-- [ ] Keypad: 1 0 2 Enter. The deck shows the intensity keys plus CCT, with
-      Return to Keypad where Menu was. 1 @ 5 Enter does NOT switch.
+- [ ] Keypad: 1 0 2 Enter. The deck shows the intensity keys, CCT in the
+      middle column 4th row, and Return to Keypad bottom right. 1 @ 5 Enter
+      does NOT switch.
+- [ ] Remote screen, top left: "Currently Selected: 102" after 1 0 2 Enter, and
+      101 after 1 0 1 @ 5 0 Enter. Is 101 really still selected on Titan?
+- [ ] Clear on the selection page: back to the keypad, Currently Selected gone,
+      and Titan's programmer empty. With digits typed, the first Clear only
+      empties the line.
+- [ ] CLEAR and ENTER each fit on one line.
 - [ ] In Titan, record global colour palettes named 2700K, 3200K, 5600K. On the
       deck, select a fixture, CCT, 3200K: the fixture goes to 3200. A preset
       with no palette flashes red (the log says which palette is missing).
