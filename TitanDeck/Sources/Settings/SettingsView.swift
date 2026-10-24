@@ -1,9 +1,7 @@
 // Settings/SettingsView.swift
 import SwiftUI
 import UniformTypeIdentifiers
-#if DEBUG
 import StreamDeckSimulator
-#endif
 
 /// M3 settings: Titan host, connection test, test fire buttons and a latency
 /// log. The deck editor (DeckEditorView / KeyInspectorView) arrives in M4.
@@ -282,11 +280,10 @@ private struct DeckSection: View {
             } label: {
                 Label("Edit deck profile", systemImage: "square.grid.3x3.fill")
             }
-            #if DEBUG
-            Button("Show on-screen Stream Deck (debug)", systemImage: "rectangle.grid.2x2") {
+            // In every build, TestFlight included, so the deck can be tested without hardware.
+            Button("Show virtual Stream Deck", systemImage: "rectangle.grid.2x2") {
                 StreamDeckSimulator.show(defaultStreamDeck: .regular)
             }
-            #endif
             Picker("Deck mounted", selection: Binding(
                 get: { deck.profile.orientation },
                 set: { newValue in

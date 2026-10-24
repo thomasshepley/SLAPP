@@ -32,7 +32,7 @@ targets:
     dependencies:
       - package: StreamDeckKit
         product: StreamDeckKit
-      # On-screen virtual deck, shown from Settings in Debug builds only.
+      # On-screen virtual deck, shown from Settings (all builds, for testing).
       - package: StreamDeckKit
         product: StreamDeckSimulator
       # FreeRDP + OpenSSL, prebuilt static libraries - run FreeRDP/fetch.sh first.
