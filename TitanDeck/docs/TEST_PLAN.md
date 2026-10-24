@@ -22,7 +22,37 @@ tell me what happened and I'll fix it.
 - [ ] Quick check from any browser on the same Wi-Fi:
       `http://<PC-IP>:4430/titan/get/System/SoftwareVersion` shows Titan's version.
 
+## 1b. No AvoKey? Use Fake Titan
+
+Titan won't run without an AvoKey (or another Avolites USB device). Until you
+have one, `Tools/fake_titan.py` pretends to be Titan's WebAPI, so everything
+except the remote desktop can be tested. Run it on the Mac (same Wi-Fi as the
+iPad):
+
+```bash
+cd ~/Developer/SLAPP && git pull
+python3 TitanDeck/Tools/fake_titan.py
+```
+
+- [ ] If macOS asks whether Python may accept incoming connections: **Allow**.
+- [ ] It prints the Mac's IP. Put that in TitanDeck's **Titan PC address**.
+- [ ] Remote desktop: type the **PC's** IP in its own address box, or it will
+      try the Mac.
+- [ ] Every key press shows up in the Terminal, with the command line, selected
+      fixtures, their levels and the live playbacks after it. Unknown calls
+      show in red with a 404.
+- [ ] Extras:
+  - `--latency 700` makes every reply slow, so keys should flash red.
+  - `--no-user-numbers` leaves user numbers out of the playback list, so
+    Settings should show its "can't light keys" explanation.
+
+Fake Titan only checks the app's side. The **(unconfirmed)** items below still
+need the real Titan.
+
 ## 2. Mac: build onto the iPad
+
+TestFlight replaces this section: install TitanDeck from the TestFlight app and
+skip to step 3. Use Xcode only for quick fix-and-retry loops.
 
 ```bash
 cd ~/Developer/SLAPP
@@ -55,6 +85,14 @@ its side. The Deck tab shows the portrait layout upright.
 
 The Deck tab shows **Titan's command line** live at the top, so you can see
 each key land.
+
+**Real Stream Deck:**
+- [ ] Install **Elgato Stream Deck Connect** from the App Store.
+- [ ] Open it and follow its steps to switch on the driver in iPad Settings.
+- [ ] Plug the deck into the iPad's USB-C (or the hub) with TitanDeck open.
+- [ ] Settings → Stream Deck shows its name. Pick how it's mounted under
+      **Deck mounted**, so the labels read upright.
+- [ ] If it stays dark, Settings says why (driver off, or a missing entitlement).
 
 - [ ] Keypad digits and **@** appear on the command line, e.g. `1 @ 5`.
       **(unconfirmed: whether @ needs spaces around it)**
