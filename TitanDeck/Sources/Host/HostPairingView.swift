@@ -6,7 +6,8 @@ import UIKit
 /// then type the 6-digit code its window shows.
 struct HostPairingView: View {
     @ObservedObject var host: HostStore
-    /// The PC address already in Settings (remote desktop or Titan).
+    /// The PC address already in Settings (remote desktop or Titan). Typed or
+    /// discovered addresses lose any "%en0" interface ending before use.
     let suggestedAddress: String
     @StateObject private var discovery = HostDiscovery()
     @State private var address = ""

@@ -49,6 +49,15 @@ public sealed class RdpWrapIni
     }
 
     /// <summary>True if the file has patches for this termsrv.dll build ("10.0.26100.9549").</summary>
+    /// <summary>
+    /// termsrv.dll's version as rdpwrap.ini writes it ("10.0.26100.9549").
+    /// Windows answers "6.2" for the first two numbers to programs that don't
+    /// declare Windows 10 support, but build and revision are always right,
+    /// and every Windows 10/11 build (10240 on) is 10.0.
+    /// </summary>
+    public static string TermsrvBuild(int major, int minor, int build, int revision) =>
+        build >= 10240 && major < 10 ? $"10.0.{build}.{revision}" : $"{major}.{minor}.{build}.{revision}";
+
     public bool Supports(string termsrvVersion) =>
         Sections.Contains(termsrvVersion) && Sections.Contains(termsrvVersion + "-SLInit");
 

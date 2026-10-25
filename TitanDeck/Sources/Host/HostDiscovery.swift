@@ -92,7 +92,8 @@ final class HostDiscovery: ObservableObject {
     private nonisolated static func text(for host: NWEndpoint.Host) -> String {
         switch host {
         case .ipv4(let address):
-            return "\(address)"
+            // An address reached over Wi-Fi reads "192.168.1.20%en0": drop the interface.
+            return "\(address)".split(separator: "%").first.map(String.init) ?? ""
         case .ipv6(let address):
             let plain = "\(address)".split(separator: "%").first.map(String.init) ?? ""   // drop the %en0 scope
             return "[\(plain)]"

@@ -210,11 +210,17 @@ private struct HostSection: View {
         } footer: {
             Text("The Windows app for the Titan PC: keeps Remote Desktop working, fixes it from here, and moves files both ways. Get it from the host-v releases on GitHub.")
         }
-        .sheet(isPresented: $showingPairing) {
+        // In a Form, a Section's modifiers land on its rows. Pairing swaps the
+        // Pair row for the status row, which would open this sheet again, so
+        // it only shows while not paired.
+        .sheet(isPresented: Binding(get: { showingPairing && !host.isPaired }, set: { showingPairing = $0 })) {
             HostPairingView(host: host, suggestedAddress: appState.pcHost)
         }
         .task(id: host.isPaired) {
-            if host.isPaired { await host.refresh() }
+            if host.isPaired {
+                showingPairing = false
+                await host.refresh()
+            }
         }
     }
 

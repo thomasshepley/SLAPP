@@ -6,6 +6,10 @@ until it's show-ready (1.0): MINOR for features, PATCH for fixes. Keep
 (ChangelogTests checks). Each version is published as a GitHub release
 `host-v<version>` with the installer attached.
 
+## 0.4.1 - 2026-10-25 - Reads the Windows build right
+
+- **Fixed:** the Host read this PC's Remote Desktop build as "6.2.26100.9549" instead of "10.0.26100.9549" (Windows gives older-style version numbers to programs that don't ask for the real ones), so it said a perfectly good rdpwrap.ini didn't cover this PC, and refused one sent from TitanDeck. Remote desktop itself was never affected: RDP Wrapper reads the build itself.
+
 ## 0.4.0 - 2026-10-24 - Desk link
 
 - **TitanDeck can follow the desk's selection:** Titan's normal WebAPI is a separate user and never sees what you select in Layouts or on the desk. Titan has a second, experimental WebAPI inside its own user interface that does. The checklist has a new line, "Desk selection for TitanDeck", with a Turn on button (on the PC only). It finds Titan's settings file, keeps a copy of it, turns the UI WebAPI on at port 4433 (4431 is the Host's) and asks you to restart Titan.

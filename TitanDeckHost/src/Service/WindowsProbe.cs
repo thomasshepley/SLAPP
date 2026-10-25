@@ -77,7 +77,7 @@ public sealed class WindowsProbe
     public static string TermsrvVersion()
     {
         var info = FileVersionInfo.GetVersionInfo(Path.Combine(Environment.SystemDirectory, "termsrv.dll"));
-        return $"{info.FileMajorPart}.{info.FileMinorPart}.{info.FileBuildPart}.{info.FilePrivatePart}";
+        return RdpWrapIni.TermsrvBuild(info.FileMajorPart, info.FileMinorPart, info.FileBuildPart, info.FilePrivatePart);
     }
 
     private static string WindowsVersion()
