@@ -10,6 +10,10 @@ then set TitanDeck's Titan PC address to the IP it prints. Every request the
 app makes is printed, along with the state it changes: Titan's command line,
 selected fixtures and their levels, and which playbacks are live.
 
+TitanDeck Host 0.5+ has this built in (Fake Titan card in the Host window, with
+a log of every call), so on the Titan PC use that instead. This script is for
+testing from a Mac. Keep the two answering the same calls.
+
 It only knows the calls TitanDeck makes (see Sources/Titan/TitanEndpoints.swift),
 and its answers are best guesses at what real Titan does. It's for checking the
 app's side, not for settling how Titan behaves.

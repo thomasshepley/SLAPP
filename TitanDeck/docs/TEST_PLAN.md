@@ -25,28 +25,39 @@ tell me what happened and I'll fix it.
 ## 1b. No AvoKey? Use Fake Titan
 
 Titan won't run without an AvoKey (or another Avolites USB device). Until you
-have one, `Tools/fake_titan.py` pretends to be Titan's WebAPI, so everything
-except the remote desktop can be tested. Run it on any computer on the same
-network as the iPad. **Best: the Titan PC, with Titan closed** (they'd both
-want port 4430), because TitanDeck Host is there too, so the desk link and
-live intensity work exactly as on the real rig.
+have one, Fake Titan pretends to be Titan's WebAPI, so everything except the
+remote desktop can be tested. **Best: on the Titan PC, built into TitanDeck
+Host 0.5+**, so the desk link and live intensity work exactly as on the real
+rig, and every call shows in the Host's Titan log.
 
-On the Titan PC (Windows): install Python 3 from python.org (tick "Add
-python.exe to PATH"), download `TitanDeck/Tools/fake_titan.py` from GitHub
-(Raw, then save), close Titan, and in Command Prompt in that folder:
+On the Titan PC:
 
-```
-python fake_titan.py --sacn
-```
+- [ ] Close Titan (they'd both want port 4430).
+- [ ] Open TitanDeck Host from the tray, find the **Fake Titan** card, leave
+      Desk and sACN ticked and press **Start**.
+- [ ] Put the PC's IP in TitanDeck's **Titan PC address**.
+- [ ] Press keys on the deck: each call appears in the **Titan log** card with
+      Titan's answer, how long it took and the fake desk's state after it. Red
+      rows are refused or unknown calls. **Copy** grabs the lot to send over.
+- [ ] Desk link: leave **Settings > Desk link > Port** at **4434**. Type `3,4` in
+      **Select on the desk** and press Select, as if you'd clicked them in
+      Layouts. The deck should pop up the intensity keys and Currently Selected
+      should say "3-4". **Clear** deselects.
+- [ ] Live intensity: pair TitanDeck with the Host, nudge a fixture once from the
+      deck, and the flash key shows its level. Fake Titan sends each fixture as
+      Red, Green, Blue, Dimmer from (n-1)*4+1 on universe 1.
+- [ ] Slow replies (ms) 700 makes every reply slow, so keys should flash red.
+- [ ] Stop Fake Titan before opening the real Titan again.
 
-On the Mac instead:
+Mac only, with `Tools/fake_titan.py` (no Host, so no live intensity or log
+window; it prints to the Terminal instead):
 
 ```bash
 cd ~/Developer/SLAPP && git pull
 python3 TitanDeck/Tools/fake_titan.py
 ```
 
-- [ ] If Windows Firewall or macOS asks whether Python may accept incoming
+- [ ] If macOS asks whether Python may accept incoming
       connections: **Allow** (Private networks).
 - [ ] It prints the computer's IP. Put that in TitanDeck's **Titan PC address**.
 - [ ] Running it on the Mac: type the **PC's** IP in the remote desktop's own
@@ -58,12 +69,10 @@ python3 TitanDeck/Tools/fake_titan.py
   - `--latency 700` makes every reply slow, so keys should flash red.
   - `--no-user-numbers` leaves user numbers out of the playback list, so
     Settings should show its "can't light keys" explanation.
-- [ ] Desk link without a desk (0.16): Fake Titan is also "the desk" on port
-      4433 (on by default). On the Titan PC with Host 0.4, leave **Settings >
-      Desk link > Port** at **4434** (the Host passes it on). On the Mac
-      there's no Host, so set the port to **4433**. Status says Linked. Then
-      pretend to click fixtures in Layouts, in a second Command Prompt or
-      Terminal window (curl comes with Windows 10/11 and macOS):
+- [ ] Desk link on the Mac: Fake Titan is also "the desk" on port 4433 (on by
+      default). There's no Host, so set **Settings > Desk link > Port** to
+      **4433**. Status says Linked. Then pretend to click fixtures in Layouts,
+      in a second Terminal window:
 
       ```bash
       curl "http://localhost:4430/fake/desk-select?fixtures=3,4"   # select 3 and 4
@@ -74,11 +83,6 @@ python3 TitanDeck/Tools/fake_titan.py
       "3-4", and the deck's keys now act on the desk's selection (the Terminal
       shows "desk selected 3,4" and the levels). If you changed the port to
       4433 on the Mac, set it back to 4434 for the real rig.
-- [ ] Live intensity needs TitanDeck Host, so it only works with Fake Titan on
-      the Titan PC, started with `--sacn`: pair TitanDeck with the Host,
-      nudge a fixture once from the deck, and the flash key shows its level.
-      `--sacn` sends each fixture as Red, Green, Blue, Dimmer from (n-1)*4+1
-      on universe 1.
 
 Fake Titan only checks the app's side. The **(unconfirmed)** items below still
 need the real Titan.
@@ -136,9 +140,9 @@ each key land.
 - [ ] **CLEAR** with something typed: clears the line. Pressed again with an
       empty line: clears the programmer.
 - [ ] **EXIT** leaves a Titan menu.
-- [ ] **Menu**: a tap does nothing. Hold **2 seconds** and the main menu
-      appears with one key per layout (Keypad, Intensity, Playbacks). Tap one to
-      open it.
+- [ ] **Menu**: hold it for **a second** and the main menu appears with one
+      key per layout (Keypad, Quick Keys, Colour, Playbacks, Layouts). Tap one
+      to open it.
 - [ ] Intensity page: select some fixtures, then **+1 / +5 / +10 / -1 / -5 / -10**.
       **(unconfirmed: the API's units - if +5 jumps straight to full, it wants
       0-1 not percent; tell me and it's a one-line fix)**
@@ -169,19 +173,26 @@ each key land.
       red only while your finger is on it. Until pressed again: one press
       turns it red, the next turns it back. While the playback is live (Go key):
       red while the cue runs on Titan.
-- [ ] A key with no pressed look still flashes white when pressed.
+- [ ] A key with no pressed look turns the held colour (amber to start with,
+      Settings > Deck > Held key colour) for as long as it's held (0.17).
+- [ ] Hold the flash key when Titan can't answer: it flashes red, then goes back
+      to the held colour until you let go.
 
 ## 5c. Deck pages (0.13)
 
 - [ ] Every page: keys with nothing on them are black on the Stream Deck, not
       left over from the page before.
-- [ ] Menu key shows the page name. Tap: next page, round and round. Hold 2 s:
-      the menu of all pages.
-- [ ] Keypad: 1 0 2 Enter. The deck shows the intensity keys, CCT in the
-      middle column 4th row, and Return to Keypad bottom right. 1 @ 5 Enter
-      does NOT switch.
-- [ ] Selection > CCT > INTENSITY (bottom middle): straight back to the
-      intensity keys.
+- [ ] Menu key (0.17): on the keypad it reads Quick Keys and a tap goes to
+      Quick Keys; there, Return to Keypad (bottom right) taps back. On any
+      other page it shows the page's name and a tap goes to the keypad. Hold
+      it (or Return to Keypad) for a second: the menu of all pages.
+- [ ] Keypad: 1 0 2 Enter. The deck shows Quick Keys: the nudges, the flash key
+      (middle column 3rd row), CCT (middle column 4th row) and Return to Keypad
+      bottom right. 1 @ 5 Enter does NOT switch.
+- [ ] Return to Keypad, type something, then tap Menu: back on Quick Keys.
+- [ ] Hold Menu, pick Quick Keys: the same keys, flash and CCT included.
+- [ ] Quick Keys > CCT > INTENSITY (bottom middle): straight back to Quick
+      Keys.
 - [ ] Remote screen, top left: "Currently Selected: 102" after 1 0 2 Enter, and
       101 after 1 0 1 @ 5 0 Enter. Is 101 really still selected on Titan?
 - [ ] Clear on the selection page: back to the keypad, Currently Selected gone,

@@ -59,7 +59,7 @@ final class DeckProfileTests: XCTestCase {
         XCTAssertEqual(profile.keyCount, 15)
         XCTAssertEqual(profile.orientation, .portraitClockwise)
         XCTAssertEqual(profile.gridColumns, 3)
-        XCTAssertEqual(profile.pages.map(\.name), ["Keypad", "Intensity", "Colour", "Playbacks", "Layouts"])
+        XCTAssertEqual(profile.pages.map(\.name), ["Keypad", "Quick Keys", "Colour", "Playbacks", "Layouts"])
 
         let keypad = profile.pages[0]
         let expected: [Int: TitanAction] = [

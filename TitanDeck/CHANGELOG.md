@@ -7,6 +7,15 @@ the GitHub Actions run that built it. The top entry is shown in the app
 so add an entry - and bump `MARKETING_VERSION` in `project.yml` to match -
 with every change that goes to `main`.
 
+## 0.17.0 - 2026-10-25 - Quick Keys
+
+- **Quick Keys:** the Intensity page is now Quick Keys, and it always has the nudges, the hold-for-0% flash and CCT on it, however you get there (a selection, the Menu key or the menu of pages).
+- **Menu swaps keypad and Quick Keys:** on the keypad the Menu key reads Quick Keys and a tap goes there. On Quick Keys, Return to Keypad (bottom right) taps back. On any other page a tap goes to the keypad. So after Return to Keypad, one tap gets you back to your fixture's keys.
+- **Hold for the menu is a second now** (was 2 s), on Menu and on Return to Keypad.
+- **Held keys stay lit:** a key turns the held colour (amber to start with) for the whole time your finger is on it, so you can see the flash key is held. Change it in Settings > Deck > Held key colour. A key's own pressed look still wins.
+- **Fixed:** if Titan didn't answer while you held a key, the red flash wiped the held look until you let go. It now goes back to the held colour.
+- **Fake Titan is in TitanDeck Host 0.5:** the testing notes now use the Host window's Fake Titan card, with its log of every call. With Host 0.5, fade times set from the deck through the desk link arrive properly (they arrived empty before).
+
 ## 0.16.2 - 2026-10-25 - Pairing fixes
 
 - **Fixed:** picking a discovered PC to pair with filled in its address with "%en0" on the end (the iPad's Wi-Fi), so it didn't work until you deleted that. Addresses are cleaned up now, typed or found.

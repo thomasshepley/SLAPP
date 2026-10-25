@@ -414,6 +414,11 @@ private struct DeckSection: View {
                     Label("Flash fades", systemImage: "light.max")
                 }
             }
+            ColorPicker(selection: Binding(
+                get: { Color(uiColor: UIColor(hex: appState.heldKeyColour)) },
+                set: { appState.heldKeyColour = HexColor(UIColor($0)).hexString }), supportsOpacity: false) {
+                Label("Held key colour", systemImage: "hand.point.up.left.fill")
+            }
             ShareLink(item: ProfileFile(profile: deck.profile), preview: SharePreview("TitanDeck profile: \(deck.profile.name)")) {
                 Label("Export profile", systemImage: "square.and.arrow.up")
             }
