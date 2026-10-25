@@ -11,6 +11,7 @@ until it's show-ready (1.0): MINOR for features, PATCH for fixes. Keep
 - **Reads the show's patch from Titan's patch report:** on Titan, Disk > Reports, tick Fixtures, choose CSV (XML and HTML work too) and save it to the PC. The Host picks up the newest report in Documents\Titan\Reports and knows every fixture's user number, DMX line and address. It only reads files: it never opens Patch. Do it again after repatching.
 - **Finds each fixture's dimmer channel** in Titan's personalities on the PC (the factory FixtureLibrary and your own Personalities folder), coarse and fine for 16-bit dimmers, or the colour channels for a fixture with no dimmer. TitanDeck 0.18 uses this to show a fixture's live level straight away, without nudging it first.
 - **Patch report card** in the Host window: what it read, Read again, Read a report file... (for a report saved somewhere else), and an experimental "Ask Titan to write one" (Titan's WebAPI user, logged in the Titan log; its settings aren't documented, so it may need tuning on a real desk).
+- **Fixed:** the Titan log jumped to the oldest line when new ones came in. With Follow ticked it now stays at the bottom, on the newest.
 - **Fake Titan has a patch too:** its fixtures (Red, Green, Blue, Dimmer) come with a matching report and personality, so the whole thing can be tried without a desk.
 
 ## 0.5.0 - 2026-10-25 - Fake Titan, Titan log and updates
