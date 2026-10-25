@@ -5,13 +5,25 @@ import Foundation
 /// WebAPI can't report a level, so it's read from the sACN Titan sends,
 /// through TitanDeck Host. Which channels are the fixture's intensity is
 /// learned the first time the deck nudges or flashes it (the channels that
-/// move with it), and remembered. Optionally, the Patch route finds the
-/// fixture's address first, which narrows the search - off by default.
+/// move with it), and remembered. Optionally (both off by default) Titan's
+/// patch report, read by the Host, gives the intensity channels straight
+/// away, and the Patch route finds the fixture's address to narrow the
+/// search. What's learnt from a nudge always wins over the report.
 @MainActor
 final class IntensityReader: ObservableObject {
     @Published var isEnabled: Bool {
         didSet {
             defaults.set(isEnabled, forKey: Keys.enabled)
+            refresh()
+        }
+    }
+    /// Use the patch from Titan's patch report (TitanDeck Host 0.6+): the
+    /// level shows without a nudge first. Reading a report never touches Patch.
+    @Published var usesPatchReport: Bool {
+        didSet {
+            defaults.set(usesPatchReport, forKey: Keys.patchReport)
+            patch = [:]
+            patchRead = nil
             refresh()
         }
     }
@@ -30,6 +42,7 @@ final class IntensityReader: ObservableObject {
     private enum Keys {
         static let enabled = "intensity.live.enabled"
         static let patch = "intensity.patchLookup"
+        static let patchReport = "intensity.patchReport"
         static let learned = "intensity.learned"
     }
 
@@ -40,6 +53,9 @@ final class IntensityReader: ObservableObject {
     private var fixture: Int?
     private var addresses: [Int: DmxAddress] = [:]
     private var lookedUp: Set<Int> = []
+    /// The patch report by user number, and when it was fetched.
+    private var patch: [Int: HostPatchFixture] = [:]
+    private var patchRead: Date?
     private var poll: Task<Void, Never>?
     private var learning: Task<Void, Never>?
     /// Until a fixture is learnt: the whole of every universe, kept fresh,
@@ -55,6 +71,7 @@ final class IntensityReader: ObservableObject {
         self.defaults = defaults
         isEnabled = defaults.object(forKey: Keys.enabled) as? Bool ?? true
         usesPatchLookup = defaults.object(forKey: Keys.patch) as? Bool ?? false
+        usesPatchReport = defaults.object(forKey: Keys.patchReport) as? Bool ?? false
         learned = (defaults.data(forKey: Keys.learned)).flatMap {
             try? JSONDecoder().decode([Int: [DmxSlot]].self, from: $0)
         } ?? [:]
@@ -93,8 +110,10 @@ final class IntensityReader: ObservableObject {
     private func learn(fixture: Int, rising: Bool, before: IntensityLearning.Snapshot, host: HostClient) async {
         try? await Task.sleep(nanoseconds: 700_000_000)   // Titan, then sACN, catch up
         guard let after = await snapshot(host), self.fixture == fixture else { return }
+        let fromReport = patch[fixture]
+        let near = addresses[fixture] ?? fromReport.map { DmxAddress(universe: $0.universe, address: $0.address) }
         guard let slots = IntensityLearning.channels(before: before, after: after, rising: rising,
-                                                     near: addresses[fixture]) else {
+                                                     near: near, span: fromReport?.channels ?? 64) else {
             if learned[fixture] == nil {
                 note = "Couldn't tell which channels are fixture \(fixture)'s intensity yet - nudge it once more."
             }
@@ -102,7 +121,12 @@ final class IntensityReader: ObservableObject {
         }
         learned[fixture] = slots
         save()
-        note = "Fixture \(fixture): intensity on " + slots.map { "\($0.universe).\($0.address)" }.joined(separator: ", ")
+        var text = "Fixture \(fixture): intensity on " + Self.describe(slots)
+        if let fromReport, let reported = IntensityLearning.slots(for: fromReport), reported != slots {
+            // Titan's DMX line numbers needn't be its sACN universe numbers.
+            text += " (the patch report said \(Self.describe(reported)): check which sACN universe line \(fromReport.universe) goes out on)"
+        }
+        note = text
         refresh()
     }
 
@@ -113,10 +137,11 @@ final class IntensityReader: ObservableObject {
         setLevel(nil)
         guard isEnabled, let fixture else { return }
         poll = Task { [weak self] in
+            await self?.loadPatch()
             await self?.lookUpAddress(fixture)
             while !Task.isCancelled {
                 guard let self else { return }
-                if self.learned[fixture] == nil {
+                if self.slots(for: fixture) == nil {
                     // Not learnt yet: keep a fresh "before" for the next nudge.
                     if let host = self.host(), let levels = await self.snapshot(host) {
                         self.recent = (Date(), levels)
@@ -128,6 +153,37 @@ final class IntensityReader: ObservableObject {
                 }
             }
         }
+    }
+
+    /// Learnt from a nudge, else from the patch report.
+    private func slots(for fixture: Int) -> [DmxSlot]? {
+        learned[fixture] ?? patch[fixture].flatMap(IntensityLearning.slots(for:))
+    }
+
+    /// The patch report, fetched again when it's more than 30 s old.
+    private func loadPatch() async {
+        guard usesPatchReport, let host = host() else { return }
+        if let patchRead, Date().timeIntervalSince(patchRead) < 30 { return }
+        patchRead = Date()
+        guard let report = try? await host.patch() else {
+            note = "TitanDeck Host didn't send a patch (it needs Host 0.6 or later)."
+            return
+        }
+        patch = Dictionary(report.fixtures.map { ($0.user, $0) }, uniquingKeysWith: { first, _ in first })
+        guard let fixture, learned[fixture] == nil else { return }
+        if let entry = patch[fixture] {
+            note = IntensityLearning.slots(for: entry).map {
+                "Fixture \(fixture): intensity on \(Self.describe($0)), from the patch report (\(report.source ?? "Titan"))."
+            } ?? "Fixture \(fixture) is in the patch report at \(entry.universe).\(entry.address), but the Host couldn't find its personality - nudge it once."
+        } else {
+            note = report.fixtures.isEmpty
+                ? (report.problem ?? "The Host has no patch report yet.")
+                : "Fixture \(fixture) isn't in the patch report - make a new one after repatching."
+        }
+    }
+
+    private static func describe(_ slots: [DmxSlot]) -> String {
+        slots.map { "\($0.universe).\($0.address)" }.joined(separator: ", ")
     }
 
     private func lookUpAddress(_ fixture: Int) async {
@@ -144,7 +200,8 @@ final class IntensityReader: ObservableObject {
     }
 
     private func read(_ fixture: Int) async {
-        guard let slots = learned[fixture], let host = host() else {
+        await loadPatch()
+        guard let slots = slots(for: fixture), let host = host() else {
             setLevel(nil)
             return
         }

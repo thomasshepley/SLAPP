@@ -117,6 +117,26 @@ final class IntensityLearningTests: XCTestCase {
         XCTAssertNil(IntensityLearning.level(of: rgb, in: [2: universe([:])]), "universe not heard")
     }
 
+    func testThePatchReportGivesTheSlotsStraightAway() throws {
+        let json = """
+        {"source":"Patch.csv","problem":null,"fixtures":[
+          {"user":101,"model":"Spot","mode":"Standard, 21 DMX","universe":2,"address":36,"channels":21,"intensity":[11,12]},
+          {"user":102,"model":"Mystery","mode":null,"universe":2,"address":100,"channels":null,"intensity":null},
+          {"user":103,"model":"Par","mode":null,"universe":1,"address":511,"channels":4,"intensity":[3]}]}
+        """
+        let patch = try HostAPI.decoder.decode(HostPatch.self, from: Data(json.utf8))
+        XCTAssertEqual(IntensityLearning.slots(for: patch.fixtures[0]),
+                       [DmxSlot(universe: 2, address: 47), DmxSlot(universe: 2, address: 48)], "coarse then fine")
+        XCTAssertNil(IntensityLearning.slots(for: patch.fixtures[1]), "no personality found: learn from a nudge")
+        XCTAssertNil(IntensityLearning.slots(for: patch.fixtures[2]), "511 + 3 is off the end of the universe")
+
+        // The level reads the same way as learnt channels: the coarse half of a 16-bit pair.
+        var universe = [Int](repeating: 0, count: 512)
+        universe[46] = 153
+        universe[47] = 255
+        XCTAssertEqual(IntensityLearning.level(of: IntensityLearning.slots(for: patch.fixtures[0])!, in: [2: universe]), 0.6)
+    }
+
     func testWhichActionsTeachIt() {
         XCTAssertEqual(IntensityLearning.direction(of: .adjustIntensity(percent: 5)), true)
         XCTAssertEqual(IntensityLearning.direction(of: .adjustIntensity(percent: -10)), false)

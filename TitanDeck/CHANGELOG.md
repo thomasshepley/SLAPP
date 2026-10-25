@@ -7,6 +7,14 @@ the GitHub Actions run that built it. The top entry is shown in the app
 so add an entry - and bump `MARKETING_VERSION` in `project.yml` to match -
 with every change that goes to `main`.
 
+## 0.18.0 - 2026-10-25 - Loading screen, patch report, tidier deck
+
+- **Loading screen:** TitanDeck opens with a health check before Continue: Titan answering, the Stream Deck, the PC's remote desktop, TitanDeck Host, sACN levels and the desk link, each ticked or explained. Meanwhile the Stream Deck shows the TitanDeck logo with a shine sweeping across it, so you can see the deck's alive.
+- **Live level without nudging first:** Settings > Desk link > Use Titan's patch report (off to start with). With TitanDeck Host 0.6 reading Titan's patch report, the flash key knows each fixture's dimmer channel straight away. A nudge still corrects it if the report and the sACN disagree.
+- **Bottom row makes sense between pages:** bottom middle always swaps keypad and Quick Keys (Menu on the keypad, Return to Keypad on Quick Keys and CCT). Bottom right swaps Quick Keys and the colour keys (CCT on Quick Keys, INTENSITY on the colour keys).
+- **Nothing Selected:** with nothing selected, the keypad's Menu key says so and a tap does nothing; holding it still opens the menu.
+- **Landscape only on iPad,** even with rotation lock off, and the iPad never auto-locks while TitanDeck is open.
+
 ## 0.17.0 - 2026-10-25 - Quick Keys
 
 - **Quick Keys:** the Intensity page is now Quick Keys, and it always has the nudges, the hold-for-0% flash and CCT on it, however you get there (a selection, the Menu key or the menu of pages).

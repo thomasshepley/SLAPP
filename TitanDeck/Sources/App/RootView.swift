@@ -41,7 +41,8 @@ struct RootView: View {
                 .tag(AppState.Mode.settings)
         }
         .onAppear(perform: pickStartingTab)
-        .onAppear(perform: showWhatsNewAfterUpdate)
+        // What's New waits until the loading screen is done with.
+        .onChange(of: appState.showingStartup) { _, showing in if !showing { showWhatsNewAfterUpdate() } }
         .sheet(item: Binding(get: { whatsNewVersion.map(VersionID.init) }, set: { whatsNewVersion = $0?.id })) { version in
             WhatsNewView(onlyVersion: version.id)
         }

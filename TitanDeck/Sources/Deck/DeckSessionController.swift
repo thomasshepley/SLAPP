@@ -75,6 +75,10 @@ final class DeckSessionController: ObservableObject {
     /// "101-110" for the Remote screen, or nil with nothing selected.
     var selectionLabel: String? { DeckFlow.selectionLabel(selectedFixtures) }
     private var started = false
+    /// The loading screen's animation frame while it's up (the deck shows the
+    /// TitanDeck icon with a shine across it, and its keys do nothing).
+    private(set) var splashFrame: Int?
+    private var splashTask: Task<Void, Never>?
     /// Running while the Menu key is held; opens the menu after a second.
     private var menuHoldTask: Task<Void, Never>?
     static let menuHoldSeconds: Double = 1
@@ -87,6 +91,9 @@ final class DeckSessionController: ObservableObject {
     /// What the deck is showing: a profile page, the main menu, or Quick
     /// Keys (after a selection, or its own page picked).
     var currentPage: DeckPage? {
+        if let splashFrame {
+            return DeckFlow.splashPage(columns: profile.geometry.logicalColumns, keyCount: profile.keyCount, frame: splashFrame)
+        }
         switch flowOverlay {
         case .menu?: return DeckFlow.menuPage(profile: profile)
         case .selection(let returnTo)?: return DeckFlow.selectionPage(profile: profile, returnTo: returnTo)
@@ -119,7 +126,7 @@ final class DeckSessionController: ObservableObject {
     /// cue keys carry their cue and fade time.
     func displayedKey(at index: Int) -> KeyDefinition? {
         let menuLabel = DeckFlow.menuLabel(onPage: currentPageIndex, overlay: flowOverlay, profile: profile,
-                                           pageName: currentPage?.name)
+                                           pageName: currentPage?.name, hasSelection: !selectedFixtures.isEmpty)
         return DeckFlow.displayed(currentPage?.key(at: index), onPage: menuLabel, workspaceNames: workspaceNames)
             .map { DeckCues.displayed($0, slots: profile.cueSlots) }
             .map { key in
@@ -160,8 +167,40 @@ final class DeckSessionController: ObservableObject {
     private func refreshSelection() {
         let current = deskLinked ? deskSelection : keypad.selection.map { [$0] } ?? []
         guard current != selectedFixtures else { return }
+        let hadSelection = !selectedFixtures.isEmpty
         selectedFixtures = current
         onSelectionChanged?(current)
+        // The keypad's Menu key reads Quick Keys or Nothing Selected.
+        if hadSelection != !current.isEmpty, let page = currentPage {
+            for key in page.keys where key.action == .mainMenu { draw(logicalIndex: key.index) }
+        }
+    }
+
+    // MARK: - Loading screen
+
+    /// The TitanDeck icon on the deck, a shine sweeping across it ten times a
+    /// second, until `endSplash`.
+    func startSplash() {
+        guard splashTask == nil else { return }
+        splashFrame = 0
+        redraw()
+        splashTask = Task { @MainActor [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 100_000_000)
+                guard let self, !Task.isCancelled, let frame = self.splashFrame else { return }
+                self.splashFrame = frame + 1
+                self.redraw()
+            }
+        }
+    }
+
+    func endSplash() {
+        splashTask?.cancel()
+        splashTask = nil
+        guard splashFrame != nil else { return }
+        splashFrame = nil
+        overlays.removeAll()
+        redraw()
     }
 
     func showMenu() {
@@ -261,7 +300,7 @@ final class DeckSessionController: ObservableObject {
     /// `index` is the logical key (as laid out in the profile).
     private func handleKey(_ index: Int, pressed: Bool) {
         if pressed { heldKeys.insert(index) } else { heldKeys.remove(index) }
-        guard let key = currentPage?.key(at: index) else { return }
+        guard splashFrame == nil, let key = currentPage?.key(at: index) else { return }
 
         // A latching key flips its look on every press, action or not.
         if pressed, key.pressedStyle?.resolvedMode == .latch {
@@ -276,9 +315,11 @@ final class DeckSessionController: ObservableObject {
                 hold.cancel()
                 menuHoldTask = nil
                 setOverlay(nil, at: index)
-                switch DeckFlow.menuTap(onPage: currentPageIndex, overlay: flowOverlay, profile: profile) {
+                switch DeckFlow.menuTap(onPage: currentPageIndex, overlay: flowOverlay, profile: profile,
+                                        hasSelection: !selectedFixtures.isEmpty) {
                 case .quickKeys(let keypad): show(.selection(returnTo: keypad))
                 case .page(let page): showPage(page)
+                case .nothing: break   // Nothing Selected: only a hold does anything
                 }
                 return
             }

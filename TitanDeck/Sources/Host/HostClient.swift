@@ -93,6 +93,13 @@ struct HostClient: Sendable {
         return try await send(request)
     }
 
+    /// The show's patch from Titan's patch report (Host 0.6+).
+    func patch() async throws -> HostPatch {
+        var request = try request("patch")
+        request.timeoutInterval = 5
+        return try await send(request)
+    }
+
     /// Levels (0-255) of one universe from `start` (1-based).
     func dmx(universe: Int, start: Int = 1, count: Int = 512) async throws -> HostDmxLevels {
         var request = try request("dmx/\(universe)", query: [URLQueryItem(name: "start", value: "\(start)"),
