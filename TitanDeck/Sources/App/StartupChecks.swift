@@ -25,8 +25,11 @@ final class StartupChecks: ObservableObject {
     var warnings: Int { rows.filter { $0.state == .warning }.count }
 
     private var run: Task<Void, Never>?
+    /// In Show mode a test tool answering (Fake Titan, a Host in Test mode) is worth a warning.
+    private var showMode = false
 
-    func start(_ app: AppState, remoteDesktop: Bool) {
+    func start(_ app: AppState, remoteDesktop: Bool, showMode: Bool) {
+        self.showMode = showMode
         run?.cancel()
         rows = [
             Row(id: "titan", title: "Titan", symbol: "slider.horizontal.3"),
@@ -63,6 +66,9 @@ final class StartupChecks: ObservableObject {
         // A few tries: Wi-Fi can take a moment to come up after unlocking.
         for attempt in 0 ..< 4 {
             if let version = await app.titan.softwareVersion() {
+                if showMode && version.localizedCaseInsensitiveContains("Fake Titan") {
+                    return set("titan", .warning, "That's Fake Titan at \(host), not the desk. Stop it in TitanDeck Host and start Titan.")
+                }
                 return set("titan", .ok, "Titan \(version) at \(host)")
             }
             if attempt < 3 { try? await Task.sleep(nanoseconds: 500_000_000) }
@@ -104,7 +110,11 @@ final class StartupChecks: ObservableObject {
             return set("sacn", .off, "Needs TitanDeck Host")
         }
         let rdp = app.host.status.map { $0.overall == .ok ? ", remote desktop set up" : ", remote desktop needs a look" } ?? ""
-        set("host", .ok, "\(hello.machineName), Host \(hello.hostVersion)\(rdp)")
+        if showMode && app.host.status?.mode == "test" {
+            set("host", .warning, "\(hello.machineName), Host \(hello.hostVersion), still in Test mode: switch it to Show in the Host window.")
+        } else {
+            set("host", .ok, "\(hello.machineName), Host \(hello.hostVersion)\(rdp)")
+        }
 
         guard app.intensity.isEnabled, let client = app.host.client else {
             return set("sacn", .off, "Live intensity is off in Settings")

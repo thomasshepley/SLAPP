@@ -10,6 +10,7 @@ struct StartupView: View {
     @StateObject private var checks = StartupChecks()
     @AppStorage(SettingsKeys.remoteDesktopEnabled)
     private var remoteDesktopEnabled = UIDevice.current.userInterfaceIdiom != .phone
+    @AppStorage(SettingsKeys.showMode) private var showMode = false
     let onContinue: () -> Void
 
     var body: some View {
@@ -22,9 +23,12 @@ struct StartupView: View {
                             .frame(width: 132, height: 132)
                         Text("TitanDeck")
                             .font(.largeTitle.weight(.bold))
-                        Text("Version \(Bundle.main.shortVersion)")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                        HStack(spacing: 8) {
+                            Text("Version \(Bundle.main.shortVersion)")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                            ModeBadge()
+                        }
                     }
                     .padding(.top, 40)
 
@@ -75,7 +79,7 @@ struct StartupView: View {
     }
 
     private func start() {
-        checks.start(appState, remoteDesktop: remoteDesktopEnabled)
+        checks.start(appState, remoteDesktop: remoteDesktopEnabled, showMode: showMode)
     }
 
     private struct CheckRow: View {

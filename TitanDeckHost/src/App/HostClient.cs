@@ -73,6 +73,9 @@ public sealed class HostClient
         return answer.ValueKind == JsonValueKind.Object && answer.TryGetProperty("note", out var note) ? note.GetString() : null;
     }
 
+    public Task<ModeDto?> Mode() => Get<ModeDto>("mode");
+    public Task<ModeDto?> SetMode(string mode) => Post<ModeDto>("mode", new ModeDto(mode));
+
     public Task<PatchDto?> Patch() => Get<PatchDto>("patch");
     public Task<PatchDto?> ReloadPatch() => Post<PatchDto>("patch/reload");
     public Task<PatchDto?> ImportPatch(string name, string text) => Post<PatchDto>("patch/import", new PatchImportRequest(name, text));

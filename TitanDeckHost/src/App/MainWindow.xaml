@@ -15,11 +15,59 @@
         <ScrollViewer VerticalScrollBarVisibility="Auto">
             <StackPanel Margin="24,22,24,10">
                 <!-- Headline -->
-                <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                <Grid Margin="0,0,0,6">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
                     <Ellipse Width="18" Height="18" Fill="{Binding HeadlineColour}" VerticalAlignment="Center" Margin="0,0,12,0" />
-                    <TextBlock Text="{Binding Headline}" FontSize="24" FontWeight="SemiBold" TextWrapping="Wrap" />
-                </StackPanel>
+                    <TextBlock Grid.Column="1" Text="{Binding Headline}" FontSize="24" FontWeight="SemiBold" TextWrapping="Wrap" />
+                    <Border Grid.Column="2" Background="{Binding ModeBadgeColour}" CornerRadius="10" Padding="12,3" VerticalAlignment="Center"
+                            ToolTip="{Binding ModeText}">
+                        <TextBlock Text="{Binding ModeBadge}" FontWeight="Bold" FontSize="13" Foreground="Black" />
+                    </Border>
+                </Grid>
                 <TextBlock Text="{Binding Subtitle}" Foreground="{StaticResource SecondaryText}" Margin="30,0,0,20" TextWrapping="Wrap" />
+
+                <!-- Test or Show -->
+                <Border Style="{StaticResource CardStyle}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Margin="0,0,12,0">
+                            <TextBlock Text="Mode" Style="{StaticResource CardTitle}" Margin="0,0,0,4" />
+                            <TextBlock Text="{Binding ModeText}" Foreground="{StaticResource SecondaryText}" TextWrapping="Wrap" />
+                        </StackPanel>
+                        <Button Grid.Column="1" Content="Test" Command="{Binding TestModeCommand}" MinWidth="80" Margin="0,0,8,0" VerticalAlignment="Center">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource QuietButton}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsTestMode}" Value="True">
+                                            <Setter Property="Background" Value="#FFFF9F0A" />
+                                            <Setter Property="Foreground" Value="Black" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                        <Button Grid.Column="2" Content="Show" Command="{Binding ShowModeCommand}" MinWidth="80" VerticalAlignment="Center">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource QuietButton}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsShowMode}" Value="True">
+                                            <Setter Property="Background" Value="#FF30D158" />
+                                            <Setter Property="Foreground" Value="Black" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                    </Grid>
+                </Border>
 
                 <!-- Updates -->
                 <Border Style="{StaticResource CardStyle}">
@@ -127,8 +175,8 @@
                     </StackPanel>
                 </Border>
 
-                <!-- Fake Titan -->
-                <Border Style="{StaticResource CardStyle}">
+                <!-- Fake Titan (Test mode only) -->
+                <Border Style="{StaticResource CardStyle}" Visibility="{Binding IsTestMode, Converter={StaticResource Visible}}">
                     <StackPanel>
                         <TextBlock Text="Fake Titan" Style="{StaticResource CardTitle}" />
                         <TextBlock Foreground="{StaticResource SecondaryText}" TextWrapping="Wrap" Margin="0,0,0,12"
@@ -172,6 +220,7 @@
                             <Button Content="Read again" Command="{Binding ReloadPatchCommand}" Margin="0,0,10,6" />
                             <Button Content="Read a report file..." Command="{Binding ImportPatchCommand}" Style="{StaticResource QuietButton}" Margin="0,0,10,6" />
                             <Button Content="{Binding AskTitanButton}" Command="{Binding AskTitanCommand}" Style="{StaticResource QuietButton}" Margin="0,0,0,6"
+                                    Visibility="{Binding IsTestMode, Converter={StaticResource Visible}}"
                                     ToolTip="Experimental: asks Titan's WebAPI (its separate user, not your desk's screens) to write a patch report. What Titan answers shows in the Titan log." />
                         </WrapPanel>
                     </StackPanel>

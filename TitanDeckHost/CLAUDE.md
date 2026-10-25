@@ -68,6 +68,10 @@ TitanDeckHost/
   menu. Enabling edits Titan's file, so it's PC-only (not in
   `Fixer.AllowedFromIPad`); only files that already contain `webapi.enabled`
   are touched, each backed up as `*.titandeck-backup` first.
+- **Test / Show mode** (`HostModeStore`, Data\mode.json, `GET/POST /local/mode`,
+  also `mode` in `/status`): Show stops Fake Titan and refuses to start it,
+  and refuses `PatchReader.AskTitan`; the window hides those. New test-only
+  tools must check `HostModeStore.IsShow` the same way.
 - **Fake Titan** (`FakeTitan`) is the primary fake now; `TitanDeck/Tools/fake_titan.py`
   stays for the Mac. Keep them answering the same calls: when an action is added
   to `TitanEndpoints`, add it to both. It only listens while started from the

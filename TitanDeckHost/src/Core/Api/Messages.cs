@@ -38,7 +38,8 @@ public sealed record StatusResponse(
     string TermsrvVersion,
     bool TitanRunning,
     int FilesWaitingForIPad,
-    string HostVersion);
+    string HostVersion,
+    string Mode = "test");
 
 public sealed record FixRequest(string Action);
 
@@ -116,6 +117,9 @@ public sealed record PatchFixtureDto(int User, string? Model, string? Mode, int 
 /// Fake Titan's while it runs. Folders are where the Host looks.</summary>
 public sealed record PatchDto(string? Source, DateTimeOffset? Written, DateTimeOffset? Read, IReadOnlyList<PatchFixtureDto> Fixtures,
     int Personalities, string? Problem, IReadOnlyList<string> Folders);
+
+/// <summary>Test or Show (`GET/POST /local/mode`): "test" or "show".</summary>
+public sealed record ModeDto(string Mode);
 
 /// <summary>A report file picked in the Host window.</summary>
 public sealed record PatchImportRequest(string Name, string Text);

@@ -6,6 +6,11 @@ until it's show-ready (1.0): MINOR for features, PATCH for fixes. Keep
 (ChangelogTests checks). Each version is published as a GitHub release
 `host-v<version>` with the installer attached.
 
+## 0.7.0 - 2026-10-25 - Test and Show modes
+
+- **Test or Show:** a Mode card at the top of the window, and a TEST or SHOW badge by the headline. Show asks first ("All test features will be disabled if you confirm this"), then stops Fake Titan (it can't be started in Show), hides its card and the experimental "Ask Titan to write one". The checklist, Titan log, patch report, updates and everything for the show stay. Switch back to Test any time; the Host remembers the mode after a restart.
+- TitanDeck (0.19) sees the mode, so its loading screen can warn when the iPad is in Show and the Host is still in Test.
+
 ## 0.6.0 - 2026-10-25 - Patch report
 
 - **Reads the show's patch from Titan's patch report:** on Titan, Disk > Reports, tick Fixtures, choose CSV (XML and HTML work too) and save it to the PC. The Host picks up the newest report in Documents\Titan\Reports and knows every fixture's user number, DMX line and address. It only reads files: it never opens Patch. Do it again after repatching.

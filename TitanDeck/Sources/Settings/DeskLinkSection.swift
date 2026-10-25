@@ -8,6 +8,7 @@ struct DeskLinkSection: View {
     @ObservedObject var desk: DeskLink
     @ObservedObject var intensity: IntensityReader
     @ObservedObject var host: HostStore
+    @AppStorage(SettingsKeys.showMode) private var showMode = false
 
     var body: some View {
         Section {
@@ -28,7 +29,7 @@ struct DeskLinkSection: View {
                 }
             }
         } header: {
-            Text("Desk link (experimental)")
+            Text(showMode ? "Desk link" : "Desk link (experimental)")
         } footer: {
             Text("Select fixtures in Layouts or on the desk and the deck brings up its intensity keys, with Currently Selected on the Remote screen. While it's linked, the deck's keys act on the desk's own programmer. Set up once on the Titan PC: TitanDeck Host > Desk selection for TitanDeck > Turn on, then restart Titan. Uses Titan's experimental UI WebAPI (Titan port 4433, passed on by the Host on 4434). If it stops answering, the deck goes back to its own WebAPI user by itself.")
         }
@@ -46,12 +47,14 @@ struct DeskLinkSection: View {
                             .foregroundStyle(.secondary)
                     }
                 }
-                Toggle(isOn: $intensity.usesPatchLookup) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Find addresses with Patch")
-                        Text("Experimental. Off unless you've checked it on the console.")
-                            .font(.caption)
-                            .foregroundStyle(.orange)
+                if !showMode {
+                    Toggle(isOn: $intensity.usesPatchLookup) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Find addresses with Patch")
+                            Text("Experimental. Off unless you've checked it on the console.")
+                                .font(.caption)
+                                .foregroundStyle(.orange)
+                        }
                     }
                 }
                 if let note = intensity.note {
@@ -63,7 +66,7 @@ struct DeskLinkSection: View {
                 }
             }
         } footer: {
-            Text("Reads the selected fixture's level from the sACN Titan sends, through TitanDeck Host\(host.isPaired ? "" : " (pair with the Host first)"). The first time you nudge or flash a fixture from the deck, TitanDeck learns which channels are its intensity, then the flash key shows its level. With Titan's patch report, the Host already knows them, so the level shows straight away (a nudge still corrects it). Find addresses with Patch asks Titan's patch editor for the fixture's address first, on the deck's own WebAPI user only, never your desk's Patch window.")
+            Text("Reads the selected fixture's level from the sACN Titan sends, through TitanDeck Host\(host.isPaired ? "" : " (pair with the Host first)"). The first time you nudge or flash a fixture from the deck, TitanDeck learns which channels are its intensity, then the flash key shows its level. With Titan's patch report, the Host already knows them, so the level shows straight away (a nudge still corrects it). \(showMode ? "" : "Find addresses with Patch asks Titan's patch editor for the fixture's address first, on the deck's own WebAPI user only, never your desk's Patch window.")")
         }
     }
 

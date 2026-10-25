@@ -118,6 +118,7 @@ public sealed partial class MainViewModel : INotifyPropertyChanged
         ShowQuality(await _client.Quality());
         await RefreshUpdate();
         ShowPatch(await _client.Patch());
+        ShowMode(await _client.Mode());
     }
 
     private async Task SetQuality(string preset)
