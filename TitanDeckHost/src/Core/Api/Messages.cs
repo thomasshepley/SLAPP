@@ -104,3 +104,18 @@ public sealed record DeskSelectRequest(string Fixtures);
 public sealed record TitanLogDto(IReadOnlyList<TitanDeckHost.Core.Titan.TitanLogEntry> Entries,
     IReadOnlyList<TitanDeckHost.Core.Titan.TitanPollSummary> Polls);
 
+
+/// <summary>One patched fixture (`GET /api/v1/patch`). Universe is Titan's DMX
+/// line, taken as the sACN universe it sends on (Titan's default). Intensity
+/// is the channels its level is on, 0 = its first channel; null until its
+/// personality is found.</summary>
+public sealed record PatchFixtureDto(int User, string? Model, string? Mode, int Universe, int Address, int? Channels,
+    IReadOnlyList<int>? Intensity, string? Legend);
+
+/// <summary>The patch from Titan's newest patch report (Disk &gt; Reports), or
+/// Fake Titan's while it runs. Folders are where the Host looks.</summary>
+public sealed record PatchDto(string? Source, DateTimeOffset? Written, DateTimeOffset? Read, IReadOnlyList<PatchFixtureDto> Fixtures,
+    int Personalities, string? Problem, IReadOnlyList<string> Folders);
+
+/// <summary>A report file picked in the Host window.</summary>
+public sealed record PatchImportRequest(string Name, string Text);

@@ -16,14 +16,16 @@ TitanDeckHost/
 │                  sACN (Sacn/: E1.31 packet parser + DmxUniverses merge store),
 │                  TitanUiConfig (Titan's UI WebAPI config, checklist line, proxy allowlist),
 │                  FakeTitan (pretend Titan: WebAPI user + desk user state machine),
-│                  TitanLog (every Titan call, polls counted), Update/HostUpdate (GitHub releases)
+│                  TitanLog (every Titan call, polls counted), Update/HostUpdate (GitHub releases),
+│                  TitanPatch (patch report CSV/XML/HTML), TitanPersonality + PersonalityLibrary (.d4)
 ├── src/Service/   net8.0-windows Windows service (LocalSystem): Kestrel API on
 │                  0.0.0.0:4431 (paired iPad) and 127.0.0.1:4432 (the Host window),
 │                  WindowsProbe (reads the PC), Fixer (applies fixes), Advertiser (mDNS),
 │                  SacnListener (joins sACN multicast on every adapter, port shared),
 │                  DeskLink (finds/edits Titan's .exe.config, /titan proxy on 0.0.0.0:4434),
 │                  FakeTitanServer (Kestrel on 4430 + 4433 only while started, sACN out),
-│                  HostUpdater (checks GitHub every 6 h, downloads + verifies the installer)
+│                  HostUpdater (checks GitHub every 6 h, downloads + verifies the installer),
+│                  PatchReader (newest patch report + personalities, Fake Titan's while it runs)
 ├── src/App/       net8.0-windows WPF tray app + dashboard; talks only to 127.0.0.1:4432
 ├── tests/Core.Tests/  xunit
 └── installer/     Inno Setup script
@@ -76,6 +78,16 @@ TitanDeckHost/
   status changes. Window: `/local/titanlog`; iPad: `/api/v1/titanlog?after=`.
   Calls TitanDeck sends straight to the real WebAPI on 4430 don't pass through
   the Host, so they aren't logged yet (a pass-through port is the plan).
+- **Patch report** (`PatchReader`): the patch comes from files Titan writes
+  (Disk > Reports > Fixtures, in every user's Documents\Titan\Reports), never
+  from Titan's Patch menu. Report columns aren't documented, so `TitanPatch`
+  finds the user-number and address columns by name. The dimmer channel comes
+  from the fixture's .d4 (`<Mode><Include><Attribute ID="Dimmer"
+  ChannelOffset="12,13">`, 1-based, coarse then fine; `Master_Dimmer` in
+  multi-cell modes; colour channels when the dimmer is virtual), checked
+  against real Avolites files. DMX line N is taken as sACN universe N.
+  Paired: `GET /api/v1/patch`. "Ask Titan" (`Reports/GenerateReport` on the
+  4430 user) is experimental and logged.
 - **Updates** (`HostUpdate`/`HostUpdater`): only releases tagged `host-v*` with a
   `TitanDeckHost-Setup-*.exe` asset under
   `https://github.com/thomasshepley/SLAPP/releases/download/host-v`, verified

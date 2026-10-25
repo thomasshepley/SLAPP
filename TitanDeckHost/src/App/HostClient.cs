@@ -73,6 +73,11 @@ public sealed class HostClient
         return answer.ValueKind == JsonValueKind.Object && answer.TryGetProperty("note", out var note) ? note.GetString() : null;
     }
 
+    public Task<PatchDto?> Patch() => Get<PatchDto>("patch");
+    public Task<PatchDto?> ReloadPatch() => Post<PatchDto>("patch/reload");
+    public Task<PatchDto?> ImportPatch(string name, string text) => Post<PatchDto>("patch/import", new PatchImportRequest(name, text));
+    public Task<PatchDto?> AskTitanForPatch() => Post<PatchDto>("patch/ask-titan");
+
     public Task<TitanLogDto?> TitanLog(long after) => Get<TitanLogDto>($"titanlog?after={after}");
     public Task ClearTitanLog() => Post<JsonElement>("titanlog/clear");
 
