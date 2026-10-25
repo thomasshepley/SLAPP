@@ -27,7 +27,7 @@ public sealed class DeviceRow
 }
 
 /// <summary>The dashboard: status, checklist with fixes, pairing and folders.</summary>
-public sealed class MainViewModel : INotifyPropertyChanged
+public sealed partial class MainViewModel : INotifyPropertyChanged
 {
     private readonly HostClient _client;
     private string _headline = "Looking for the TitanDeck Host service...";
@@ -116,6 +116,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         }
         Apply(await _client.Pairing());
         ShowQuality(await _client.Quality());
+        await RefreshUpdate();
     }
 
     private async Task SetQuality(string preset)

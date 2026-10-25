@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Net.Http.Headers;
 using TitanDeckHost.Core.Titan;
 
@@ -9,7 +10,7 @@ namespace TitanDeckHost.Service;
 /// from the iPad on port 4434 through to it on this PC. It's Titan's own API
 /// passed straight through, so it's no more open than Titan's port 4430.
 /// </summary>
-public sealed class DeskLink(ILogger<DeskLink> log)
+public sealed class DeskLink(TitanLog titanLog, ILogger<DeskLink> log)
 {
     private static readonly TimeSpan ConfigCacheFor = TimeSpan.FromSeconds(30);
     private static readonly HttpClient Titan = new() { Timeout = TimeSpan.FromSeconds(3) };
@@ -93,17 +94,29 @@ public sealed class DeskLink(ILogger<DeskLink> log)
     /// <summary>Passes one request through to Titan's UI WebAPI.</summary>
     public async Task Forward(HttpContext http)
     {
-        if (!TitanUiConfig.ProxyAllows(http.Request.Path.Value ?? ""))
+        var watch = Stopwatch.StartNew();
+        var path = http.Request.Path.Value ?? "";
+        void Log(int status, string? note, bool flagged) => titanLog.Add("Desk link - Titan UI",
+            http.Connection.RemoteIpAddress?.ToString() ?? "", http.Request.Method, path,
+            Uri.UnescapeDataString((http.Request.QueryString.Value ?? "").TrimStart('?')), status,
+            (int)watch.ElapsedMilliseconds, note, null, flagged, DateTimeOffset.Now);
+        if (!TitanUiConfig.ProxyAllows(path))
         {
             http.Response.StatusCode = StatusCodes.Status403Forbidden;
             await http.Response.WriteAsync("The desk link doesn't pass that call on to Titan.");
+            Log(403, "refused: the desk link never passes this on to the desk", true);
             return;
         }
         var target = $"http://127.0.0.1:{TitanUiConfig.UiPort}{http.Request.Path}{http.Request.QueryString}";
         using var request = new HttpRequestMessage(new HttpMethod(http.Request.Method), target);
         if (http.Request.ContentLength > 0 || http.Request.Headers.TransferEncoding.Count > 0)
         {
-            request.Content = new StreamContent(http.Request.Body);
+            // Whole, with a length: a stream goes out chunked, and Titan (and
+            // fake_titan.py) may read only Content-Length - a fade time from
+            // the deck arrived as an empty body.
+            using var buffer = new MemoryStream();
+            await http.Request.Body.CopyToAsync(buffer, http.RequestAborted);
+            request.Content = new ByteArrayContent(buffer.ToArray());
             if (http.Request.ContentType is { } type) request.Content.Headers.ContentType = MediaTypeHeaderValue.Parse(type);
         }
         try
@@ -116,11 +129,14 @@ public sealed class DeskLink(ILogger<DeskLink> log)
             if (response.Content.Headers.ContentType is { } contentType) http.Response.ContentType = contentType.ToString();
             http.Response.ContentLength = body.Length;
             await http.Response.Body.WriteAsync(body, http.RequestAborted);
+            Log((int)response.StatusCode, body.Length is > 0 and <= 120 ? "answered " + System.Text.Encoding.UTF8.GetString(body) : null,
+                !response.IsSuccessStatusCode);
         }
         catch (Exception error) when (error is HttpRequestException or TaskCanceledException)
         {
             http.Response.StatusCode = StatusCodes.Status502BadGateway;
             await http.Response.WriteAsync($"Titan's UI WebAPI isn't answering on port {TitanUiConfig.UiPort}.");
+            Log(502, $"Titan's UI WebAPI isn't answering on {TitanUiConfig.UiPort}", true);
         }
     }
 

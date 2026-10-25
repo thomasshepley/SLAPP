@@ -5,6 +5,7 @@ using TitanDeckHost.Core.Pairing;
 using TitanDeckHost.Core.Rdp;
 using TitanDeckHost.Core.Sacn;
 using TitanDeckHost.Core.Titan;
+using TitanDeckHost.Core.Update;
 using TitanDeckHost.Service;
 
 var builder = WebApplication.CreateBuilder(new WebApplicationOptions
@@ -26,7 +27,11 @@ var paths = new HostPaths();
 builder.Services.AddSingleton(paths);
 builder.Services.AddSingleton(new PairingStore(paths.PairingFile));
 builder.Services.AddSingleton<WindowsProbe>();
+builder.Services.AddSingleton<TitanLog>();
 builder.Services.AddSingleton<DeskLink>();
+builder.Services.AddSingleton<FakeTitanServer>();
+builder.Services.AddSingleton<HostUpdater>();
+builder.Services.AddHostedService(services => services.GetRequiredService<HostUpdater>());
 builder.Services.AddSingleton<Fixer>();
 builder.Services.AddHostedService<Advertiser>();
 builder.Services.AddSingleton<DmxUniverses>();
@@ -134,6 +139,9 @@ network.MapPost("/rdp/quality", (RdpQualityRequest request) => SetQuality(reques
 
 network.MapGet("/outbox", () => Outbox(paths));
 
+// What the Host saw go to (Fake) Titan: for a log view on the iPad.
+network.MapGet("/titanlog", (long? after, TitanLog log) => TitanLogResult(log, after));
+
 // Live sACN levels, for showing a fixture's intensity on the deck.
 network.MapGet("/dmx", (DmxUniverses store, SacnListener listener) => DmxSummary(store, listener));
 
@@ -203,17 +211,45 @@ local.MapPost("/rdp/quality", (RdpQualityRequest request) => SetQuality(request)
 
 local.MapGet("/dmx", (DmxUniverses store, SacnListener listener) => DmxSummary(store, listener));
 
+// Fake Titan, the Titan log and Host updates (the Host window).
+local.MapGet("/faketitan", (FakeTitanServer fake) => fake.Status());
+local.MapPost("/faketitan/start", (FakeTitanStartRequest request, FakeTitanServer fake) => fake.Start(request));
+local.MapPost("/faketitan/stop", (FakeTitanServer fake) => fake.Stop());
+local.MapPost("/faketitan/desk-select", (DeskSelectRequest request, FakeTitanServer fake) =>
+    Results.Ok(new { note = fake.DeskSelect(request.Fixtures) }));
+local.MapGet("/titanlog", (long? after, TitanLog log) => TitanLogResult(log, after));
+local.MapPost("/titanlog/clear", (TitanLog log) =>
+{
+    log.Clear();
+    return Results.Ok();
+});
+local.MapGet("/update", (HostUpdater updater) => updater.Status());
+local.MapPost("/update/check", (HostUpdater updater) => updater.Check());
+// Starts the download and answers straight away; the window watches Downloading, then Ready.
+local.MapPost("/update/download", (HostUpdater updater) =>
+{
+    _ = updater.Download();
+    return updater.Status();
+});
+
 local.MapGet("/folders", () => new { toPC = paths.ToPC, toIPad = paths.ToIPad, data = paths.Data });
 
 // Keep last-seen times on disk without writing on every request.
 var flush = new Timer(_ => pairing.Flush(), null, TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(5));
 app.Lifetime.ApplicationStopping.Register(() =>
 {
+    app.Services.GetRequiredService<FakeTitanServer>().Stop().Wait(TimeSpan.FromSeconds(5));
     flush.Dispose();
     pairing.Flush();
 });
 
 app.Run();
+
+static TitanLogDto TitanLogResult(TitanLog log, long? after)
+{
+    var (entries, polls) = log.Since(after ?? 0);
+    return new TitanLogDto(entries, polls);
+}
 
 static DmxSummaryDto DmxSummary(DmxUniverses store, SacnListener listener) =>
     new(store.Known(DateTimeOffset.UtcNow), listener.Listening, listener.Problem);

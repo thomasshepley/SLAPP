@@ -84,3 +84,23 @@ public sealed record DmxLevelsDto(int Universe, int Start, IReadOnlyList<int> Le
 /// it can't listen, if it can't.</summary>
 public sealed record DmxSummaryDto(IReadOnlyList<int> Universes, IReadOnlyList<int> Listening, string? Problem);
 
+/// <summary>Host updates (`GET /local/update`). Ready is the checked installer
+/// to run, with its SHA-256 so the window can check it again before running it.</summary>
+public sealed record UpdateStatusDto(string Current, string? Latest, bool Available, string? Notes, DateTimeOffset? Published,
+    DateTimeOffset? Checked, string? Problem, double? Downloading, string? Ready, string? ReadySha256);
+
+/// <summary>Fake Titan's settings when started from the Host window.</summary>
+public sealed record FakeTitanStartRequest(int Fixtures, int Playbacks, bool Desk, bool Sacn, int LatencyMs);
+
+/// <summary>Fake Titan (`GET /local/faketitan`). State is its command lines,
+/// selections and levels; Ports the ones it has open.</summary>
+public sealed record FakeTitanStatusDto(bool Running, int Fixtures, int Playbacks, bool Desk, bool Sacn, int LatencyMs,
+    string? Problem, string? State, IReadOnlyList<int> Ports);
+
+/// <summary>"3,4", "1-10" or empty, as if selected in Layouts.</summary>
+public sealed record DeskSelectRequest(string Fixtures);
+
+/// <summary>The Titan log since an entry (`GET /local/titanlog?after=`).</summary>
+public sealed record TitanLogDto(IReadOnlyList<TitanDeckHost.Core.Titan.TitanLogEntry> Entries,
+    IReadOnlyList<TitanDeckHost.Core.Titan.TitanPollSummary> Polls);
+
