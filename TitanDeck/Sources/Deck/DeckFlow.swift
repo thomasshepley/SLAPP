@@ -140,21 +140,21 @@ enum DeckFlow {
     }
 
     /// Quick Keys: the profile's Quick Keys page (or, failing that, the
-    /// standard nudges) with Return to Keypad on the bottom right, plus CCT
-    /// (middle column, 4th row on the 15-key deck) and the hold-for-0% flash
-    /// above it. On other decks, or if those spots are taken, they go in the
-    /// first free spots. Shown after a selection, from Menu on the keypad,
-    /// and whenever the Quick Keys page itself is picked.
+    /// standard nudges) with Return to Keypad where Menu is on the keypad
+    /// (bottom middle on the 15-key deck), CCT bottom right (where the colour
+    /// keys have INTENSITY, so that key swaps between the two) and the
+    /// hold-for-0% flash in the middle. On other decks, or if those spots are
+    /// taken, they go in the first free spots. Shown after a selection, from
+    /// Menu on the keypad, and whenever the Quick Keys page itself is picked.
     static func selectionPage(profile: DeckProfile, returnTo: Int) -> DeckPage {
         let source = quickKeysPageIndex(in: profile).map { profile.pages[$0] }
             ?? profile.pages.first { page in page.keys.contains { $0.action.map(isIntensity) ?? false } }
+        let threeWide = isThreeWide(profile)
         var keys = withReturnKey(source?.keys ?? defaultIntensityKeys(keyCount: profile.keyCount),
-                                 keyCount: profile.keyCount, returnTo: returnTo)
-        let threeWide = profile.keyCount == 15
-            && DeckGeometry(keyCount: 15, orientation: profile.orientation).logicalColumns == 3
+                                 keyCount: profile.keyCount, threeWide: threeWide)
         let extras: [(key: KeyDefinition, spot: Int?)] = [
             (KeyDefinition(index: 0, label: "CCT", colorHex: colourHex(kelvin: 4500),
-                           sfSymbol: "thermometer.sun.fill", action: .colourPresets), threeWide ? 10 : nil),
+                           sfSymbol: "thermometer.sun.fill", action: .colourPresets), threeWide ? 14 : nil),
             (KeyDefinition(index: 0, label: "HOLD\nFOR 0%", colorHex: "#000000",
                            sfSymbol: "lightbulb.slash.fill", action: .flashSelection), threeWide ? 7 : nil),
         ]
@@ -171,18 +171,18 @@ enum DeckFlow {
     }
 
     /// The colour temperature presets: the profile's Colour page, or the
-    /// standard presets, with Return to Keypad on the Menu key.
+    /// standard presets, with Return to Keypad where Menu is.
     static func colourPage(profile: DeckProfile, returnTo: Int) -> DeckPage {
         let source = page(named: "Colour", in: profile)
             ?? profile.pages.first { page in page.keys.contains { $0.action.map(isColourTemperature) ?? false } }
+        let threeWide = isThreeWide(profile)
         var keys = withReturnKey(source?.keys ?? cctKeys(keyCount: profile.keyCount),
-                                 keyCount: profile.keyCount, returnTo: returnTo)
-        // Straight back to the intensity keys: where Menu sits on the 15-key
-        // deck (bottom middle), or the first free key.
+                                 keyCount: profile.keyCount, threeWide: threeWide)
+        // Straight back to Quick Keys: bottom right on the 15-key deck, where
+        // Quick Keys has CCT, or the first free key.
         if !keys.contains(where: { $0.action == .deckChoice(.intensity) }) {
             let used = Set(keys.map(\.index))
-            let preferred = profile.keyCount == 15
-                && DeckGeometry(keyCount: 15, orientation: profile.orientation).logicalColumns == 3 ? 13 : nil
+            let preferred = threeWide ? 14 : nil
             let spot = preferred.flatMap { used.contains($0) ? nil : $0 }
                 ?? (0 ..< profile.keyCount).first { !used.contains($0) }
             if let spot {
@@ -228,11 +228,17 @@ enum DeckFlow {
         profile.pages.first { $0.name.caseInsensitiveCompare(name) == .orderedSame }
     }
 
-    /// Swaps the Menu key for Return to Keypad on the bottom right key. It's
-    /// still a Menu key underneath: a tap goes to the keypad, a hold opens
-    /// the menu of pages.
-    private static func withReturnKey(_ source: [KeyDefinition], keyCount: Int, returnTo: Int) -> [KeyDefinition] {
-        let returnIndex = max(keyCount - 1, 0)
+    /// The shipped 15-key layout: 3 wide, 5 high (the deck in portrait).
+    private static func isThreeWide(_ profile: DeckProfile) -> Bool {
+        profile.keyCount == 15 && DeckGeometry(keyCount: 15, orientation: profile.orientation).logicalColumns == 3
+    }
+
+    /// Swaps the Menu key for Return to Keypad, in Menu's spot on the 15-key
+    /// deck (bottom middle) so the same key always goes keypad <-> Quick Keys,
+    /// else on the last key. It's still a Menu key underneath: a tap goes to
+    /// the keypad, a hold opens the menu of pages.
+    private static func withReturnKey(_ source: [KeyDefinition], keyCount: Int, threeWide: Bool) -> [KeyDefinition] {
+        let returnIndex = threeWide ? 13 : max(keyCount - 1, 0)
         var keys = source.filter { $0.action != .mainMenu && $0.index != returnIndex }
         keys.append(KeyDefinition(index: returnIndex, label: returnLabel, colorHex: DeckProfile.pageColor,
                                   sfSymbol: returnSymbol, action: .mainMenu))
@@ -241,31 +247,37 @@ enum DeckFlow {
 
     static let returnLabel = "Return to Keypad"
 
-    /// Where a tap on the Menu key goes: from the keypad to Quick Keys, from
-    /// anywhere else back to the keypad. A profile with no keypad page just
-    /// steps through its pages.
+    /// Where a tap on the Menu key goes: from the keypad to Quick Keys (with
+    /// nothing selected, nowhere: only a hold does anything), from anywhere
+    /// else back to the keypad. A profile with no keypad page just steps
+    /// through its pages.
     enum MenuTap: Equatable {
         case quickKeys(returnTo: Int)
         case page(Int)
+        case nothing
     }
 
-    static func menuTap(onPage index: Int, overlay: Overlay?, profile: DeckProfile) -> MenuTap {
+    static func menuTap(onPage index: Int, overlay: Overlay?, profile: DeckProfile, hasSelection: Bool) -> MenuTap {
         guard let keypad = keypadPageIndex(in: profile) else {
             return .page(nextPage(after: index, pageCount: profile.pages.count))
         }
-        return overlay == nil && index == keypad ? .quickKeys(returnTo: keypad) : .page(keypad)
+        guard overlay == nil, index == keypad else { return .page(keypad) }
+        return hasSelection ? .quickKeys(returnTo: keypad) : .nothing
     }
 
-    /// What the Menu key reads: "Quick Keys" on the keypad (where a tap goes),
-    /// the page's name elsewhere, and nil (its own Return to Keypad label) on
-    /// Quick Keys and the colour keys.
-    static func menuLabel(onPage index: Int, overlay: Overlay?, profile: DeckProfile, pageName: String?) -> String? {
+    static let nothingSelected = "Nothing Selected"
+
+    /// What the Menu key reads: on the keypad, "Quick Keys" (where a tap
+    /// goes) or "Nothing Selected"; the page's name elsewhere; nil (its own
+    /// Return to Keypad label) on Quick Keys and the colour keys.
+    static func menuLabel(onPage index: Int, overlay: Overlay?, profile: DeckProfile, pageName: String?,
+                          hasSelection: Bool) -> String? {
         switch overlay {
         case .selection?, .colour?:
             return nil
         case nil:
             if index == quickKeysPageIndex(in: profile) { return nil }
-            if index == keypadPageIndex(in: profile) { return quickKeysName }
+            if index == keypadPageIndex(in: profile) { return hasSelection ? quickKeysName : nothingSelected }
             return pageName
         default:
             return pageName
@@ -314,6 +326,43 @@ enum DeckFlow {
             break
         }
         return key
+    }
+
+    // MARK: Loading
+
+    /// The TitanDeck icon's keys, row by row (4 x 4).
+    static let iconColours: [[String]] = [
+        ["#207C33", "#207C33", "#207C33", "#2C50A2"],
+        ["#B03A1E", "#B03A1E", "#B03A1E", "#2C50A2"],
+        ["#207C33", "#B03A1E", "#2C50A2", "#207C33"],
+        ["#2A2A2A", "#2A2A2A", "#2A2A2A", "#2C50A2"],
+    ]
+    /// Frames per shine across the deck (at 10 a second: one every 2.8 s).
+    static let splashPeriod = 28
+
+    /// The deck while the loading screen is up: the TitanDeck icon spread
+    /// over the keys, with a shine sweeping across it corner to corner.
+    static func splashPage(columns: Int, keyCount: Int, frame: Int) -> DeckPage {
+        let columns = max(columns, 1)
+        let rows = max((keyCount + columns - 1) / columns, 1)
+        let width = 0.3
+        let phase = Double(((frame % splashPeriod) + splashPeriod) % splashPeriod) / Double(splashPeriod) * (1 + 3 * width) - width
+        let keys = (0 ..< keyCount).map { index -> KeyDefinition in
+            let row = index / columns, column = index % columns
+            let base = iconColours[min(row * 4 / rows, 3)][min(column * 4 / columns, 3)]
+            let along = Double(row + column) / Double(max(rows + columns - 2, 1))
+            let shine = max(0, 1 - abs(along - phase) / width)
+            return KeyDefinition(index: index, label: "", colorHex: blend(base, toward: "#FFFFFF", by: shine * 0.6))
+        }
+        return DeckPage(name: "TitanDeck", keys: keys)
+    }
+
+    /// `amount` (0...1) of the way from one colour to another.
+    static func blend(_ from: String, toward to: String, by amount: Double) -> String {
+        guard let a = HexColor(from), let b = HexColor(to) else { return from }
+        let t = min(max(amount, 0), 1)
+        return HexColor(red: a.red + (b.red - a.red) * t, green: a.green + (b.green - a.green) * t,
+                        blue: a.blue + (b.blue - a.blue) * t).hexString
     }
 
     // MARK: Drawing

@@ -140,6 +140,27 @@ struct HostDmxLevels: Codable, Equatable {
     let ageMs: Int
 }
 
+/// `GET /api/v1/patch` (Host 0.6+): the show's patch from Titan's patch
+/// report (Disk > Reports), with each fixture's intensity channels when the
+/// Host found its personality.
+struct HostPatch: Codable, Equatable {
+    let source: String?
+    let fixtures: [HostPatchFixture]
+    let problem: String?
+}
+
+/// One patched fixture. `universe` is Titan's DMX line (taken as the sACN
+/// universe); `intensity` counts from the fixture's first channel (0).
+struct HostPatchFixture: Codable, Equatable {
+    let user: Int
+    let model: String?
+    let mode: String?
+    let universe: Int
+    let address: Int
+    let channels: Int?
+    let intensity: [Int]?
+}
+
 struct HostErrorBody: Codable {
     var error: String?
     var message: String?

@@ -59,6 +59,15 @@ enum IntensityLearning {
         return Double(pair ? first : values.max() ?? first) / 255
     }
 
+    /// A fixture's intensity channels from Titan's patch report, or nil when
+    /// the Host doesn't know them (no personality found) or they'd run off
+    /// the universe.
+    static func slots(for fixture: HostPatchFixture) -> [DmxSlot]? {
+        guard let offsets = fixture.intensity, !offsets.isEmpty else { return nil }
+        let slots = offsets.map { DmxSlot(universe: fixture.universe, address: fixture.address + $0) }
+        return slots.allSatisfy({ (1 ... 512).contains($0.address) }) ? slots : nil
+    }
+
     /// Which way an action moves the selected fixture's level, or nil if it
     /// doesn't (or can't be told).
     static func direction(of action: TitanAction) -> Bool? {

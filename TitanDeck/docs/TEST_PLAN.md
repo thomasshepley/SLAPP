@@ -178,6 +178,22 @@ each key land.
 - [ ] Hold the flash key when Titan can't answer: it flashes red, then goes back
       to the held colour until you let go.
 
+## 5b2. Loading screen and patch report (0.18)
+
+- [ ] Open TitanDeck: the loading screen checks Titan, the Stream Deck, remote
+      desktop, the Host, sACN and the desk link; each row ticks or explains.
+      Continue appears when they're done. The deck shows the TitanDeck logo
+      with a shine moving across it; its keys do nothing until Continue.
+- [ ] Turn the iPad round with rotation lock off: TitanDeck stays landscape.
+- [ ] Leave the iPad alone longer than its auto-lock time: it stays on.
+- [ ] Host 0.6 with Fake Titan running (or a real patch report): Settings >
+      Desk link > Use Titan's patch report on. Select a fixture: the flash key
+      shows its level straight away, no nudge first. Settings shows "from the
+      patch report".
+- [ ] Bottom middle: keypad <-> Quick Keys (and back from CCT). Bottom right:
+      Quick Keys <-> CCT. Nothing selected: the keypad's Menu key reads
+      Nothing Selected, a tap does nothing, a hold opens the menu.
+
 ## 5c. Deck pages (0.13)
 
 - [ ] Every page: keys with nothing on them are black on the Stream Deck, not

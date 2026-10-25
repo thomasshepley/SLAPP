@@ -108,6 +108,7 @@ final class AppState: ObservableObject {
     }
 
     func start() {
+        if showingStartup { deck.startSplash() }
         startConnectionLog()
         UIApplication.shared.isIdleTimerDisabled = true
         deck.start()
@@ -183,6 +184,15 @@ final class AppState: ObservableObject {
         default:
             break
         }
+    }
+
+    /// The loading screen (health checks, then Continue) is up; the deck
+    /// shows the TitanDeck logo meanwhile.
+    @Published private(set) var showingStartup = true
+
+    func finishStartup() {
+        showingStartup = false
+        deck.endSplash()
     }
 
     func dismissBackgroundWarning() {
