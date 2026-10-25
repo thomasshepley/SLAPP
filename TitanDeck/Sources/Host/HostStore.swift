@@ -69,7 +69,7 @@ final class HostStore: ObservableObject {
 
     /// Pairs with the Host at `address` using the 6-digit code from the PC's window.
     func pair(address: String, code: String) async throws {
-        let address = address.trimmingCharacters(in: .whitespacesAndNewlines)
+        let address = HostAPI.cleanAddress(address)
         let probe = HostClient(address: address, token: nil)
         _ = try await probe.hello()
         let response = try await probe.pair(code: HostAPI.normaliseCode(code), deviceName: UIDevice.current.name)

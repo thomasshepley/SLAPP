@@ -191,6 +191,17 @@ enum HostAPI {
         return components.url
     }
 
+    /// Trims an address and drops an interface ending: "192.168.1.20%en0" ->
+    /// "192.168.1.20" (also "[fe80::1%en0]:4431" -> "[fe80::1]:4431"), so one
+    /// that came from discovery, or was pasted from it, still works.
+    static func cleanAddress(_ address: String) -> String {
+        var text = address.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let percent = text.firstIndex(of: "%") else { return text }
+        let stop: Character = text.hasPrefix("[") ? "]" : ":"
+        text.removeSubrange(percent ..< (text[percent...].firstIndex(of: stop) ?? text.endIndex))
+        return text
+    }
+
     /// "pc.local" -> ("pc.local", 4431); "10.0.0.5:5000" -> ("10.0.0.5", 5000);
     /// "[fe80::1]:4431" -> ("fe80::1", 4431).
     static func splitAddress(_ address: String) -> (String, Int)? {

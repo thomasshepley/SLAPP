@@ -7,6 +7,12 @@ the GitHub Actions run that built it. The top entry is shown in the app
 so add an entry - and bump `MARKETING_VERSION` in `project.yml` to match -
 with every change that goes to `main`.
 
+## 0.16.2 - 2026-10-25 - Pairing fixes
+
+- **Fixed:** picking a discovered PC to pair with filled in its address with "%en0" on the end (the iPad's Wi-Fi), so it didn't work until you deleted that. Addresses are cleaned up now, typed or found.
+- **Fixed:** after pairing worked, the pairing screen opened again.
+- With TitanDeck Host 0.4.1, sending an rdpwrap.ini no longer says it doesn't cover the PC's build when it does.
+
 ## 0.16.1 - 2026-10-24 - Quicker back to intensity, plainer GOs
 
 - **Back from CCT:** the colour temperature keys have an INTENSITY key (bottom middle) that goes straight back to the intensity keys.
