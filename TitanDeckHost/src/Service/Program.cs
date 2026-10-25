@@ -29,6 +29,7 @@ builder.Services.AddSingleton(new PairingStore(paths.PairingFile));
 builder.Services.AddSingleton<WindowsProbe>();
 builder.Services.AddSingleton<TitanLog>();
 builder.Services.AddSingleton<DeskLink>();
+builder.Services.AddSingleton<PatchReader>();
 builder.Services.AddSingleton<FakeTitanServer>();
 builder.Services.AddSingleton<HostUpdater>();
 builder.Services.AddHostedService(services => services.GetRequiredService<HostUpdater>());
@@ -40,6 +41,7 @@ builder.Services.AddHostedService(services => services.GetRequiredService<SacnLi
 
 var app = builder.Build();
 var pairing = app.Services.GetRequiredService<PairingStore>();
+app.Services.GetRequiredService<PatchReader>().Warm();
 
 // --- The iPad's API (port 4431). Everything but hello and pair needs a token. ---
 
@@ -145,6 +147,9 @@ network.MapGet("/titanlog", (long? after, TitanLog log) => TitanLogResult(log, a
 // Live sACN levels, for showing a fixture's intensity on the deck.
 network.MapGet("/dmx", (DmxUniverses store, SacnListener listener) => DmxSummary(store, listener));
 
+// The show's patch from Titan's patch report, for finding a fixture's intensity channel.
+network.MapGet("/patch", (PatchReader patch) => patch.Status());
+
 network.MapGet("/dmx/{universe:int}", (int universe, int? start, int? count, DmxUniverses store, SacnListener listener) =>
     DmxLevels(universe, start ?? 1, count ?? 512, store, listener));
 
@@ -218,6 +223,10 @@ local.MapPost("/faketitan/stop", (FakeTitanServer fake) => fake.Stop());
 local.MapPost("/faketitan/desk-select", (DeskSelectRequest request, FakeTitanServer fake) =>
     Results.Ok(new { note = fake.DeskSelect(request.Fixtures) }));
 local.MapGet("/titanlog", (long? after, TitanLog log) => TitanLogResult(log, after));
+local.MapGet("/patch", (PatchReader patch) => patch.Status());
+local.MapPost("/patch/reload", (PatchReader patch) => patch.Reload());
+local.MapPost("/patch/import", (PatchImportRequest request, PatchReader patch) => patch.Import(request));
+local.MapPost("/patch/ask-titan", (PatchReader patch) => patch.AskTitan());
 local.MapPost("/titanlog/clear", (TitanLog log) =>
 {
     log.Clear();

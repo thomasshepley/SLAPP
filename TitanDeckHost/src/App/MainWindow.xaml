@@ -157,6 +157,26 @@
                     </StackPanel>
                 </Border>
 
+                <!-- Patch report -->
+                <Border Style="{StaticResource CardStyle}">
+                    <StackPanel>
+                        <TextBlock Text="Patch report" Style="{StaticResource CardTitle}" />
+                        <TextBlock Foreground="{StaticResource SecondaryText}" TextWrapping="Wrap" Margin="0,0,0,12"
+                                   Text="So TitanDeck can show a fixture's live level without nudging it first. On Titan: Disk &gt; Reports, tick Fixtures, choose CSV and save it to this PC (Documents\Titan\Reports). The Host reads the newest one and finds each fixture's dimmer channel in Titan's personalities. It only reads files: it never opens Patch. Do it again after repatching." />
+                        <TextBlock Text="{Binding PatchText}" TextWrapping="Wrap" Margin="0,0,0,6" />
+                        <TextBlock Text="{Binding PatchProblem}" Foreground="#FFFF9F0A" TextWrapping="Wrap" Margin="0,0,0,6"
+                                   Visibility="{Binding HasPatchProblem, Converter={StaticResource Visible}}" />
+                        <TextBlock Text="{Binding PatchDetail}" Foreground="{StaticResource SecondaryText}" FontFamily="Consolas" FontSize="12"
+                                   TextWrapping="Wrap" Margin="0,0,0,12" Visibility="{Binding HasPatchDetail, Converter={StaticResource Visible}}" />
+                        <WrapPanel>
+                            <Button Content="Read again" Command="{Binding ReloadPatchCommand}" Margin="0,0,10,6" />
+                            <Button Content="Read a report file..." Command="{Binding ImportPatchCommand}" Style="{StaticResource QuietButton}" Margin="0,0,10,6" />
+                            <Button Content="{Binding AskTitanButton}" Command="{Binding AskTitanCommand}" Style="{StaticResource QuietButton}" Margin="0,0,0,6"
+                                    ToolTip="Experimental: asks Titan's WebAPI (its separate user, not your desk's screens) to write a patch report. What Titan answers shows in the Titan log." />
+                        </WrapPanel>
+                    </StackPanel>
+                </Border>
+
                 <!-- Titan log -->
                 <Border Style="{StaticResource CardStyle}">
                     <StackPanel>

@@ -63,6 +63,40 @@ public sealed class FakeTitan
     public static (int Universe, int Address) Address(int fixture) => (1, (fixture - 1) * 4 + 1);
 
     public int FixtureCount { get { lock (gate) return levels.Count; } }
+
+    /// <summary>The fake fixtures' personality: Red, Green, Blue, Dimmer (dimmer on the 4th channel).</summary>
+    public const string PersonalityXml = """
+        <?xml version="1.0" encoding="utf-8"?>
+        <Fixture Name="Fake RGBD" ShortName="Fake RGBD" Company="Fake Titan" Version="1">
+          <Control>
+            <Attribute ID="Dimmer" Name="Dimmer" Group="I" />
+          </Control>
+          <Mode Name="RGBD" Channels="4">
+            <Include>
+              <Attribute ID="Red" ChannelOffset="1" />
+              <Attribute ID="Green" ChannelOffset="2" />
+              <Attribute ID="Blue" ChannelOffset="3" />
+              <Attribute ID="Dimmer" ChannelOffset="4" />
+            </Include>
+          </Mode>
+        </Fixture>
+        """;
+
+    /// <summary>The patch report (Disk &gt; Reports, CSV) Titan would write for the fake fixtures.</summary>
+    public string PatchReportCsv()
+    {
+        var csv = new System.Text.StringBuilder("Patch View\r\nUser No.,Fixture,Mode,Address,Legend\r\n");
+        lock (gate)
+        {
+            foreach (var n in levels.Keys)
+            {
+                var (universe, address) = Address(n);
+                csv.Append($"{n},Fake RGBD,\"RGBD, 4 DMX\",{universe}.{address},Fake {n}\r\n");
+            }
+        }
+        return csv.ToString();
+    }
+
     public int PlaybackCount { get { lock (gate) return playbacks.Count; } }
 
     /// <summary>Universe 1 as Fake Titan would send it over sACN.</summary>
@@ -161,6 +195,8 @@ public sealed class FakeTitan
                 case "Command/StartNewCommand":
                     me.Line = "";
                     return new(200, null, "command line cleared");
+                case "Reports/GenerateReport":
+                    return new(200, null, "report written (Fake Titan's patch is read straight away)");
                 case "Menu/ExitRootOrLatched":
                     return new(200, null, "exited menu");
                 case "Playbacks/Editor/ClearAll":

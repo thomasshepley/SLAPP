@@ -18,7 +18,7 @@ namespace TitanDeckHost.Service;
 /// intensity. The ports are only open while it runs, and it won't start
 /// while something (real Titan) has them. Every call goes in the Titan log.
 /// </summary>
-public sealed class FakeTitanServer(TitanLog log, ILogger<FakeTitanServer> logger)
+public sealed class FakeTitanServer(TitanLog log, PatchReader patch, ILogger<FakeTitanServer> logger)
 {
     public const int ApiPort = 4430;
     private static readonly Guid SacnSource = Guid.Parse("6d1b2c3a-0000-4000-8000-0000000fa4e0");
@@ -83,6 +83,7 @@ public sealed class FakeTitanServer(TitanLog log, ILogger<FakeTitanServer> logge
             server = app;
             problem = null;
             if (settings.Sacn) StartSacn();
+            patch.UseFake(titan.PatchReportCsv());
             log.Add("Fake Titan", "Host", "START", $"ports {string.Join(", ", wanted)}", "", 200, 0,
                 $"started: {settings.Fixtures} fixtures, {settings.Playbacks} playbacks" +
                 $"{(settings.Desk ? ", desk on 4433 (desk link 4434)" : "")}{(settings.Sacn ? ", sACN universe 1" : "")}" +
@@ -197,6 +198,7 @@ public sealed class FakeTitanServer(TitanLog log, ILogger<FakeTitanServer> logge
 
     private async Task StopLocked()
     {
+        patch.UseFake(null);
         sacnTimer?.Dispose();
         sacnTimer = null;
         sacnOut?.Dispose();
