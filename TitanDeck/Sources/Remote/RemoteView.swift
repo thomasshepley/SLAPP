@@ -31,10 +31,13 @@ struct RemoteView: View {
                 }
             }
             .overlay(alignment: .topLeading) {
-                SelectedFixtureChip(deck: appState.deck)
-                    .padding(.top, 12)
-                    .padding(.leading, 16)
-                    .allowsHitTesting(false)   // touches go through to the desktop
+                HStack(spacing: 8) {
+                    ModeBadge()
+                    SelectedFixtureChip(deck: appState.deck)
+                }
+                .padding(.top, 12)
+                .padding(.leading, 16)
+                .allowsHitTesting(false)   // touches go through to the desktop
             }
             .overlay(alignment: .topTrailing) {
                 HStack(spacing: 10) {

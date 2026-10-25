@@ -29,6 +29,7 @@ builder.Services.AddSingleton(new PairingStore(paths.PairingFile));
 builder.Services.AddSingleton<WindowsProbe>();
 builder.Services.AddSingleton<TitanLog>();
 builder.Services.AddSingleton<DeskLink>();
+builder.Services.AddSingleton<HostModeStore>();
 builder.Services.AddSingleton<PatchReader>();
 builder.Services.AddSingleton<FakeTitanServer>();
 builder.Services.AddSingleton<HostUpdater>();
@@ -74,7 +75,7 @@ network.MapPost("/pair", (PairRequest request) =>
         : Results.Json(new { error = result.Error }, statusCode: StatusCodes.Status403Forbidden);
 });
 
-network.MapGet("/status", (WindowsProbe probe, DeskLink desk) => Status(probe, desk, paths));
+network.MapGet("/status", (WindowsProbe probe, DeskLink desk, HostModeStore mode) => Status(probe, desk, paths, mode));
 
 network.MapPost("/fix", async (FixRequest request, Fixer fixer) =>
 {
@@ -193,7 +194,17 @@ var local = app.MapGroup("/local").AddEndpointFilter(async (context, next) =>
     return await next(context);
 });
 
-local.MapGet("/status", (WindowsProbe probe, DeskLink desk) => Status(probe, desk, paths));
+local.MapGet("/status", (WindowsProbe probe, DeskLink desk, HostModeStore mode) => Status(probe, desk, paths, mode));
+
+// Test or Show. Show stops Fake Titan and turns the experimental bits off.
+local.MapGet("/mode", (HostModeStore mode) => new ModeDto(mode.Mode));
+local.MapPost("/mode", async (ModeDto request, HostModeStore mode, FakeTitanServer fake) =>
+{
+    if (request.Mode is not ("test" or "show")) return Results.BadRequest(new { error = "Mode is test or show." });
+    mode.Set(request.Mode == "show");
+    if (mode.IsShow) await fake.Stop();
+    return Results.Ok(new ModeDto(mode.Mode));
+});
 
 local.MapGet("/pairing", () => PairingInfo(pairing));
 
@@ -277,7 +288,7 @@ static IResult DmxLevels(int universe, int start, int count, DmxUniverses store,
         levels.Priority, levels.Sources, (int)levels.Age.TotalMilliseconds));
 }
 
-static StatusResponse Status(WindowsProbe probe, DeskLink desk, HostPaths paths)
+static StatusResponse Status(WindowsProbe probe, DeskLink desk, HostPaths paths, HostModeStore mode)
 {
     var facts = probe.Gather();
     var checks = RdpDiagnosis.Run(facts);
@@ -299,7 +310,8 @@ static StatusResponse Status(WindowsProbe probe, DeskLink desk, HostPaths paths)
         facts.TermsrvVersion,
         facts.TitanRunning,
         Outbox(paths).Count,
-        HostInfo.Version);
+        HostInfo.Version,
+        mode.Mode);
 }
 
 // Picture quality isn't a security setting, so a paired iPad may change it.

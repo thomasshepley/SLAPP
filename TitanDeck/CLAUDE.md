@@ -240,6 +240,11 @@ key images. Never index hardware keys with profile indices directly.
   new actions to both (`TitanDeckHost/src/Core/Titan/FakeTitan.cs` and the .py)
   when you add them to `TitanEndpoints`.
 
+- **Test / Show mode** (`SettingsKeys.showMode`, Settings > Mode): Show hides
+  test tools in Settings and forces experimental features off. Anything new
+  that's only for testing goes behind `!showMode` too; the TEST badge
+  (`Support/ModeBadge`) shows in Test mode.
+
 - **Versions and changelog:** `CHANGELOG.md` is the release notes. Every change
   that goes to `main` adds an entry at the top (`## 0.MINOR.PATCH - YYYY-MM-DD -
   Title`, then `- ` bullets, plain enough for the TestFlight app) and bumps

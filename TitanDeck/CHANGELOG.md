@@ -7,6 +7,11 @@ the GitHub Actions run that built it. The top entry is shown in the app
 so add an entry - and bump `MARKETING_VERSION` in `project.yml` to match -
 with every change that goes to `main`.
 
+## 0.19.0 - 2026-10-25 - Test and Show modes
+
+- **Test or Show:** Settings > Mode. Test (as now) has the test tools and an orange TEST badge on the Remote screen, the loading screen and Settings. Show asks first ("All test features will be disabled if you confirm this"), then hides the test tools: the test fire buttons, the virtual Stream Deck, Recent calls and the soak test log (it still records in the background), and turns the experimental "Find addresses with Patch" off. Switch back any time.
+- **In Show mode the loading screen warns** if the "Titan" answering is really Fake Titan, or if TitanDeck Host (0.7) is still in Test mode.
+
 ## 0.18.0 - 2026-10-25 - Loading screen, patch report, tidier deck
 
 - **Loading screen:** TitanDeck opens with a health check before Continue: Titan answering, the Stream Deck, the PC's remote desktop, TitanDeck Host, sACN levels and the desk link, each ticked or explained. Meanwhile the Stream Deck shows the TitanDeck logo with a shine sweeping across it, so you can see the deck's alive.

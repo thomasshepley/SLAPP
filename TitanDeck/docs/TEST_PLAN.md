@@ -194,6 +194,18 @@ each key land.
       Quick Keys <-> CCT. Nothing selected: the keypad's Menu key reads
       Nothing Selected, a tap does nothing, a hold opens the menu.
 
+## 5b3. Test and Show modes (0.19, Host 0.7)
+
+- [ ] Settings > Mode > Show: the confirmation says "All test features will
+      be disabled if you confirm this". After it: no Test section, no Show
+      virtual Stream Deck, no Recent calls or soak log, no Find addresses with
+      Patch; no TEST badge on the Remote screen.
+- [ ] Back to Test: all of those return and the TEST badge is back.
+- [ ] Host window > Mode > Show (same confirmation): Fake Titan stops and its
+      card goes; Ask Titan goes; badge says SHOW. Restart the PC: still Show.
+- [ ] iPad in Show, Host in Test: the loading screen warns about the Host.
+      iPad in Show with Fake Titan answering: it warns that it's Fake Titan.
+
 ## 5c. Deck pages (0.13)
 
 - [ ] Every page: keys with nothing on them are black on the Stream Deck, not

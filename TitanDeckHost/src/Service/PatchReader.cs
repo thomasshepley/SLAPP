@@ -11,7 +11,7 @@ namespace TitanDeckHost.Service;
 /// own patch is used instead. A report picked in the Host window counts
 /// until a newer one turns up in the folder.
 /// </summary>
-public sealed class PatchReader(TitanLog log, ILogger<PatchReader> logger)
+public sealed class PatchReader(TitanLog log, HostModeStore mode, ILogger<PatchReader> logger)
 {
     private static readonly string[] ReportTypes = ["*.csv", "*.xml", "*.htm", "*.html"];
     private static readonly TimeSpan Rescan = TimeSpan.FromSeconds(15);
@@ -99,6 +99,14 @@ public sealed class PatchReader(TitanLog log, ILogger<PatchReader> logger)
     {
         const string path = "/titan/script/2/Reports/GenerateReport";
         const string query = "format=CSV&reportSections=Fixtures";
+        if (mode.IsShow)
+        {
+            lock (gate)
+            {
+                problem = "Asking Titan for a report is a test feature: it's off in Show mode. Use Disk > Reports on Titan.";
+                return DtoLocked();
+            }
+        }
         var started = DateTimeOffset.Now;
         int status;
         string note;

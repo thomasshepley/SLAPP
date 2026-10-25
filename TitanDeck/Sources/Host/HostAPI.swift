@@ -76,6 +76,8 @@ struct HostStatus: Codable, Equatable {
     var titanRunning: Bool
     var filesWaitingForIPad: Int
     var hostVersion: String
+    /// "test" or "show" (Host 0.7+; nil from older Hosts).
+    var mode: String?
 }
 
 struct HostFixRequest: Codable, Equatable {

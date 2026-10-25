@@ -27,6 +27,8 @@ WizardStyle=modern
 Compression=lzma2
 SolidCompression=yes
 CloseApplications=yes
+SetupIconFile=..\src\App\Assets\TitanDeckHost.ico
+UninstallDisplayIcon={app}\TitanDeckHost.exe
 UninstallDisplayName=TitanDeck Host
 
 [Files]

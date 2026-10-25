@@ -9,20 +9,23 @@ import StreamDeckSimulator
 struct SettingsView: View {
     @EnvironmentObject private var appState: AppState
     @State private var showingWhatsNew = false
+    /// Show mode hides the test tools (Settings > Mode).
+    @AppStorage(SettingsKeys.showMode) private var showMode = false
 
     var body: some View {
         NavigationStack {
             Form {
+                ModeSection(intensity: appState.intensity)
                 connectionSection
                 RemoteDesktopSection(session: appState.rdp)
                 HostSection(host: appState.host)
                 DeskLinkSection(desk: appState.deskLink, intensity: appState.intensity, host: appState.host)
                 FileDropSection(store: appState.fileDrop, host: appState.host)
-                testSection
+                if !showMode { testSection }
                 DeckSection(deck: appState.deck)
-                SoakLogSection(store: appState.connectionLog)
+                if !showMode { SoakLogSection(store: appState.connectionLog) }
                 WatchSection(watch: appState.watch)
-                logSection
+                if !showMode { logSection }
                 aboutSection
             }
             .navigationTitle("Settings")
@@ -372,6 +375,7 @@ private struct RemoteDesktopSection: View {
 private struct DeckSection: View {
     @EnvironmentObject private var appState: AppState
     @ObservedObject var deck: DeckSessionController
+    @AppStorage(SettingsKeys.showMode) private var showMode = false
     @State private var confirmReset = false
     @State private var isImporting = false
     @State private var importError: String?
@@ -391,9 +395,11 @@ private struct DeckSection: View {
             } label: {
                 Label("Edit deck profile", systemImage: "square.grid.3x3.fill")
             }
-            // In every build, TestFlight included, so the deck can be tested without hardware.
-            Button("Show virtual Stream Deck", systemImage: "rectangle.grid.2x2") {
-                StreamDeckSimulator.show(defaultStreamDeck: .regular)
+            // Test mode, every build (TestFlight included): the deck can be tried without hardware.
+            if !showMode {
+                Button("Show virtual Stream Deck", systemImage: "rectangle.grid.2x2") {
+                    StreamDeckSimulator.show(defaultStreamDeck: .regular)
+                }
             }
             Picker("Deck mounted", selection: Binding(
                 get: { deck.profile.orientation },
