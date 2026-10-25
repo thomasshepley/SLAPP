@@ -24,6 +24,14 @@ public class RdpTests
         Assert.False(ini.Supports("10.0.1.1"));
     }
 
+    [Theory]
+    [InlineData(6, 2, 26100, 9549, "10.0.26100.9549")]   // what Windows tells programs without a Windows 10 manifest
+    [InlineData(10, 0, 26100, 9549, "10.0.26100.9549")]
+    [InlineData(6, 3, 19045, 5371, "10.0.19045.5371")]
+    [InlineData(6, 1, 7601, 24546, "6.1.7601.24546")]    // a real Windows 7 build stays as it is
+    public void ReadsTheRealTermsrvBuild(int major, int minor, int build, int revision, string expected) =>
+        Assert.Equal(expected, RdpWrapIni.TermsrvBuild(major, minor, build, revision));
+
     [Fact]
     public void RejectsFilesThatAreNotRdpWrapIni()
     {

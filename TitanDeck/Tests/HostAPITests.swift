@@ -120,4 +120,13 @@ final class HostAPITests: XCTestCase {
         XCTAssertFalse(HostProtocol.fixesAllowedFromIPad.contains("AddDefenderExclusion"))
         XCTAssertFalse(HostProtocol.fixesAllowedFromIPad.contains("InstallRdpWrapper"))
     }
+
+    func testAddressesLoseTheirInterfaceEnding() {
+        XCTAssertEqual(HostAPI.cleanAddress(" 192.168.1.20%en0 "), "192.168.1.20", "what discovery used to fill in")
+        XCTAssertEqual(HostAPI.cleanAddress("192.168.1.20%en0:5000"), "192.168.1.20:5000")
+        XCTAssertEqual(HostAPI.cleanAddress("[fe80::1%en0]:4431"), "[fe80::1]:4431")
+        XCTAssertEqual(HostAPI.cleanAddress("titan-pc.local"), "titan-pc.local")
+        XCTAssertEqual(HostAPI.url(host: HostAPI.cleanAddress("10.0.0.5%en0"), path: "hello")?.absoluteString,
+                       "http://10.0.0.5:4431/api/v1/hello")
+    }
 }
