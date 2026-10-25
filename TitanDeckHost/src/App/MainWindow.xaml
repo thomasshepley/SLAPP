@@ -1,7 +1,7 @@
 <Window x:Class="TitanDeckHost.App.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="TitanDeck Host" Width="860" Height="900" MinWidth="560" MinHeight="500"
+        Title="TitanDeck Host" Icon="/Assets/TitanDeckHost.ico" Width="860" Height="900" MinWidth="560" MinHeight="500"
         Background="{StaticResource Background}" WindowStartupLocation="CenterScreen">
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="Visible" />

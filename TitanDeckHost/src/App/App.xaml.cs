@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using System.Drawing;
-using System.Drawing.Drawing2D;
 using System.Threading;
 using System.Windows;
 using Forms = System.Windows.Forms;
@@ -73,26 +72,11 @@ public partial class App : Application
     }
 
     /// <summary>A small blue rounded square with "TD", drawn at runtime.</summary>
+    /// <summary>The Host icon (the TitanDeck keys with HOST on), at the tray's size.</summary>
     private static Icon MakeIcon()
     {
-        using var bitmap = new Bitmap(32, 32);
-        using (var g = Graphics.FromImage(bitmap))
-        {
-            g.SmoothingMode = SmoothingMode.AntiAlias;
-            g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
-            using var path = new GraphicsPath();
-            const int r = 8;
-            path.AddArc(0, 0, r, r, 180, 90);
-            path.AddArc(31 - r, 0, r, r, 270, 90);
-            path.AddArc(31 - r, 31 - r, r, r, 0, 90);
-            path.AddArc(0, 31 - r, r, r, 90, 90);
-            path.CloseFigure();
-            using var fill = new SolidBrush(Color.FromArgb(10, 132, 255));
-            g.FillPath(fill, path);
-            using var font = new Font("Segoe UI", 12, System.Drawing.FontStyle.Bold, GraphicsUnit.Pixel);
-            var size = g.MeasureString("TD", font);
-            g.DrawString("TD", font, Brushes.White, (32 - size.Width) / 2, (32 - size.Height) / 2);
-        }
-        return Icon.FromHandle(bitmap.GetHicon());
+        var resource = GetResourceStream(new Uri("pack://application:,,,/Assets/TitanDeckHost.ico"));
+        using var stream = resource!.Stream;
+        return new Icon(stream, Forms.SystemInformation.SmallIconSize);
     }
 }

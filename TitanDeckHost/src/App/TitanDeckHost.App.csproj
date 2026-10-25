@@ -12,7 +12,12 @@
     <SelfContained>true</SelfContained>
     <PublishSingleFile>true</PublishSingleFile>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <!-- The TitanDeck icon with HOST on it (tools/make_icon.py draws it). -->
+    <ApplicationIcon>Assets\TitanDeckHost.ico</ApplicationIcon>
   </PropertyGroup>
+  <ItemGroup>
+    <Resource Include="Assets\TitanDeckHost.ico" />
+  </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../Core/TitanDeckHost.Core.csproj" />
   </ItemGroup>
