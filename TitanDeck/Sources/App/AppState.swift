@@ -134,6 +134,7 @@ final class AppState: ObservableObject {
             }
         }
         deck.flashFadeRules = flashFadeRules
+        deck.heldColorHex = heldKeyColour
         deskLink.onSelection = { [weak self] fixtures in
             self?.deck.setDeskSelection(fixtures)
         }
@@ -369,6 +370,16 @@ final class AppState: ObservableObject {
             deck.flashFadeRules = flashFadeRules
         }
     }
+
+    /// What a held deck key turns (Settings > Deck > Held key colour).
+    @Published var heldKeyColour: String = UserDefaults.standard.string(forKey: AppState.heldColourKey)
+        ?? DeckRenderer.defaultHeldHex {
+        didSet {
+            UserDefaults.standard.set(heldKeyColour, forKey: Self.heldColourKey)
+            deck.heldColorHex = heldKeyColour
+        }
+    }
+    static let heldColourKey = "deck.heldColour"
 
     /// Titan's playback handles as the deck's Connect Cue choices.
     static func cueChoices(_ handles: [PlaybackHandleState]) -> [CueChoice] {

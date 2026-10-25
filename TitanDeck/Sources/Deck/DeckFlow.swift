@@ -3,15 +3,16 @@ import Foundation
 
 /// The deck's moment-to-moment logic that isn't tied to the hardware: what
 /// the keypad has typed, the pages the deck shows in place of a profile page
-/// (the main menu, the intensity keys after a selection), and how keys read
+/// (the main menu, Quick Keys after a selection), and how keys read
 /// on the page they're on. Pure, so it's tested without a Stream Deck.
 enum DeckFlow {
     /// A page shown in place of the profile page for a moment.
     enum Overlay: Equatable {
-        /// The main menu of layouts (Menu key held for 2 s).
+        /// The main menu of layouts (Menu key held for a second).
         case menu
-        /// Fixtures were selected on the keypad ("102 Enter"): the intensity
-        /// keys, with a way back to `returnTo`.
+        /// Quick Keys: fixtures were selected ("102 Enter", or on the desk),
+        /// or Menu was tapped on the keypad. The intensity nudges, flash and
+        /// CCT, with a way back to the keypad.
         case selection(returnTo: Int)
         /// The colour temperature presets, from a selection or a CCT key.
         case colour(returnTo: Int)
@@ -127,13 +128,25 @@ enum DeckFlow {
 
     // MARK: Pages
 
-    /// Shown after a selection: the profile's Intensity page (or, failing
-    /// that, the standard nudges) with Return to Keypad on the bottom right,
-    /// plus CCT (middle column, 4th row on the 15-key deck) and the hold-for-0%
-    /// flash above it. On other decks, or if those spots are taken, they go in
-    /// the first free spots.
+    /// What the intensity page is called. Profiles from before 0.17 call it
+    /// "Intensity", which still counts.
+    static let quickKeysName = "Quick Keys"
+
+    /// The profile's Quick Keys page (or one still called Intensity).
+    static func quickKeysPageIndex(in profile: DeckProfile) -> Int? {
+        profile.pages.firstIndex { page in
+            [quickKeysName, "Intensity"].contains { page.name.caseInsensitiveCompare($0) == .orderedSame }
+        }
+    }
+
+    /// Quick Keys: the profile's Quick Keys page (or, failing that, the
+    /// standard nudges) with Return to Keypad on the bottom right, plus CCT
+    /// (middle column, 4th row on the 15-key deck) and the hold-for-0% flash
+    /// above it. On other decks, or if those spots are taken, they go in the
+    /// first free spots. Shown after a selection, from Menu on the keypad,
+    /// and whenever the Quick Keys page itself is picked.
     static func selectionPage(profile: DeckProfile, returnTo: Int) -> DeckPage {
-        let source = page(named: "Intensity", in: profile)
+        let source = quickKeysPageIndex(in: profile).map { profile.pages[$0] }
             ?? profile.pages.first { page in page.keys.contains { $0.action.map(isIntensity) ?? false } }
         var keys = withReturnKey(source?.keys ?? defaultIntensityKeys(keyCount: profile.keyCount),
                                  keyCount: profile.keyCount, returnTo: returnTo)
@@ -154,7 +167,7 @@ enum DeckFlow {
             extra.index = free
             keys.append(extra)
         }
-        return DeckPage(name: "Selection", keys: keys.sorted { $0.index < $1.index })
+        return DeckPage(name: quickKeysName, keys: keys.sorted { $0.index < $1.index })
     }
 
     /// The colour temperature presets: the profile's Colour page, or the
@@ -215,13 +228,48 @@ enum DeckFlow {
         profile.pages.first { $0.name.caseInsensitiveCompare(name) == .orderedSame }
     }
 
-    /// Swaps the Menu key for Return to Keypad on the bottom right key.
+    /// Swaps the Menu key for Return to Keypad on the bottom right key. It's
+    /// still a Menu key underneath: a tap goes to the keypad, a hold opens
+    /// the menu of pages.
     private static func withReturnKey(_ source: [KeyDefinition], keyCount: Int, returnTo: Int) -> [KeyDefinition] {
         let returnIndex = max(keyCount - 1, 0)
         var keys = source.filter { $0.action != .mainMenu && $0.index != returnIndex }
-        keys.append(KeyDefinition(index: returnIndex, label: "Return to Keypad", colorHex: DeckProfile.pageColor,
-                                  sfSymbol: returnSymbol, action: .switchPage(returnTo)))
+        keys.append(KeyDefinition(index: returnIndex, label: returnLabel, colorHex: DeckProfile.pageColor,
+                                  sfSymbol: returnSymbol, action: .mainMenu))
         return keys
+    }
+
+    static let returnLabel = "Return to Keypad"
+
+    /// Where a tap on the Menu key goes: from the keypad to Quick Keys, from
+    /// anywhere else back to the keypad. A profile with no keypad page just
+    /// steps through its pages.
+    enum MenuTap: Equatable {
+        case quickKeys(returnTo: Int)
+        case page(Int)
+    }
+
+    static func menuTap(onPage index: Int, overlay: Overlay?, profile: DeckProfile) -> MenuTap {
+        guard let keypad = keypadPageIndex(in: profile) else {
+            return .page(nextPage(after: index, pageCount: profile.pages.count))
+        }
+        return overlay == nil && index == keypad ? .quickKeys(returnTo: keypad) : .page(keypad)
+    }
+
+    /// What the Menu key reads: "Quick Keys" on the keypad (where a tap goes),
+    /// the page's name elsewhere, and nil (its own Return to Keypad label) on
+    /// Quick Keys and the colour keys.
+    static func menuLabel(onPage index: Int, overlay: Overlay?, profile: DeckProfile, pageName: String?) -> String? {
+        switch overlay {
+        case .selection?, .colour?:
+            return nil
+        case nil:
+            if index == quickKeysPageIndex(in: profile) { return nil }
+            if index == keypadPageIndex(in: profile) { return quickKeysName }
+            return pageName
+        default:
+            return pageName
+        }
     }
 
     /// A return-key arrow, for the way back to the keypad.
@@ -244,7 +292,7 @@ enum DeckFlow {
         return DeckPage(name: "Main Menu", keys: Array(keys))
     }
 
-    /// The page to come to from the Menu key: the next one, wrapping round.
+    /// The next page, wrapping round (Menu on a profile with no keypad).
     static func nextPage(after index: Int, pageCount: Int) -> Int {
         (index + 1) % max(pageCount, 1)
     }

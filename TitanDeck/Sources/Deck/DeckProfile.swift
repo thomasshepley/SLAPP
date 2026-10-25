@@ -78,20 +78,25 @@ extension DeckProfile {
 
     /// The shipped profile, laid out for a 15-key Stream Deck in portrait:
     ///
-    ///     Keypad              Intensity           Colour              Playbacks
+    ///     Keypad              Quick Keys*         Colour              Playbacks
     ///     1     2     3       +1%  +5%  +10%      2700K 3200K 4000K   GO 1  GO 2  GO 3
     ///     4     5     6       -1%  -5%  -10%      4500K 5600K 6000K   IN 1  IN 2  IN 3
-    ///     7     8     9       .    .    .         6500K 7500K 10000K  OUT 1 OUT 2 OUT 3
-    ///     Exit  0     Enter   .    .    .         .     .     .       .     CONNECT .
-    ///     Clear Menu  @       Clear Menu .        Clear Menu  .       .     Menu  .
+    ///     7     8     9       .    0%   .         6500K 7500K 10000K  OUT 1 OUT 2 OUT 3
+    ///     Exit  0     Enter   .    CCT  .         .     .     .       .     CONNECT .
+    ///     Clear Menu  @       Clear .    Return   Clear Menu  .       .     Menu  .
+    ///
+    /// * As shown (`DeckFlow.selectionPage`): the hold-for-0% flash, CCT and
+    /// Return to Keypad are added on the deck; the saved page has Clear Menu.
     ///
     /// The Playbacks GOs fire whichever Titan cues Connect Cue puts on them;
     /// IN / OUT show and set those cues' fade times.
     ///
     /// Layouts: twelve keys recalling Titan workspaces 1-12, named from Titan.
     ///
-    /// Menu (hold 2 s) opens the main menu of layouts. On any other deck size
-    /// the same keys are placed in order with Menu on the last key.
+    /// Menu: a tap swaps between the keypad and Quick Keys (anywhere else,
+    /// back to the keypad); held for a second it opens the main menu of
+    /// layouts. On any other deck size the same keys are placed in order with
+    /// Menu on the last key.
     static func makeDefault(keyCount: Int = 15, orientation: DeckOrientation = .portraitClockwise) -> DeckProfile {
         let count = max(keyCount, 2)
         let exact = count == 15 && DeckGeometry(keyCount: count, orientation: orientation).logicalColumns == 3
@@ -139,7 +144,7 @@ extension DeckProfile {
             [key("EXIT", "#8A5A00", .keypadExit), digit(0), key("ENTER", goColor, .keypadEnter)],
             [clear, menu, key("@", pageColor, .keypadAt)],
         ])
-        let intensity = page("Intensity", [
+        let intensity = page(DeckFlow.quickKeysName, [
             [nudge(1), nudge(5), nudge(10)],
             [nudge(-1), nudge(-5), nudge(-10)],
             [nil, nil, nil],

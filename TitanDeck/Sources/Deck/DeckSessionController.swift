@@ -15,8 +15,8 @@ final class DeckSessionController: ObservableObject {
     @Published private(set) var device: StreamDeck?
     @Published private(set) var statusText = "Not started"
     @Published private(set) var currentPageIndex = 0
-    /// A page shown in place of the profile page: the main menu, or the
-    /// intensity keys after a keypad selection.
+    /// A page shown in place of the profile page: the main menu, or Quick
+    /// Keys after a selection.
     @Published private(set) var flowOverlay: DeckFlow.Overlay?
     /// True while the main menu of layouts is showing instead of a page.
     var isShowingMenu: Bool { flowOverlay == .menu }
@@ -46,6 +46,14 @@ final class DeckSessionController: ObservableObject {
     var flashFadeRules: [FlashFadeRule] = []
     /// Latching keys that are switched on (their pressed look shows until pressed again).
     @Published private(set) var latchedKeys: Set<UUID> = []
+    /// What a key turns while it's held, unless it has a pressed look of its
+    /// own (Settings > Deck > Held key colour).
+    @Published var heldColorHex: String? = DeckRenderer.defaultHeldHex {
+        didSet { if heldColorHex != oldValue { redraw() } }
+    }
+    /// Keys a finger is on right now, so a red failure flash goes back to
+    /// the held look rather than the plain key.
+    private var heldKeys: Set<Int> = []
     /// What's been typed on the deck's keypad, to spot "102 Enter".
     private var keypad = DeckFlow.KeypadBuffer()
     /// What's selected in Titan, as far as the deck knows: from the desk
@@ -67,17 +75,17 @@ final class DeckSessionController: ObservableObject {
     /// "101-110" for the Remote screen, or nil with nothing selected.
     var selectionLabel: String? { DeckFlow.selectionLabel(selectedFixtures) }
     private var started = false
-    /// Running while the Menu key is held; opens the menu after 2 s.
+    /// Running while the Menu key is held; opens the menu after a second.
     private var menuHoldTask: Task<Void, Never>?
-    static let menuHoldSeconds: Double = 2
+    static let menuHoldSeconds: Double = 1
     private var cancellables = Set<AnyCancellable>()
 
     init(profile: DeckProfile) {
         self.profile = profile
     }
 
-    /// What the deck is showing: a profile page, the main menu, or the
-    /// intensity keys after a selection.
+    /// What the deck is showing: a profile page, the main menu, or Quick
+    /// Keys (after a selection, or its own page picked).
     var currentPage: DeckPage? {
         switch flowOverlay {
         case .menu?: return DeckFlow.menuPage(profile: profile)
@@ -93,7 +101,13 @@ final class DeckSessionController: ObservableObject {
             let cue = profile.cue(onSlot: slot)
             return DeckCues.fadePage(current: fadeOut ? cue?.fadeOut : cue?.fadeIn, fadeOut: fadeOut,
                                      keyCount: profile.keyCount)
-        case nil: return page(currentPageIndex)
+        case nil:
+            // The Quick Keys page always comes with its flash, CCT and way back.
+            if currentPageIndex == DeckFlow.quickKeysPageIndex(in: profile) {
+                return DeckFlow.selectionPage(profile: profile,
+                                              returnTo: DeckFlow.keypadPageIndex(in: profile) ?? currentPageIndex)
+            }
+            return page(currentPageIndex)
         }
     }
 
@@ -101,10 +115,12 @@ final class DeckSessionController: ObservableObject {
         profile.pages.indices.contains(index) ? profile.pages[index] : nil
     }
 
-    /// A key as drawn: the Menu key carries the current page's name, cue keys
-    /// their cue and fade time.
+    /// A key as drawn: the Menu key says where it goes or the page it's on,
+    /// cue keys carry their cue and fade time.
     func displayedKey(at index: Int) -> KeyDefinition? {
-        DeckFlow.displayed(currentPage?.key(at: index), onPage: currentPage?.name, workspaceNames: workspaceNames)
+        let menuLabel = DeckFlow.menuLabel(onPage: currentPageIndex, overlay: flowOverlay, profile: profile,
+                                           pageName: currentPage?.name)
+        return DeckFlow.displayed(currentPage?.key(at: index), onPage: menuLabel, workspaceNames: workspaceNames)
             .map { DeckCues.displayed($0, slots: profile.cueSlots) }
             .map { key in
                 // The flash key carries the selected fixture's live level.
@@ -244,6 +260,7 @@ final class DeckSessionController: ObservableObject {
 
     /// `index` is the logical key (as laid out in the profile).
     private func handleKey(_ index: Int, pressed: Bool) {
+        if pressed { heldKeys.insert(index) } else { heldKeys.remove(index) }
         guard let key = currentPage?.key(at: index) else { return }
 
         // A latching key flips its look on every press, action or not.
@@ -255,11 +272,14 @@ final class DeckSessionController: ObservableObject {
 
         guard pressed else {
             if action == .mainMenu, let hold = menuHoldTask {
-                // Let go before 2 s: a tap, so on to the next page.
+                // Let go within the second: a tap, so keypad <-> Quick Keys.
                 hold.cancel()
                 menuHoldTask = nil
                 setOverlay(nil, at: index)
-                showPage(DeckFlow.nextPage(after: currentPageIndex, pageCount: profile.pages.count))
+                switch DeckFlow.menuTap(onPage: currentPageIndex, overlay: flowOverlay, profile: profile) {
+                case .quickKeys(let keypad): show(.selection(returnTo: keypad))
+                case .page(let page): showPage(page)
+                }
                 return
             }
             if action == .flashSelection {
@@ -319,7 +339,7 @@ final class DeckSessionController: ObservableObject {
             refreshSelection()
             switch event {
             case .selected where flowOverlay == nil:
-                // "102 Enter" selected fixtures: bring up the intensity keys.
+                // "102 Enter" selected fixtures: bring up Quick Keys.
                 show(.selection(returnTo: currentPageIndex))
             case .clearedProgrammer:
                 // Nothing's selected any more, so back to the keypad.
@@ -411,7 +431,8 @@ final class DeckSessionController: ObservableObject {
             try? await Task.sleep(nanoseconds: 400_000_000)
             guard let self, self.currentPageIndex == page, self.flowOverlay == shown,
                   self.overlays[index] == .failure else { return }
-            self.setOverlay(nil, at: index)
+            // Still held (a flash key): back to the held look until it's let go.
+            self.setOverlay(self.heldKeys.contains(index) ? .pressed : nil, at: index)
         }
     }
 
@@ -483,7 +504,7 @@ final class DeckSessionController: ObservableObject {
         }
         let image = DeckRenderer.image(for: key, size: size, overlay: overlay,
                                        isActive: isActive(key), isLatched: isLatched(key),
-                                       quarterTurns: geometry.imageQuarterTurns)
+                                       heldHex: heldColorHex, quarterTurns: geometry.imageQuarterTurns)
         device.setKeyImage(image, at: physical)
     }
 

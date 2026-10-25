@@ -296,7 +296,7 @@ struct KeyInspectorView: View {
         case .workspace:
             Text("The workspace's user number in Titan (its saved window layout). Leave the label blank and the key shows the workspace's name from Titan.")
         case .mainMenu:
-            Text("Shows the page's name. Tap for the next page; hold for 2 seconds for the menu of all pages.")
+            Text("On the keypad it reads Quick Keys and a tap goes there; on any other page it shows the page's name and a tap goes back to the keypad. Hold for a second for the menu of all pages.")
         default:
             EmptyView()
         }

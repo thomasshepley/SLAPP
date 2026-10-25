@@ -69,8 +69,8 @@ TitanDeck/
   through `StreamDeck.inputEventHandler`, and images go out with
   `setKeyImage(_:at:)`.
 - **Default profile** is for a 15-key Stream Deck mounted in portrait: Keypad,
-  Intensity and Playbacks pages, with a Menu key (hold 2 s) that opens a menu
-  of layouts. If a different-sized deck is plugged in while the profile is
+  Quick Keys, Colour, Playbacks and Layouts pages. A tap on Menu swaps between
+  the keypad and Quick Keys; holding it for a second opens a menu of layouts. If a different-sized deck is plugged in while the profile is
   still the untouched default, it re-flows to fit. Edited profiles are never
   touched.
 - **Settings** is a tab next to the remote view for now. A deck key with the
@@ -91,5 +91,6 @@ TitanDeck/
 4. No Stream Deck to hand, or running in the iPad Simulator? Settings → **Show
    virtual Stream Deck**.
 5. Plug in the Stream Deck. Page 1 is the Avolites keypad (1-9, Exit 0 Enter,
-   Clear Menu @). Hold Menu for 2 s to switch to Intensity or Playbacks. A key
+   Clear Menu @). Tap Menu for Quick Keys, hold it for a second for the other
+   pages. A key
    flashes red if Titan doesn't answer within 500 ms.

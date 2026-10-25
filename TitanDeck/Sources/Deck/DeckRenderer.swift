@@ -12,13 +12,17 @@ enum DeckRenderer {
         case failure
     }
 
+    /// What a held key turns, to start with: console-button amber.
+    static let defaultHeldHex = "#FFB300"
+
     /// `isActive` draws a live-playback highlight: a bright frame and a bar
     /// along the bottom, readable at a glance on set.
     /// `quarterTurns` rotates the finished image (positive = clockwise) for a
     /// deck mounted in portrait.
     static func image(for key: KeyDefinition?, size: CGSize, overlay: Overlay = .none, isActive: Bool = false,
-                      isLatched: Bool = false, quarterTurns: Int) -> UIImage {
-        let upright = image(for: key, size: size, overlay: overlay, isActive: isActive, isLatched: isLatched)
+                      isLatched: Bool = false, heldHex: String? = nil, quarterTurns: Int) -> UIImage {
+        let upright = image(for: key, size: size, overlay: overlay, isActive: isActive, isLatched: isLatched,
+                            heldHex: heldHex)
         guard quarterTurns % 4 != 0 else { return upright }
         let format = UIGraphicsImageRendererFormat()
         format.scale = 1
@@ -32,17 +36,20 @@ enum DeckRenderer {
     }
 
     /// `isLatched` means a latching key has been pressed on. Keys with a
-    /// pressed look draw it while held, latched or live (per its mode);
-    /// keys without one get the usual white flash while held.
+    /// pressed look draw it while held, latched or live (per its mode). Any
+    /// other held key turns `heldHex` for as long as it's held (or gets a
+    /// white wash with no colour given).
     static func image(for key: KeyDefinition?, size: CGSize, overlay: Overlay = .none, isActive: Bool = false,
-                      isLatched: Bool = false) -> UIImage {
+                      isLatched: Bool = false, heldHex: String? = nil) -> UIImage {
         let format = UIGraphicsImageRendererFormat()
         format.scale = 1
         format.opaque = true
         let rect = CGRect(origin: .zero, size: size)
         let pressedLook = key?.showsPressedLook(held: overlay == .pressed, latched: isLatched, live: isActive) ?? false
-        let key = key?.appearance(pressed: pressedLook)
-        let flash = overlay == .pressed && key?.pressedStyle == nil
+        var key = key?.appearance(pressed: pressedLook)
+        let held = overlay == .pressed && !pressedLook
+        if held, let heldHex { key?.colorHex = heldHex }
+        let flash = held && heldHex == nil
 
         return UIGraphicsImageRenderer(size: size, format: format).image { context in
             let background: UIColor
