@@ -14,12 +14,16 @@ TitanDeckHost/
 │                  PairingStore, RdpWrapIni, RdpDiagnosis (facts -> plain-English checks
 │                  with fixes), SafeFileName, API messages (Api/Messages.cs),
 │                  sACN (Sacn/: E1.31 packet parser + DmxUniverses merge store),
-│                  TitanUiConfig (Titan's UI WebAPI config, checklist line, proxy allowlist)
+│                  TitanUiConfig (Titan's UI WebAPI config, checklist line, proxy allowlist),
+│                  FakeTitan (pretend Titan: WebAPI user + desk user state machine),
+│                  TitanLog (every Titan call, polls counted), Update/HostUpdate (GitHub releases)
 ├── src/Service/   net8.0-windows Windows service (LocalSystem): Kestrel API on
 │                  0.0.0.0:4431 (paired iPad) and 127.0.0.1:4432 (the Host window),
 │                  WindowsProbe (reads the PC), Fixer (applies fixes), Advertiser (mDNS),
 │                  SacnListener (joins sACN multicast on every adapter, port shared),
-│                  DeskLink (finds/edits Titan's .exe.config, /titan proxy on 0.0.0.0:4434)
+│                  DeskLink (finds/edits Titan's .exe.config, /titan proxy on 0.0.0.0:4434),
+│                  FakeTitanServer (Kestrel on 4430 + 4433 only while started, sACN out),
+│                  HostUpdater (checks GitHub every 6 h, downloads + verifies the installer)
 ├── src/App/       net8.0-windows WPF tray app + dashboard; talks only to 127.0.0.1:4432
 ├── tests/Core.Tests/  xunit
 └── installer/     Inno Setup script
@@ -62,6 +66,22 @@ TitanDeckHost/
   menu. Enabling edits Titan's file, so it's PC-only (not in
   `Fixer.AllowedFromIPad`); only files that already contain `webapi.enabled`
   are touched, each backed up as `*.titandeck-backup` first.
+- **Fake Titan** (`FakeTitan`) is the primary fake now; `TitanDeck/Tools/fake_titan.py`
+  stays for the Mac. Keep them answering the same calls: when an action is added
+  to `TitanEndpoints`, add it to both. It only listens while started from the
+  window, refuses to start if 4430/4433 are taken (Titan running), and stops
+  with the service. Patch on the desk port answers but is logged flagged.
+- **Titan log** (`TitanLog`): Fake Titan and the desk link both write to it.
+  Poll paths (`TitanLog.IsPoll`) are counted, and only listed again when their
+  status changes. Window: `/local/titanlog`; iPad: `/api/v1/titanlog?after=`.
+  Calls TitanDeck sends straight to the real WebAPI on 4430 don't pass through
+  the Host, so they aren't logged yet (a pass-through port is the plan).
+- **Updates** (`HostUpdate`/`HostUpdater`): only releases tagged `host-v*` with a
+  `TitanDeckHost-Setup-*.exe` asset under
+  `https://github.com/thomasshepley/SLAPP/releases/download/host-v`, verified
+  against the asset's `digest` (sha256) after download, and again by the window
+  before it runs the installer with `/SILENT /UPDATE=1` (the installer reopens
+  the window when it sees `/UPDATE=1`). Never loosen either check.
 - Same house rules as the repo: regular hyphens, branch + PR, no secrets in git.
 
 ## Build, test

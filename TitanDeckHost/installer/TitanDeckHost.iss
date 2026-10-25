@@ -60,8 +60,13 @@ Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=
 Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall add rule name=""TitanDeck - Host discovery"" dir=in action=allow protocol=UDP localport=5353 profile=private,domain"; Flags: runhidden
 Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=""TitanDeck - Desk link"""; Flags: runhidden
 Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall add rule name=""TitanDeck - Desk link"" dir=in action=allow protocol=TCP localport=4434 profile=private,domain"; Flags: runhidden
+; Fake Titan (4430 WebAPI, 4433 desk): only for the Host's own service, so it opens nothing for anything else.
+Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=""TitanDeck - Fake Titan"""; Flags: runhidden
+Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall add rule name=""TitanDeck - Fake Titan"" dir=in action=allow protocol=TCP localport=4430,4433 program=""{app}\TitanDeckHost.Service.exe"" profile=private,domain"; Flags: runhidden
 Filename: "{sys}\sc.exe"; Parameters: "start TitanDeckHost"; Flags: runhidden; StatusMsg: "Starting the service..."
 Filename: "{app}\TitanDeckHost.exe"; Description: "Open TitanDeck Host"; Flags: postinstall nowait skipifsilent
+; Updating from the Host window (/UPDATE=1, silent): open it again, as the signed-in user.
+Filename: "{app}\TitanDeckHost.exe"; Flags: nowait runasoriginaluser; Check: IsUpdate
 
 [UninstallRun]
 Filename: "{sys}\taskkill.exe"; Parameters: "/F /IM TitanDeckHost.exe"; Flags: runhidden; RunOnceId: "KillTray"
@@ -70,8 +75,15 @@ Filename: "{sys}\sc.exe"; Parameters: "delete TitanDeckHost"; Flags: runhidden; 
 Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=""TitanDeck - Host"""; Flags: runhidden; RunOnceId: "FwHost"
 Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=""TitanDeck - Host discovery"""; Flags: runhidden; RunOnceId: "FwDiscovery"
 Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=""TitanDeck - Desk link"""; Flags: runhidden; RunOnceId: "FwDeskLink"
+Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=""TitanDeck - Fake Titan"""; Flags: runhidden; RunOnceId: "FwFakeTitan"
 
 [Code]
+// Started by the Host window's Update button.
+function IsUpdate: Boolean;
+begin
+  Result := ExpandConstant('{param:UPDATE|0}') = '1';
+end;
+
 // Upgrades: stop the service and close the tray app before files are replaced.
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 var

@@ -6,6 +6,14 @@ until it's show-ready (1.0): MINOR for features, PATCH for fixes. Keep
 (ChangelogTests checks). Each version is published as a GitHub release
 `host-v<version>` with the installer attached.
 
+## 0.5.0 - 2026-10-25 - Fake Titan, Titan log and updates
+
+- **Fake Titan is built in:** the Host window has a Fake Titan card. Close Titan, press Start, and the Host pretends to be Titan - the WebAPI on 4430, the desk's own selection on 4433 (through the desk link on 4434) and sACN levels for live intensity. No Python needed any more. Type fixture numbers in "Select on the desk" (3,4 or 1-10) to pretend you clicked them in Layouts.
+- **Titan log:** a new card lists every call TitanDeck makes to Fake Titan, and to the real desk through the desk link: who sent it, what Titan answered and how long it took. Red rows are calls that were refused, unknown, or shouldn't happen (anything Patch on the desk). Polls the app repeats every second are counted at the top instead of flooding the list. Copy puts the whole log on the clipboard to send over.
+- **Updates from the Host window:** the Host checks GitHub for a newer release every 6 hours (and on Check for updates). Update downloads the installer, checks it against GitHub's SHA-256, installs it quietly and opens the window again. It only ever downloads TitanDeck Host releases from this project.
+- **Fix:** fade times set from the deck through the desk link arrived at Titan empty ("body '' isn't a number of seconds"). The desk link now passes them on whole, with their length.
+- Firewall rule for Fake Titan's ports (4430, 4433), for the Host service only, private networks.
+
 ## 0.4.1 - 2026-10-25 - Reads the Windows build right
 
 - **Fixed:** the Host read this PC's Remote Desktop build as "6.2.26100.9549" instead of "10.0.26100.9549" (Windows gives older-style version numbers to programs that don't ask for the real ones), so it said a perfectly good rdpwrap.ini didn't cover this PC, and refused one sent from TitanDeck. Remote desktop itself was never affected: RDP Wrapper reads the build itself.

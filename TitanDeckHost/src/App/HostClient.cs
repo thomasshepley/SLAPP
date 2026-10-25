@@ -57,6 +57,39 @@ public sealed class HostClient
         }
     }
 
+    // --- Updates, Fake Titan, the Titan log ---
+
+    public Task<UpdateStatusDto?> Update() => Get<UpdateStatusDto>("update");
+    public Task<UpdateStatusDto?> CheckUpdate() => Post<UpdateStatusDto>("update/check");
+    public Task<UpdateStatusDto?> DownloadUpdate() => Post<UpdateStatusDto>("update/download");
+
+    public Task<FakeTitanStatusDto?> FakeTitan() => Get<FakeTitanStatusDto>("faketitan");
+    public Task<FakeTitanStatusDto?> StartFakeTitan(FakeTitanStartRequest request) => Post<FakeTitanStatusDto>("faketitan/start", request);
+    public Task<FakeTitanStatusDto?> StopFakeTitan() => Post<FakeTitanStatusDto>("faketitan/stop");
+
+    public async Task<string?> DeskSelect(string fixtures)
+    {
+        var answer = await Post<JsonElement>("faketitan/desk-select", new DeskSelectRequest(fixtures));
+        return answer.ValueKind == JsonValueKind.Object && answer.TryGetProperty("note", out var note) ? note.GetString() : null;
+    }
+
+    public Task<TitanLogDto?> TitanLog(long after) => Get<TitanLogDto>($"titanlog?after={after}");
+    public Task ClearTitanLog() => Post<JsonElement>("titanlog/clear");
+
+    private async Task<T?> Post<T>(string path, object? body = null)
+    {
+        try
+        {
+            using var response = body is null ? await _http.PostAsync(path, null) : await _http.PostAsJsonAsync(path, body, Json);
+            if (!response.IsSuccessStatusCode || response.Content.Headers.ContentLength == 0) return default;
+            return await response.Content.ReadFromJsonAsync<T>(Json);
+        }
+        catch (Exception)
+        {
+            return default;
+        }
+    }
+
     private async Task<T?> Get<T>(string path)
     {
         try

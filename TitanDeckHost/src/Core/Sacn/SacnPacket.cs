@@ -70,6 +70,33 @@ public static class SacnPacket
         return universes;
     }
 
+    /// <summary>An E1.31 data packet (start code 0), for Fake Titan's output.</summary>
+    public static byte[] Build(int universe, ReadOnlySpan<byte> levels, byte sequence, Guid cid, string sourceName,
+        byte priority = 100)
+    {
+        var slots = levels.Length > 512 ? levels[..512] : levels;
+        var p = new byte[126 + slots.Length];
+        BinaryPrimitives.WriteUInt16BigEndian(p, 0x0010);
+        AcnId.CopyTo(p.AsSpan(4));
+        BinaryPrimitives.WriteUInt16BigEndian(p.AsSpan(16), (ushort)(0x7000 | (p.Length - 16)));
+        BinaryPrimitives.WriteUInt32BigEndian(p.AsSpan(18), RootData);
+        cid.TryWriteBytes(p.AsSpan(22, 16), bigEndian: true, out _);
+        BinaryPrimitives.WriteUInt16BigEndian(p.AsSpan(38), (ushort)(0x7000 | (p.Length - 38)));
+        BinaryPrimitives.WriteUInt32BigEndian(p.AsSpan(40), FramingData);
+        var name = Encoding.UTF8.GetBytes(sourceName);
+        name.AsSpan(0, Math.Min(name.Length, 63)).CopyTo(p.AsSpan(44));
+        p[108] = priority;
+        p[111] = sequence;
+        BinaryPrimitives.WriteUInt16BigEndian(p.AsSpan(113), (ushort)universe);
+        BinaryPrimitives.WriteUInt16BigEndian(p.AsSpan(115), (ushort)(0x7000 | (p.Length - 115)));
+        p[117] = 0x02;
+        p[118] = 0xA1;
+        BinaryPrimitives.WriteUInt16BigEndian(p.AsSpan(121), 1);
+        BinaryPrimitives.WriteUInt16BigEndian(p.AsSpan(123), (ushort)(slots.Length + 1));
+        slots.CopyTo(p.AsSpan(126));
+        return p;
+    }
+
     private static bool IsRoot(ReadOnlySpan<byte> packet, uint vector) =>
         packet.Length >= 44
         && BinaryPrimitives.ReadUInt16BigEndian(packet) == 0x0010
