@@ -9,7 +9,8 @@ until it's show-ready (1.0): MINOR for features, PATCH for fixes. Keep
 ## 0.8.0 - 2026-10-26 - Network for TitanDeck
 
 - **Pick the network adapter TitanDeck uses:** a Network for TitanDeck card lists the PC's adapters (Ethernet 1, Ethernet 4...) with their addresses. Pick the one on the show network and the Host only announces that adapter's address, on that adapter, so the iPad stops landing on another network's address. Automatic (every adapter) is the default, as before.
-- The card shows the address to type into TitanDeck. If the chosen adapter is unplugged, the Host goes back to every adapter until it's back, and says so.
+- The card shows the address to type into TitanDeck, for the Host, Titan and the remote desktop alike. (Remote desktop is let through Windows Firewall on Private networks: the checklist flags a show network marked Public, with a fix.)
+- If the chosen adapter is unplugged, the Host goes back to every adapter until it's back, and says so.
 - After switching, on the iPad: Settings > TitanDeck Host > Change Address (TitanDeck 0.20) keeps the pairing.
 
 ## 0.7.0 - 2026-10-25 - Test and Show modes

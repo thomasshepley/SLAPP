@@ -5,6 +5,9 @@ import SwiftUI
 /// fixes the iPad is allowed to press, PC details, and unpairing.
 struct HostStatusView: View {
     @ObservedObject var host: HostStore
+    /// Change Address can move Titan's and the remote desktop's addresses too.
+    @Binding var titanHost: String
+    @Binding var rdpSettings: RDPSettings
     @State private var confirmForget = false
     @State private var changingAddress = false
     @Environment(\.dismiss) private var dismiss
@@ -88,7 +91,7 @@ struct HostStatusView: View {
                 LabeledContent("Address", value: host.address)
                 Button("Change Address", systemImage: "network") { changingAddress = true }
             } footer: {
-                Text("If the PC has more than one network, pick the show network's adapter in TitanDeck Host (Network for TitanDeck), then choose it here. The pairing stays.")
+                Text("If the PC has more than one network, pick the show network's adapter in TitanDeck Host (Network for TitanDeck), then choose it here. The pairing stays, and Titan and the remote desktop can move with it.")
             }
 
             Section {
@@ -111,7 +114,9 @@ struct HostStatusView: View {
         } message: {
             Text("Sending files and fixes through the Host stop until you pair again.")
         }
-        .sheet(isPresented: $changingAddress) { ChangeHostAddressView(host: host) }
+        .sheet(isPresented: $changingAddress) {
+            ChangeHostAddressView(host: host, titanHost: $titanHost, rdpSettings: $rdpSettings)
+        }
         .animation(.snappy, value: host.status)
     }
 

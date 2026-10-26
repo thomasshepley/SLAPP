@@ -61,7 +61,7 @@ public sealed partial class MainViewModel
             var addresses = network.Announcing.Count == 0 ? "no address yet" : string.Join(" or ", network.Announcing);
             NetworkText = network.Chosen is null || network.Problem is not null
                 ? $"TitanDeck finds this PC on every adapter: {addresses}. Pick the show network's adapter if the iPad lands on the wrong one."
-                : $"TitanDeck connects to {addresses} ({network.ChosenName}).";
+                : $"TitanDeck connects to {addresses} ({network.ChosenName}): the address for the Host, Titan and the remote desktop.";
             NetworkProblem = network.Problem;
         }
         finally

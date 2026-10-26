@@ -10,6 +10,7 @@ with every change that goes to `main`.
 ## 0.20.0 - 2026-10-26 - Change the Host's address
 
 - **Change Address** (Settings > TitanDeck Host): when the PC has more than one network and TitanDeck found the wrong one, point it at the right address without pairing again. Type it, or pick the PC from the ones found on the network.
+- **Titan and the remote desktop move too:** Change Address has "Titan uses this address too" and "Remote desktop uses this address too" (both on), so all three switch to the show network's address in one go.
 - With TitanDeck Host 0.8 set to one network adapter, pairing and Change Address use the address the Host announces for that adapter.
 
 ## 0.19.0 - 2026-10-25 - Test and Show modes
