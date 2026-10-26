@@ -71,7 +71,10 @@ TitanDeckHost/
   are touched, each backed up as `*.titandeck-backup` first. If a config already
   has it enabled on 4430 (Titan's normal WebAPI port), that's the desk's own
   WebAPI: the proxy targets 4430 (`TitanUiConfig.TargetPort`), the checklist
-  says nothing to change, and `Enable` refuses to move it.
+  says nothing to change, and `Enable` refuses to move it. Titan 19 runs the 4430
+  WebAPI as a separate service (`WebAPI\<version>\WebAPIService.dll.config`,
+  same keys): it's its own user and never sees the desk's selection, so only
+  `Titan.dll.config` / `Titan.exe.config` are read (`IsSettingsFileName`).
 - **Network for TitanDeck** (`NetworkChoice`, Data\network.json, `GET/POST /local/network`;
   pure choice logic in `Core/Net/NetworkAdapters`): with an adapter picked, the
   `Advertiser` restarts mDNS on that NIC only, with only its IPv4 in the A

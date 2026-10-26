@@ -31,14 +31,17 @@ public static class TitanUiConfig
     }
 
     /// <summary>
-    /// A .NET app settings file: "Titan.dll.config" (Titan 19 runs on .NET 8)
-    /// or "Titan.exe.config" (older Titans). Not runtimeconfig.json and the like.
+    /// Titan's own settings file: "Titan.dll.config" (Titan 19 runs on .NET 8)
+    /// or "Titan.exe.config" (older Titans). Only Titan's: the WebAPI service's
+    /// WebAPIService.dll.config has the same webapi.enabled / webapi.port keys,
+    /// but they're the separate WebAPI on 4430 (its own user, which never sees
+    /// the desk's selection), not one inside Titan.
     /// </summary>
     public static bool IsSettingsFileName(string path)
     {
-        var name = Path.GetFileName(path);
-        return name.EndsWith(".exe.config", StringComparison.OrdinalIgnoreCase)
-            || name.EndsWith(".dll.config", StringComparison.OrdinalIgnoreCase);
+        var name = path.Split('\\', '/').Last();
+        return name.Equals("Titan.dll.config", StringComparison.OrdinalIgnoreCase)
+            || name.Equals("Titan.exe.config", StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>A Titan config file and what it says, or null for a file

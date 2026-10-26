@@ -70,6 +70,9 @@ public class DeskLinkTests
     [InlineData(@"C:\Program Files\Avolites\Titan\Titan.exe.config", true)]
     [InlineData(@"C:\Program Files\Avolites\Titan\19.2.104.5\Titan.runtimeconfig.json", false)]
     [InlineData(@"C:\Program Files\Avolites\Titan\web.config", false)]
+    // Titan 19's separate WebAPI service: same keys, but it's the 4430 one with its own user.
+    [InlineData(@"C:\Program Files\Avolites\WebAPI\19.2.104.5\WebAPIService.dll.config", false)]
+    [InlineData(@"C:\Program Files\Avolites\WebAPI\WebAPIService.exe.config", false)]
     public void FindsTitan19sSettingsFileToo(string path, bool isSettings) =>
         Assert.Equal(isSettings, TitanUiConfig.IsSettingsFileName(path));
 
