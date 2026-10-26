@@ -12,6 +12,7 @@ with every change that goes to `main`.
 - **Titan 19's HTTP 500 errors:** Titan 19.2's WebAPI only takes its new calls unless its "pre19Compatibility" switch is on, so the keypad, Clear, Exit, fade times and Layouts failed while playbacks still fired. TitanDeck Host 0.9 flags it and turns it on with one click on the PC.
 - **See what Titan says:** when Titan answers with an error, Settings > Recent calls now shows Titan's own message, not just "HTTP 500".
 - **Through TitanDeck Host** (Settings > Connection): sends TitanDeck's Titan calls through the Host (0.9), so the Host's Titan log shows every one, with Titan's answer. Needs the Host running.
+- **Magic Keyboard on the remote desktop:** a hardware keyboard now types on the Titan PC while the remote desktop is showing: letters, numbers, F-keys, arrows, Esc, Delete, and Shift/Ctrl/Option held with clicks or keys. Keys repeat when held. Command works as Ctrl (Cmd-C, Cmd-V, Cmd-Z) by default, or as the Windows key: Settings > Remote desktop > Keyboard's Command key. iPadOS keeps a few shortcuts for itself (Cmd-Tab, Cmd-Space, Globe keys).
 - **GO latches:** the Playbacks page's GO keys still say GO, but work like a latch button on the desk: press to fire the cue, press again to release it.
 - **Remote desktop with no Windows password:** says so plainly. Windows doesn't let an account with no password sign in remotely by default; TitanDeck Host 0.9 can allow it (Accounts with no password > Allow, on the PC), then leave the password blank.
 

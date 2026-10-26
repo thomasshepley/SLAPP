@@ -12,7 +12,7 @@ struct RemoteView: View {
         GeometryReader { geometry in
             ZStack {
                 Color.black
-                RDPView(session: session) { appState.mode = .settings }
+                RDPView(session: session, commandKey: appState.rdpSettings.commandKey) { appState.mode = .settings }
                     .opacity(session.state == .connected ? 1 : 0.35)
                 if session.reconnectAttempt > 0 {
                     // Keep the last frame visible (dimmed) while reconnecting.

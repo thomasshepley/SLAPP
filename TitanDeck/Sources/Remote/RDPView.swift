@@ -7,14 +7,17 @@ import UIKit
 /// Touch mapping: one finger = left button (press, drag, release - so Titan's
 /// faders and buttons behave like a touchscreen), two-finger tap = right click,
 /// two-finger drag = scroll wheel, Pencil hover = move the pointer,
-/// three-finger long press = open Settings.
+/// three-finger long press = open Settings. A hardware keyboard (Magic
+/// Keyboard) types on the PC while the remote desktop is showing.
 struct RDPView: UIViewRepresentable {
     @ObservedObject var session: RDPSession
+    var commandKey: RDPKeyboard.CommandKey = .control
     var onOpenSettings: () -> Void
 
     func makeUIView(context: Context) -> RDPCanvasView {
         let view = RDPCanvasView()
         view.session = session
+        view.commandKey = commandKey
         view.onOpenSettings = onOpenSettings
         session.frameHandler = { [weak view] image in view?.show(image) }
         return view
@@ -22,10 +25,12 @@ struct RDPView: UIViewRepresentable {
 
     func updateUIView(_ view: RDPCanvasView, context: Context) {
         view.desktopSize = session.desktopSize
+        view.commandKey = commandKey
         view.onOpenSettings = onOpenSettings
     }
 
     static func dismantleUIView(_ view: RDPCanvasView, coordinator: ()) {
+        view.releaseAllKeys()
         view.session?.frameHandler = nil
     }
 }
@@ -34,6 +39,7 @@ final class RDPCanvasView: UIView {
     weak var session: RDPSession?
     var onOpenSettings: (() -> Void)?
     var desktopSize: CGSize = .zero
+    var commandKey: RDPKeyboard.CommandKey = .control
 
     /// How long a single finger waits for a second finger before it counts as a
     /// left-button press. Long enough to tell a two-finger gesture apart, short
@@ -48,6 +54,9 @@ final class RDPCanvasView: UIView {
     private var pressTimer: Timer?
     private var scroll = ScrollAccumulator()
     private var lastPanY: CGFloat = 0
+    private var heldKeys = HeldKeys()
+    private var repeatTimer: Timer?
+    private var repeating: UInt32?
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -72,6 +81,10 @@ final class RDPCanvasView: UIView {
         addGestureRecognizer(settingsPress)
 
         addGestureRecognizer(UIHoverGestureRecognizer(target: self, action: #selector(handleHover(_:))))
+
+        // Nothing may stay held on the PC once TitanDeck isn't in front.
+        NotificationCenter.default.addObserver(self, selector: #selector(appWillResignActive),
+                                               name: UIApplication.willResignActiveNotification, object: nil)
     }
 
     required init?(coder: NSCoder) {
@@ -93,9 +106,89 @@ final class RDPCanvasView: UIView {
         mapper.desktopPoint(for: point)
     }
 
+    // MARK: - Hardware keyboard
+
+    override var canBecomeFirstResponder: Bool { true }
+
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        if window != nil { becomeFirstResponder() } else { releaseAllKeys() }
+    }
+
+    override func resignFirstResponder() -> Bool {
+        releaseAllKeys()
+        return super.resignFirstResponder()
+    }
+
+    override func pressesBegan(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
+        var unhandled = Set<UIPress>()
+        for press in presses {
+            guard let usage = press.key.map({ $0.keyCode.rawValue }),
+                  let scancode = RDPKeyboard.scancode(hidUsage: usage, command: commandKey) else {
+                unhandled.insert(press)
+                continue
+            }
+            guard heldKeys.press(hidUsage: usage, scancode: scancode) else { continue }
+            session?.key(scancode: scancode, down: true)
+            if !RDPKeyboard.isModifier(hidUsage: usage) { startRepeat(scancode) }
+        }
+        if !unhandled.isEmpty { super.pressesBegan(unhandled, with: event) }
+    }
+
+    override func pressesEnded(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
+        var unhandled = Set<UIPress>()
+        for press in presses {
+            guard let usage = press.key.map({ $0.keyCode.rawValue }),
+                  let scancode = heldKeys.release(hidUsage: usage) else {
+                unhandled.insert(press)
+                continue
+            }
+            if repeating == scancode { stopRepeat() }
+            session?.key(scancode: scancode, down: false)
+        }
+        if !unhandled.isEmpty { super.pressesEnded(unhandled, with: event) }
+    }
+
+    override func pressesCancelled(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
+        pressesEnded(presses, with: event)
+    }
+
+    /// Lets go of every key still down on the PC.
+    func releaseAllKeys() {
+        stopRepeat()
+        for scancode in heldKeys.releaseAll() {
+            session?.key(scancode: scancode, down: false)
+        }
+    }
+
+    @objc private func appWillResignActive() {
+        releaseAllKeys()
+    }
+
+    /// The last key pressed repeats while held, like a PC keyboard.
+    private func startRepeat(_ scancode: UInt32) {
+        stopRepeat()
+        repeating = scancode
+        repeatTimer = Timer.scheduledTimer(withTimeInterval: RDPKeyboard.repeatDelay, repeats: false) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                self.repeatTimer = Timer.scheduledTimer(withTimeInterval: RDPKeyboard.repeatInterval, repeats: true) { [weak self] _ in
+                    MainActor.assumeIsolated { self?.session?.key(scancode: scancode, down: true) }
+                }
+            }
+        }
+    }
+
+    private func stopRepeat() {
+        repeatTimer?.invalidate()
+        repeatTimer = nil
+        repeating = nil
+    }
+
     // MARK: - One finger: left button
 
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+        if !isFirstResponder { becomeFirstResponder() }   // back from a menu or sheet
         let active = event?.allTouches?.filter { $0.phase != .ended && $0.phase != .cancelled } ?? touches
         guard active.count == 1, let touch = touches.first, trackedTouch == nil else {
             // A second finger arrived: this is a gesture, not a click.

@@ -321,6 +321,9 @@ private struct RemoteDesktopSection: View {
                     .frame(maxWidth: 300)
             }
             Toggle("Connect when TitanDeck opens", isOn: $appState.rdpSettings.connectOnLaunch)
+            Picker("Keyboard's Command key", selection: $appState.rdpSettings.commandKey) {
+                ForEach(RDPKeyboard.CommandKey.allCases, id: \.self) { Text($0.title).tag($0) }
+            }
             NavigationLink {
                 RDPQualityView(host: appState.host)
             } label: {
@@ -359,7 +362,7 @@ private struct RemoteDesktopSection: View {
         } header: {
             Text("Remote desktop")
         } footer: {
-            Text("The PC needs RDP enabled (RDP Wrapper on Windows Home) and TCP 3389 allowed through its firewall. Three-finger long press on the desktop opens Settings.")
+            Text("The PC needs RDP enabled (RDP Wrapper on Windows Home) and TCP 3389 allowed through its firewall. Three-finger long press on the desktop opens Settings. A Magic Keyboard types on the PC while the remote desktop is showing; iPadOS keeps a few shortcuts for itself (Cmd-Tab, Cmd-Space, Globe keys).")
         }
         .onAppear { password = appState.remotePassword }
         .onDisappear { appState.remotePassword = password }

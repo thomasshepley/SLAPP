@@ -295,6 +295,11 @@ Before you start: on the Titan PC, back up Titan's .exe.config yourself too.
       each works, and each call shows in the Host's Titan log
       ("TitanDeck - WebAPI"). Anything red: Copy the log and send it over.
 - [ ] Playbacks page: GO fires the cue (key lights), GO again releases it.
+- [ ] Magic Keyboard on the remote desktop: type in a Titan legend box or
+      Notepad. Arrows, Backspace held (repeats), Esc, F-keys, Shift-click,
+      Cmd-C / Cmd-V (as Ctrl-C / Ctrl-V). Switch Settings > Remote desktop >
+      Keyboard's Command key to Windows key: Cmd opens the Start menu.
+      Swipe home mid-keypress: nothing stays held on the PC.
 - [ ] No Windows password: TitanDeck Host > Accounts with no password >
       Allow (on the PC). Leave the password blank in TitanDeck's Remote
       desktop settings and Connect: Titan's screen appears.

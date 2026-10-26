@@ -39,8 +39,9 @@ TitanDeck/
 │   │               DeckProfile (+ default 15-key portrait profile), DeckProfile+Editing (page/key
 │   │               edits, keeps page links valid), ActionDraft (form model), ProfileStore (JSON)
 │   ├── Titan/      TitanAction, TitanEndpoints (URL builders), TitanClient (actor)
-│   ├── Remote/     RDPSession (Swift side), RDPView (canvas + touch mapping), RemoteView,
-│   │               RDPSettings, RDPGeometry, CertificateTrustStore (trust on first use)
+│   ├── Remote/     RDPSession (Swift side), RDPView (canvas + touch mapping + hardware keyboard), RemoteView,
+│   │               RDPSettings, RDPGeometry, RDPKeyboard (HID usage -> set-1 scan code, 0x100 = extended),
+│   │               CertificateTrustStore (trust on first use)
 │   │   └── Bridge/ titan_rdp.c/.h - the only code that touches FreeRDP's C API
 │   ├── Companion/  The lighting companion, rebuilt natively (M12+):
 │   │   ├── Model/  Fixture (matches the old app's JSON), FixtureLibrary, CompanionUnits,
