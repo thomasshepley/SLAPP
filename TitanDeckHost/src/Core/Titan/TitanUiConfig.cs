@@ -8,7 +8,8 @@ namespace TitanDeckHost.Core.Titan;
 /// Titan's second WebAPI, the one inside its user interface. Titan's normal
 /// WebAPI (port 4430) is a separate user with its own programmer, so it never
 /// sees what's selected on the desk. Titan 14+ can also run a WebAPI in the
-/// UI itself ("webapi.enabled" in the Titan app's .exe.config, which ships
+/// UI itself ("webapi.enabled" in the Titan app's settings file, Titan.dll.config
+/// from Titan 19 and Titan.exe.config before, which ships
 /// with it set to false): that one shares the operator's selection and
 /// programmer. Avolites call it experimental. Its usual port, 4431, is the
 /// Host's, so TitanDeck uses 4433, and the Host passes it on to the iPad on
@@ -27,6 +28,17 @@ public static class TitanUiConfig
     public sealed record State(bool Enabled, int? Port)
     {
         public int EffectivePort => Port ?? 4431;
+    }
+
+    /// <summary>
+    /// A .NET app settings file: "Titan.dll.config" (Titan 19 runs on .NET 8)
+    /// or "Titan.exe.config" (older Titans). Not runtimeconfig.json and the like.
+    /// </summary>
+    public static bool IsSettingsFileName(string path)
+    {
+        var name = Path.GetFileName(path);
+        return name.EndsWith(".exe.config", StringComparison.OrdinalIgnoreCase)
+            || name.EndsWith(".dll.config", StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>A Titan config file and what it says, or null for a file
@@ -116,7 +128,8 @@ public static class TitanUiConfig
                 $"On. TitanDeck can follow what's selected on the desk (Titan's UI WebAPI, port {UiPort}).");
         if (configs.Count == 0)
             return new Check(id, title, CheckState.Warning,
-                "Couldn't find Titan's settings file (an .exe.config with webapi.enabled in it). Add webapi.enabled = true " +
+                "Couldn't find Titan's settings file with webapi.enabled in it (Titan.dll.config in Titan 19's folder, " +
+                "Titan.exe.config in older versions). Add webapi.enabled = true " +
                 $"and webapi.port = {UiPort} to it by hand, then restart Titan.");
         if (configs.Any(c => c.Enabled && c.EffectivePort == Protocol.NetworkPort))
             return new Check(id, title, CheckState.Problem,

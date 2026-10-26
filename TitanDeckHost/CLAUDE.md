@@ -22,7 +22,7 @@ TitanDeckHost/
 │                  0.0.0.0:4431 (paired iPad) and 127.0.0.1:4432 (the Host window),
 │                  WindowsProbe (reads the PC), Fixer (applies fixes), Advertiser (mDNS),
 │                  SacnListener (joins sACN multicast on every adapter, port shared),
-│                  DeskLink (finds/edits Titan's .exe.config, /titan proxy on 0.0.0.0:4434),
+│                  DeskLink (finds/edits Titan.dll.config / .exe.config, /titan proxy on 0.0.0.0:4434),
 │                  FakeTitanServer (Kestrel on 4430 + 4433 only while started, sACN out),
 │                  HostUpdater (checks GitHub every 6 h, downloads + verifies the installer),
 │                  PatchReader (newest patch report + personalities, Fake Titan's while it runs)
@@ -60,7 +60,8 @@ TitanDeckHost/
   `GET /api/v1/dmx/{universe}?start=&count=` (levels 0-255). Asking for a
   universe starts listening to it.
 - **Desk link:** Titan's WebAPI on 4430 is its own user (own programmer and
-  selection). `webapi.enabled` in Titan's .exe.config starts a second WebAPI in
+  selection). `webapi.enabled` in Titan's settings file (Titan 19: `Titan\<version>\Titan.dll.config`,
+  .NET 8; older: `Titan.exe.config`) starts a second WebAPI in
   Titan's UI that shares the operator's selection; TitanDeck uses port 4433 for
   it (4431 is ours) and the Host proxies `/titan/...` on 4434 to
   127.0.0.1:4433. `TitanUiConfig.ProxyAllows` is an allowlist and refuses

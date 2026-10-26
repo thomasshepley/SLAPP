@@ -6,6 +6,10 @@ until it's show-ready (1.0): MINOR for features, PATCH for fixes. Keep
 (ChangelogTests checks). Each version is published as a GitHub release
 `host-v<version>` with the installer attached.
 
+## 0.8.1 - 2026-10-26 - Finds Titan 19's settings file
+
+- **Fixed:** the Host looked for Titan's settings in Titan.exe.config, but Titan 19 runs on .NET 8 and keeps them in Titan.dll.config (in the version folder, e.g. Titan\19.2.104.5). It now finds either, so "Desk selection for TitanDeck" reads your real Titan settings, including a WebAPI already on at 4430 (nothing to change then).
+
 ## 0.8.0 - 2026-10-26 - Network for TitanDeck
 
 - **Pick the network adapter TitanDeck uses:** a Network for TitanDeck card lists the PC's adapters (Ethernet 1, Ethernet 4...) with their addresses. Pick the one on the show network and the Host only announces that adapter's address, on that adapter, so the iPad stops landing on another network's address. Automatic (every adapter) is the default, as before.
