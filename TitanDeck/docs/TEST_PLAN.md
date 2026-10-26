@@ -300,6 +300,11 @@ Before you start: on the Titan PC, back up Titan's .exe.config yourself too.
       Cmd-C / Cmd-V (as Ctrl-C / Ctrl-V). Switch Settings > Remote desktop >
       Keyboard's Command key to Windows key: Cmd opens the Start menu.
       Swipe home mid-keypress: nothing stays held on the PC.
+- [ ] On-screen keyboard (0.22): the keyboard button (top right) shows the
+      iPad keyboard with Esc / Tab / Ctrl / Alt / arrows / Del above it. Type
+      in a Titan legend box: letters, capitals, numbers, £ @ " #, Backspace,
+      Return. Ctrl then A selects all. Tapping the desktop doesn't hide it;
+      the button or the keyboard's hide key does.
 - [ ] No Windows password: TitanDeck Host > Accounts with no password >
       Allow (on the PC). Leave the password blank in TitanDeck's Remote
       desktop settings and Connect: Titan's screen appears.

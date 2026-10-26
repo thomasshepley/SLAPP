@@ -7,6 +7,12 @@ the GitHub Actions run that built it. The top entry is shown in the app
 so add an entry - and bump `MARKETING_VERSION` in `project.yml` to match -
 with every change that goes to `main`.
 
+## 0.22.0 - 2026-10-26 - On-screen keyboard on the remote desktop
+
+- **Keyboard button** (top right of the remote desktop, next to Menu): shows and hides the iPad's on-screen keyboard, and whatever you type goes to the Titan PC. Letters, numbers, space, Return, Tab and Backspace go as real keys; everything else (£, @, é...) types the right character whatever the PC's keyboard layout.
+- **A row of extra keys** above it: Esc, Tab, Ctrl, Alt, the arrows and Del. Ctrl and Alt latch: tap Ctrl, then C, for Ctrl-C.
+- Hide it with the button or the keyboard's own hide key. A Magic Keyboard still types key by key as before.
+
 ## 0.21.0 - 2026-10-26 - Titan 19 fixes, desk selection over CITP
 
 - **Titan 19's HTTP 500 errors:** Titan 19.2's WebAPI only takes its new calls unless its "pre19Compatibility" switch is on, so the keypad, Clear, Exit, fade times and Layouts failed while playbacks still fired. TitanDeck Host 0.9 flags it and turns it on with one click on the PC.

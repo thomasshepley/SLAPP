@@ -24,7 +24,8 @@
 
 typedef enum {
     TITAN_EVENT_MOUSE,
-    TITAN_EVENT_KEY
+    TITAN_EVENT_KEY,
+    TITAN_EVENT_UNICODE
 } TitanEventKind;
 
 typedef struct {
@@ -129,6 +130,10 @@ static void titan_drain_queue(TitanRDP *rdp, rdpInput *input) {
         case TITAN_EVENT_KEY:
             (void)freerdp_input_send_keyboard_event_ex(input, event->down ? TRUE : FALSE, FALSE,
                                                        event->scancode);
+            break;
+        case TITAN_EVENT_UNICODE:
+            (void)freerdp_input_send_unicode_keyboard_event(input, event->down ? 0 : KBD_FLAGS_RELEASE,
+                                                            (UINT16)event->scancode);
             break;
         }
     }
@@ -579,5 +584,10 @@ void titan_rdp_mouse_wheel(TitanRDP *rdp, int32_t delta, uint16_t x, uint16_t y)
 
 void titan_rdp_key(TitanRDP *rdp, uint32_t scancode, int down) {
     TitanEvent event = { .kind = TITAN_EVENT_KEY, .scancode = scancode, .down = down };
+    titan_enqueue(rdp, event);
+}
+
+void titan_rdp_unicode(TitanRDP *rdp, uint16_t code, int down) {
+    TitanEvent event = { .kind = TITAN_EVENT_UNICODE, .scancode = code, .down = down };
     titan_enqueue(rdp, event);
 }

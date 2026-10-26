@@ -86,6 +86,10 @@ void titan_rdp_mouse_button(TitanRDP *rdp, TitanRDPButton button, int down, uint
 void titan_rdp_mouse_wheel(TitanRDP *rdp, int32_t delta, uint16_t x, uint16_t y);
 /// RDP scancode (set 1). Extended keys have 0x100 added, as in FreeRDP.
 void titan_rdp_key(TitanRDP *rdp, uint32_t scancode, int down);
+/// One UTF-16 code unit as a Unicode keyboard event: types the character
+/// whatever the PC's keyboard layout (characters outside the BMP are two
+/// units, each pressed and released).
+void titan_rdp_unicode(TitanRDP *rdp, uint16_t code, int down);
 
 #ifdef __cplusplus
 }

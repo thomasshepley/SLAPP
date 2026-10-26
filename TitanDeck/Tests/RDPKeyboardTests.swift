@@ -69,4 +69,37 @@ final class RDPKeyboardTests: XCTestCase {
         let old = try JSONDecoder().decode(RDPSettings.self, from: Data(#"{"host":"10.0.0.5","username":"x"}"#.utf8))
         XCTAssertEqual(old.commandKey, .control, "settings saved before 0.21")
     }
+
+    // MARK: On-screen keyboard
+
+    func testLettersAndDigitsGoAsRealKeys() {
+        XCTAssertEqual(RDPTyping.strokes(for: "a"), [.key(0x1E, down: true), .key(0x1E, down: false)])
+        XCTAssertEqual(RDPTyping.strokes(for: "A"), [.key(0x2A, down: true), .key(0x1E, down: true),
+                                                     .key(0x1E, down: false), .key(0x2A, down: false)])
+        XCTAssertEqual(RDPTyping.strokes(for: "0"), [.key(0x0B, down: true), .key(0x0B, down: false)])
+        XCTAssertEqual(RDPTyping.strokes(for: "\n"), [.key(0x1C, down: true), .key(0x1C, down: false)], "Return")
+        XCTAssertEqual(RDPTyping.strokes(for: " ").count, 2)
+    }
+
+    func testEverythingElseGoesAsUnicode() {
+        // £ and @ sit on different keys on UK and US keyboards: Unicode types them right either way.
+        XCTAssertEqual(RDPTyping.strokes(for: "£"), [.unicode(0xA3, down: true), .unicode(0xA3, down: false)])
+        XCTAssertEqual(RDPTyping.strokes(for: "@"), [.unicode(0x40, down: true), .unicode(0x40, down: false)])
+        XCTAssertEqual(RDPTyping.strokes(for: "é").count, 2)
+        XCTAssertEqual(RDPTyping.strokes(for: "🎛️").count, 6, "outside the BMP: a surrogate pair, plus the variation selector")
+    }
+
+    func testLatchedCtrlWrapsTheNextKey() {
+        XCTAssertEqual(RDPTyping.strokes(for: "c", holding: [RDPTyping.ctrl]),
+                       [.key(0x1D, down: true), .key(0x2E, down: true), .key(0x2E, down: false), .key(0x1D, down: false)])
+        XCTAssertEqual(RDPTyping.tap(RDPExtraKey.left.scancode, holding: [RDPTyping.ctrl, RDPTyping.alt]),
+                       [.key(0x1D, down: true), .key(0x38, down: true), .key(0x14B, down: true),
+                        .key(0x14B, down: false), .key(0x38, down: false), .key(0x1D, down: false)])
+    }
+
+    func testExtraKeys() {
+        XCTAssertEqual(RDPExtraKey.esc.scancode, 0x01)
+        XCTAssertEqual(RDPExtraKey.delete.scancode, 0x153)
+        XCTAssertEqual(RDPExtraKey.allCases.filter(\.latches), [.ctrl, .alt])
+    }
 }

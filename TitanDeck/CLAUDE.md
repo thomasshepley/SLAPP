@@ -40,7 +40,8 @@ TitanDeck/
 │   │               edits, keeps page links valid), ActionDraft (form model), ProfileStore (JSON)
 │   ├── Titan/      TitanAction, TitanEndpoints (URL builders), TitanClient (actor)
 │   ├── Remote/     RDPSession (Swift side), RDPView (canvas + touch mapping + hardware keyboard), RemoteView,
-│   │               RDPSettings, RDPGeometry, RDPKeyboard (HID usage -> set-1 scan code, 0x100 = extended),
+│   │               RDPSettings, RDPGeometry, RDPKeyboard (HID usage -> set-1 scan code, 0x100 = extended;
+│   │               RDPTyping: on-screen keyboard text -> keys or Unicode, `titan_rdp_unicode`),
 │   │               CertificateTrustStore (trust on first use)
 │   │   └── Bridge/ titan_rdp.c/.h - the only code that touches FreeRDP's C API
 │   ├── Companion/  The lighting companion, rebuilt natively (M12+):
