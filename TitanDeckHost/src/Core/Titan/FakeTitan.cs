@@ -219,6 +219,9 @@ public sealed class FakeTitan
                         return new(404, null, $"no playback with titanId {Get(q, "handle_titanId")}");
                     editing = cuePlayback;
                     return new(200, null, $"editing playback {cuePlayback}, cue {Get(q, "cueNumber", "1")}");
+                case "Selection/Context/Global/Clear":
+                    me.Selected = [];
+                    return new(200, null, $"selection cleared ({Who(user)} user)");
                 case "Selection/Context/Global/SelectFixturesFromHandles":
                     me.Selected = Numbers(Get(q, "handleList_userNumberList")).Where(levels.ContainsKey).ToList();
                     return new(200, null, $"selected {List(me.Selected)} ({Who(user)} user)");
@@ -332,16 +335,16 @@ public sealed class FakeTitan
 
     private FakeReply IncrementDimmer(User me, Dictionary<string, string> q)
     {
-        if (!TryNumber(Get(q, "value"), out var value)) return new(400, null, $"value '{Get(q, "value")}' isn't a number");
+        if (!TryNumber(Get(q, "value"), out var steps)) return new(400, null, $"value '{Get(q, "value")}' isn't a number");
+        // Titan's wheel: 4096 steps = full, so 40.96 steps a percent (as TitanDeck sends).
+        var value = steps / 40.96;
         if (me.Selected.Count == 0) return new(200, null, $"{Signed(value)} but nothing is selected");
         foreach (var n in me.Selected)
         {
             if (value < 0) held.TryAdd(n, levels[n]);
             levels[n] = Math.Clamp(levels[n] + value, 0, 100);
         }
-        // The app assumes percent. If real Titan wants 0-1, the same request
-        // would be 100x bigger, which is what the test plan asks you to watch for.
-        return new(200, null, $"{Signed(value)}% on fixture(s) {List(me.Selected)} (assuming percent)");
+        return new(200, null, $"{Signed(Math.Round(value, 1))}% on fixture(s) {List(me.Selected)} ({steps:0.##} wheel steps)");
     }
 
     private FakeReply SetDimmer(User me, Dictionary<string, string> q)

@@ -168,7 +168,8 @@ parameter is named `srcHandle`). Levels are `level_level=` (absolute, 0-1).
 | Flash to 0 | `Programmer/Editor/Fixtures/SetDimmerLevel?level=0` (no time, so a faded flash is 20 `IncrementDimmer` steps of -5); back with `ClearSelectedControls?release=true&releaseTime=S` |
 | Desk selection (desk link) | `Selection/Context/Global/GetAllSelectedFixtureIds` on Titan's UI WebAPI (TitanDeck port 4434 via the Host, Titan 4433); returns titan ids, mapped with `/titan/handles/Fixtures` |
 | Latching GO (Playbacks page) | live: `Playbacks/ReleasePlayback?handle_titanId=N&fadeTime=0&useMasterReleaseTime=true`, else `FirePlaybackAtLevel?handle_titanId=N` |
-| Desk selection (Titan 19, CITP) | Host `GET /api/v1/citp/selection`; then `Selection/Context/Global/SelectFixturesFromHandles` on 4430 so the deck's user has the same selection |
+| Desk selection (Titan 19, CITP) | Host `GET /api/v1/citp/selection`; then `Selection/Context/Global/Clear` + `SelectFixturesFromHandles` on 4430 so the deck's user has the same selection |
+| Intensity nudge | `Programmer/Editor/Fixtures/IncrementDimmer?value=` is wheel steps, 4096 = full (`dimmerStepsPerPercent` 40.96), `timeDelta=1` (no acceleration) |
 | Flash, no fade | `Programmer/Editor/Fixtures/FlashOut`, then `ClearFlash` |
 | Patch address (experimental, off) | 4430 only: `Selection/Context/Global/SelectFixturesFromHandles?handleList_userNumberList=N` (when linked), `Patch/Repatch/SetDmxAddressesFromSelectedFixture`, `GET /titan/get/2/Patch/CurrentDmxAssignment` (format unknown) |
 | One page of playbacks | `GET /titan/handles/Playbacks/<pageIndex>` (0-based); without the index, every page |

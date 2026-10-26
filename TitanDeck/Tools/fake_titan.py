@@ -215,6 +215,9 @@ class FakeTitan:
 
         if re.fullmatch(r"Selection/Context/(Global|Programmer)/Get(All)?SelectedFixtureIds", function):
             return 200, [5000 + n for n in self.selected], None
+        if function == "Selection/Context/Global/Clear":
+            self.selected = []
+            return 200, None, f"selection cleared ({user} user)"
         if function == "Selection/Context/Global/SelectFixturesFromHandles":
             numbers = [int(x) for x in q.get("handleList_userNumberList", "").split(",") if x.isdigit()]
             self.selected = [n for n in numbers if n in self.levels]
@@ -302,7 +305,8 @@ class FakeTitan:
 
     def increment_dimmer(self, q):
         try:
-            value = float(q.get("value", ""))
+            # Titan's wheel: 4096 steps = full (TitanEndpoints.dimmerStepsPerPercent).
+            value = float(q.get("value", "")) / 40.96
         except ValueError:
             return 400, None, f"value '{q.get('value')}' isn't a number"
         if not self.selected:
@@ -311,9 +315,7 @@ class FakeTitan:
             if value < 0:
                 self.held.setdefault(n, self.levels[n])
             self.levels[n] = max(0.0, min(100.0, self.levels[n] + value))
-        # The app assumes percent. If real Titan wants 0-1, the same request
-        # would be 100x bigger, which is what the test plan asks you to watch for.
-        return 200, None, f"{value:+g}% on fixture(s) {self.selected} (assuming percent)"
+        return 200, None, f"{value:+g}% on fixture(s) {self.selected} ({q.get('value')} wheel steps)"
 
     def playback(self, function, q):
         key = "srcHandle_userNumber" if function.endswith("SetPlaybackLevel") else "handle_userNumber"

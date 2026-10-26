@@ -73,7 +73,10 @@ final class TitanEndpointsTests: XCTestCase {
 
     func testIntensityNudge() {
         XCTAssertEqual(TitanEndpoints.url(for: .adjustIntensity(percent: -5), host: host)?.absoluteString,
-                       "http://10.0.0.1:4430/titan/script/2/Programmer/Editor/Fixtures/IncrementDimmer?value=-5&timeDelta=1&shiftEnabled=false")
+                       "http://10.0.0.1:4430/titan/script/2/Programmer/Editor/Fixtures/IncrementDimmer?value=-204.8&timeDelta=1&shiftEnabled=false")
+        XCTAssertEqual(TitanEndpoints.url(for: .adjustIntensity(percent: 10), host: host)
+            .flatMap { URLComponents(url: $0, resolvingAgainstBaseURL: false) }?.queryItems?.first?.value, "409.6",
+                       "10% of Titan's 4096-step wheel")
     }
 
     func testMultiStepAndLocalActionsHaveNoSingleURL() {

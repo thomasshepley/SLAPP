@@ -120,6 +120,10 @@ TitanDeckHost/
   so it can't take 4809 from Titan by default. Show mode switches it off. Byte
   layouts: CITP spec (bitbucket.org/lars_wernlund/citp) and Capture's CAEX
   spec G; tests in `CitpTests`. Every message goes to the Titan log as `CITP`.
+  Titan opens several TCP links and retries refused ones, so up to
+  `CitpService.MaxLinks` (8) are kept; the selection comes from the link that
+  heard one last (`CitpSession.SelectionAt`). Only the first link logs fully;
+  keep the log rate-limited (Titan reconnects many times a second).
 - **Fake Titan** (`FakeTitan`) is the primary fake now; `TitanDeck/Tools/fake_titan.py`
   stays for the Mac. Keep them answering the same calls: when an action is added
   to `TitanEndpoints`, add it to both. It only listens while started from the

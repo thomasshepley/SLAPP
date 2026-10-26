@@ -42,8 +42,8 @@ public class FakeTitanTests
         Assert.Empty(titan.Selected(FakeUser.Api));
         Script(titan, "Command/AppendStringAndPreview", "text=7");
         Assert.Equal("", titan.Handle("/titan/get/2/Command/CommandLineText", "", FakeUser.Desk).Body!.GetValue<string>());
-        Script(titan, "Programmer/Editor/Fixtures/IncrementDimmer", "value=10&timeDelta=1&shiftEnabled=false", FakeUser.Desk);
-        Assert.Equal(10, titan.Level(3));   // one show
+        Script(titan, "Programmer/Editor/Fixtures/IncrementDimmer", "value=409.6&timeDelta=1&shiftEnabled=false", FakeUser.Desk);
+        Assert.Equal(10, titan.Level(3), 3);   // 409.6 wheel steps = 10%   // one show
         var ids = Script(titan, "Selection/Context/Global/GetAllSelectedFixtureIds", "", FakeUser.Desk).Body!.AsArray();
         Assert.Equal([5003], ids.Select(n => n!.GetValue<int>()));
         Assert.Empty(Script(titan, "Selection/Context/Global/GetAllSelectedFixtureIds").Body!.AsArray());

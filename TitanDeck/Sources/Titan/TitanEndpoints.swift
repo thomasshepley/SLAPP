@@ -10,6 +10,10 @@ import Foundation
 /// would be relative. Older Titan versions (pre-v12) use a different syntax.
 enum TitanEndpoints {
     static let defaultPort = 4430
+    /// IncrementDimmer is Titan's encoder wheel, not a percentage: on Titan 19
+    /// a value of 10 moved a fixture about 0.25%, i.e. one step is 1/4096 of
+    /// full. So a percentage is sent as percent x 40.96 steps.
+    static let dimmerStepsPerPercent = 40.96
     /// Titan's WebAPI through TitanDeck Host (Host 0.9+), which logs every call.
     static let viaHostPort = 4436
     static let scriptRoot = "/titan/script/2/"
@@ -46,9 +50,9 @@ enum TitanEndpoints {
         case .keypadExit:
             return script(host, port, "Menu/ExitRootOrLatched", [])
         case .adjustIntensity(let percent):
-            // Assumes IncrementDimmer takes percent, like SetDimmerLevel does - check on the console.
+            // Wheel steps (see dimmerStepsPerPercent); timeDelta 1 s = turned slowly, so no acceleration.
             return script(host, port, "Programmer/Editor/Fixtures/IncrementDimmer", [
-                ("value", format(number: percent)),
+                ("value", format(number: percent * dimmerStepsPerPercent)),
                 ("timeDelta", "1"),
                 ("shiftEnabled", "false"),
             ])
@@ -119,6 +123,11 @@ enum TitanEndpoints {
     /// the WebAPI user's own.
     static func selectedFixtureIdsURL(context: String = "Global", host: String, port: Int = defaultPort) -> URL? {
         script(host, port, "Selection/Context/\(context)/GetAllSelectedFixtureIds", [])
+    }
+
+    /// Empties that WebAPI user's own selection.
+    static func clearSelectionURL(host: String, port: Int = defaultPort) -> URL? {
+        script(host, port, "Selection/Context/Global/Clear", [])
     }
 
     /// Selects fixtures by user number in that WebAPI user's own selection.
