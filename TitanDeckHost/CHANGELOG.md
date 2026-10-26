@@ -6,6 +6,10 @@ until it's show-ready (1.0): MINOR for features, PATCH for fixes. Keep
 (ChangelogTests checks). Each version is published as a GitHub release
 `host-v<version>` with the installer attached.
 
+## 0.8.2 - 2026-10-26 - Not the WebAPI service's settings
+
+- **Fixed:** Titan 19's WebAPI is a separate service with its own settings file (WebAPI\<version>\WebAPIService.dll.config), which has webapi.enabled on at 4430. 0.8.1 took that for a WebAPI inside Titan and said there was nothing to change, but that service is its own user and never sees the desk's selection. The desk-selection check now only reads Titan's own settings file.
+
 ## 0.8.1 - 2026-10-26 - Finds Titan 19's settings file
 
 - **Fixed:** the Host looked for Titan's settings in Titan.exe.config, but Titan 19 runs on .NET 8 and keeps them in Titan.dll.config (in the version folder, e.g. Titan\19.2.104.5). It now finds either, so "Desk selection for TitanDeck" reads your real Titan settings, including a WebAPI already on at 4430 (nothing to change then).
