@@ -6,6 +6,12 @@ until it's show-ready (1.0): MINOR for features, PATCH for fixes. Keep
 (ChangelogTests checks). Each version is published as a GitHub release
 `host-v<version>` with the installer attached.
 
+## 0.11.0 - 2026-10-26 - CITP in Show mode, Fake Titan retired, Clear on the desk
+
+- **Follow selection via CITP is a full feature now:** no longer experimental or Test-only. The card shows in Show mode too, switching to Show no longer turns it off, and it can be switched on in either mode. It still only ever announces itself, opens a show and asks for the fixture list: never a patch, selection or DMX.
+- **Fake Titan is gone,** now testing is on the real Titan: its card, its ports (4430/4433) and its firewall rule (the installer removes the old one). Ask Titan for a patch report goes straight to Titan's WebAPI on 4430.
+- **Fixed: Clear typed from the deck didn't clear the desk.** The Host typed Alt+C (Titan's Clear) all in one go; it now presses each key separately with short gaps and Alt held down first, as a hand would. All the deck's keys are typed off the window's own thread.
+
 ## 0.10.0 - 2026-10-26 - The deck's keypad types on the desk, quieter CITP
 
 - **The deck's keypad on the desk's own command line:** Titan 19's WebAPI is a separate user, so a selection made from the deck never showed on the desk. With TitanDeck 0.22, the Host types the keypad on this PC as if on its keyboard, using Titan's own keyboard shortcuts (number keys, number-pad * for @, Enter, Esc for Exit, Alt+C for Clear), so the selection shows on the desk. The Host window does the typing (the service can't type on the desktop), so it needs to be open (it starts in the tray at login). Only those keypad keys can ever be typed, keys more than 2 seconds old are dropped rather than typed late, and nothing is typed unless Titan is running. Each one shows in the Titan log as "Desk keys".

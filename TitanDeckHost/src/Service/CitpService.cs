@@ -10,10 +10,10 @@ using TitanDeckHost.Core.Titan;
 namespace TitanDeckHost.Service;
 
 /// <summary>
-/// Experimental: follows the desk's selection over CITP, the way Capture does.
+/// Follows the desk's selection over CITP, the way Capture does.
 /// Titan 19's WebAPI is its own user, so it can't see what's selected on the
 /// desk's screens, but Titan shares its selection with a CITP visualiser.
-/// When switched on (Test mode only, off by default, Data\citp.json) the Host
+/// When switched on (Test or Show mode, off by default, Data\citp.json) the Host
 /// announces itself as a visualiser called "TitanDeck Host", listens for
 /// CITP announcements, takes a connection from Titan on this PC (or connects
 /// to Titan if Titan announces a port) and passes the selection to the iPad.
@@ -22,7 +22,7 @@ namespace TitanDeckHost.Service;
 /// refused, so another desk on the show network can't link to it. Every CITP
 /// message shows in the Titan log.
 /// </summary>
-public sealed class CitpService(HostPaths paths, HostModeStore mode, TitanLog titanLog, ILogger<CitpService> log) : BackgroundService
+public sealed class CitpService(HostPaths paths, TitanLog titanLog, ILogger<CitpService> log) : BackgroundService
 {
     public const string Who = "CITP";
     public const string OurName = "TitanDeck Host";
@@ -68,12 +68,12 @@ public sealed class CitpService(HostPaths paths, HostModeStore mode, TitanLog ti
         }
     }
 
-    /// <summary>Switched on and in Test mode.</summary>
-    public bool Active => Enabled && !mode.IsShow;
+    /// <summary>Switched on (in either mode).</summary>
+    public bool Active => Enabled;
 
     public CitpStatusDto SetEnabled(bool enabled)
     {
-        _enabled = enabled && !mode.IsShow;
+        _enabled = enabled;
         File.WriteAllText(_file, JsonSerializer.Serialize(new Saved(_enabled.Value)));
         Note(_enabled.Value ? "Follow selection via CITP switched on" : "Follow selection via CITP switched off");
         return Status();
@@ -102,7 +102,7 @@ public sealed class CitpService(HostPaths paths, HostModeStore mode, TitanLog ti
             var links = _links.Values.Count(l => l.Session is not null);
             var connected = snapshot is null ? null
                 : $"{snapshot.PeerName ?? "Titan"}{(links > 1 ? $" ({links} links)" : "")}";
-            return new CitpStatusDto(Enabled, !mode.IsShow, _running is not null, _listeningPort, peers, connected,
+            return new CitpStatusDto(Enabled, true, _running is not null, _listeningPort, peers, connected,
                 snapshot?.PeerShow, snapshot?.FixtureCount ?? 0, snapshot?.Selection ?? [], snapshot?.Problem ?? _problem);
         }
     }

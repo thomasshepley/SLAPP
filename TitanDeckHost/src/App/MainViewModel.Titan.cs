@@ -29,7 +29,7 @@ public sealed class LogRow
     public string Text => $"{Time}  {Who}  {Call}  -> {Result}{(HasNote ? "  " + Note : "")}{(HasState ? "  | " + State : "")}";
 }
 
-/// <summary>Host updates, Fake Titan and the Titan log.</summary>
+/// <summary>Host updates and the Titan log.</summary>
 public sealed partial class MainViewModel
 {
     public const int LogRowsShown = 1000;
@@ -40,15 +40,6 @@ public sealed partial class MainViewModel
     private string? _updateNotes;
     private bool _updateAvailable;
     private string _updateButton = "Update";
-    private string _fakeFixtures = "12";
-    private string _fakePlaybacks = "20";
-    private string _fakeLatency = "0";
-    private bool _fakeDesk = true;
-    private bool _fakeSacn = true;
-    private bool _fakeRunning;
-    private string _fakeStatus = "Off.";
-    private string? _fakeState;
-    private string _deskSelection = "";
     private string _pollText = "";
     private bool _autoScroll = true;
 
@@ -145,65 +136,6 @@ public sealed partial class MainViewModel
         }
     }
 
-    // --- Fake Titan ---
-
-    public string FakeFixtures { get => _fakeFixtures; set => Set(ref _fakeFixtures, value); }
-    public string FakePlaybacks { get => _fakePlaybacks; set => Set(ref _fakePlaybacks, value); }
-    public string FakeLatency { get => _fakeLatency; set => Set(ref _fakeLatency, value); }
-    public bool FakeDesk { get => _fakeDesk; set => Set(ref _fakeDesk, value); }
-    public bool FakeSacn { get => _fakeSacn; set => Set(ref _fakeSacn, value); }
-    public bool FakeRunning
-    {
-        get => _fakeRunning;
-        set { Set(ref _fakeRunning, value); OnPropertyChanged(nameof(FakeButton)); OnPropertyChanged(nameof(FakeStopped)); }
-    }
-    public bool FakeStopped => !FakeRunning;
-    public string FakeButton => FakeRunning ? "Stop Fake Titan" : "Start Fake Titan";
-    public string FakeStatus { get => _fakeStatus; set => Set(ref _fakeStatus, value); }
-    public string? FakeState { get => _fakeState; set { Set(ref _fakeState, value); OnPropertyChanged(nameof(HasFakeState)); } }
-    public bool HasFakeState => FakeRunning && !string.IsNullOrEmpty(FakeState);
-    public string DeskSelection { get => _deskSelection; set => Set(ref _deskSelection, value); }
-
-    private ICommand? _fakeToggleCommand;
-    public ICommand FakeToggleCommand => _fakeToggleCommand ??= new RelayCommand(async () =>
-    {
-        if (FakeRunning)
-        {
-            ShowFake(await _client.StopFakeTitan());
-            return;
-        }
-        static int Number(string text, int fallback) => int.TryParse(text.Trim(), out var n) ? n : fallback;
-        FakeStatus = "Starting...";
-        ShowFake(await _client.StartFakeTitan(new FakeTitanStartRequest(
-            Number(FakeFixtures, 12), Number(FakePlaybacks, 20), FakeDesk, FakeSacn, Number(FakeLatency, 0))));
-    });
-
-    private ICommand? _deskSelectCommand;
-    public ICommand DeskSelectCommand => _deskSelectCommand ??= new RelayCommand(async () =>
-        Message = await _client.DeskSelect(DeskSelection) ?? "Fake Titan didn't answer.");
-
-    private ICommand? _deskClearCommand;
-    public ICommand DeskClearCommand => _deskClearCommand ??= new RelayCommand(async () =>
-    {
-        DeskSelection = "";
-        Message = await _client.DeskSelect("") ?? "Fake Titan didn't answer.";
-    });
-
-    private void ShowFake(FakeTitanStatusDto? status)
-    {
-        if (status is null) return;
-        FakeRunning = status.Running;
-        FakeState = status.State;
-        FakeStatus = status switch
-        {
-            { Problem: { } problem } => problem,
-            { Running: true } => $"Running on port {string.Join(" and ", status.Ports)} with {status.Fixtures} fixtures and " +
-                                 $"{status.Playbacks} playbacks{(status.Sacn ? ", sending sACN universe 1" : "")}. Put this PC's " +
-                                 $"address in TitanDeck's Titan PC address{(status.Desk ? "; the desk link works as with real Titan" : "")}.",
-            _ => "Off.",
-        };
-    }
-
     // --- Titan log ---
 
     public string PollText { get => _pollText; set => Set(ref _pollText, value); }
@@ -225,7 +157,7 @@ public sealed partial class MainViewModel
         return Task.CompletedTask;
     });
 
-    /// <summary>Every second: new log lines, Fake Titan's state, CITP's selection, a download's progress.</summary>
+    /// <summary>Every second: new log lines, CITP's selection, a download's progress.</summary>
     public async Task RefreshLive()
     {
         if (await _client.TitanLog(_lastLogId) is { } log)
@@ -239,7 +171,6 @@ public sealed partial class MainViewModel
             PollText = log.Polls.Count == 0 ? "" : "Polling (counted, not listed): " +
                 string.Join("   ", log.Polls.Select(p => $"{p.Path.Split('/').Last()} x{p.Count:N0} ({p.LastStatus})"));
         }
-        ShowFake(await _client.FakeTitan());
         if (CitpEnabled) await RefreshCitp();
         if (_installWhenReady || UpdateText.StartsWith("Downloading", StringComparison.Ordinal)) await RefreshUpdate();
     }

@@ -22,6 +22,13 @@ enum DeskKeys {
         }
     }
 
+    /// "@ <level> Enter", for a level in percent (0-100, whole numbers):
+    /// the selection to that level on the desk's own command line.
+    static func level(_ percent: Double) -> [String] {
+        let whole = Int(min(max(percent, 0), 100).rounded())
+        return ["@"] + String(whole).map(String.init) + ["enter"]
+    }
+
     /// The same key as remote desktop keystrokes (set-1 scan codes, 0x100 = extended).
     static func strokes(for name: String) -> [RDPKeyStroke] {
         guard let key = table[name] else { return [] }

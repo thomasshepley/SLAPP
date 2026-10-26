@@ -57,21 +57,11 @@ public sealed class HostClient
         }
     }
 
-    // --- Updates, Fake Titan, the Titan log ---
+    // --- Updates, the Titan log ---
 
     public Task<UpdateStatusDto?> Update() => Get<UpdateStatusDto>("update");
     public Task<UpdateStatusDto?> CheckUpdate() => Post<UpdateStatusDto>("update/check");
     public Task<UpdateStatusDto?> DownloadUpdate() => Post<UpdateStatusDto>("update/download");
-
-    public Task<FakeTitanStatusDto?> FakeTitan() => Get<FakeTitanStatusDto>("faketitan");
-    public Task<FakeTitanStatusDto?> StartFakeTitan(FakeTitanStartRequest request) => Post<FakeTitanStatusDto>("faketitan/start", request);
-    public Task<FakeTitanStatusDto?> StopFakeTitan() => Post<FakeTitanStatusDto>("faketitan/stop");
-
-    public async Task<string?> DeskSelect(string fixtures)
-    {
-        var answer = await Post<JsonElement>("faketitan/desk-select", new DeskSelectRequest(fixtures));
-        return answer.ValueKind == JsonValueKind.Object && answer.TryGetProperty("note", out var note) ? note.GetString() : null;
-    }
 
     public Task<NetworkDto?> Network() => Get<NetworkDto>("network");
     public Task<NetworkDto?> ChooseNetwork(string? id) => Post<NetworkDto>("network", new NetworkChoiceRequest(id));

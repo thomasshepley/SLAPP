@@ -131,6 +131,9 @@ enum DeckChoice: Codable, Hashable {
     case fadeTime(Double)
     /// From the colour temperatures straight back to the intensity keys.
     case intensity
+    /// One key of the selection strip on Quick Keys (0 = the first): shows
+    /// selected fixture numbers; a tap shows the next ones.
+    case selectionStrip(Int)
     case back
     case done
 }

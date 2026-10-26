@@ -6,9 +6,9 @@ using TitanDeckHost.Core.Api;
 namespace TitanDeckHost.App;
 
 /// <summary>
-/// Test or Show. Show hides and stops the test tools (Fake Titan, asking Titan
-/// for a report) so the window is just the production tool; it's confirmed
-/// first, because it switches Fake Titan off.
+/// Test or Show. Show hides the test tools (asking Titan for a report) so the
+/// window is just the production tool. Following the selection over CITP
+/// carries on in both.
 /// </summary>
 public sealed partial class MainViewModel
 {
@@ -31,15 +31,15 @@ public sealed partial class MainViewModel
     public string ModeBadge => IsShowMode ? "SHOW" : "TEST";
     public Brush ModeBadgeColour => IsShowMode ? BrushFor("ok") : BrushFor("warning");
     public string ModeText => IsShowMode
-        ? "Show mode: the production tools only. Fake Titan and the other test features are off."
-        : "Test mode: Fake Titan and the other test features are available. Switch to Show for a show.";
+        ? "Show mode: the production tools only. Test features are off; CITP selection carries on."
+        : "Test mode: the test features are available. Switch to Show for a show.";
 
     private ICommand? _showModeCommand;
     public ICommand ShowModeCommand => _showModeCommand ??= new RelayCommand(async () =>
     {
         if (IsShowMode) return;
         var answer = MessageBox.Show(
-            "All test features will be disabled if you confirm this.\n\nFake Titan and following the selection over CITP stop (if they're running), and the test tools are hidden. You can switch back to Test at any time.",
+            "All test features will be disabled if you confirm this.\n\nThe test tools are hidden. Following the selection over CITP carries on. You can switch back to Test at any time.",
             "Switch to Show mode?", MessageBoxButton.OKCancel, MessageBoxImage.Warning, MessageBoxResult.Cancel);
         if (answer != MessageBoxResult.OK) return;
         ShowMode(await _client.SetMode("show"));
@@ -50,7 +50,7 @@ public sealed partial class MainViewModel
     public ICommand TestModeCommand => _testModeCommand ??= new RelayCommand(async () =>
     {
         if (IsTestMode) return;
-        var answer = MessageBox.Show("Fake Titan and the other test features come back.",
+        var answer = MessageBox.Show("The test features come back.",
             "Switch to Test mode?", MessageBoxButton.OKCancel, MessageBoxImage.Question, MessageBoxResult.Cancel);
         if (answer != MessageBoxResult.OK) return;
         ShowMode(await _client.SetMode("test"));

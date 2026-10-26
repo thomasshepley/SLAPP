@@ -77,15 +77,34 @@ public class TitanPatchTests
     public void LeavesOutWhatIsntAnAddress(string text) => Assert.Null(TitanPatch.ParseAddress(text));
 
     [Fact]
-    public void FakeTitansReportAndPersonalityGiveTheDimmer()
+    public void AReportAndAPersonalityGiveTheDimmer()
     {
+        const string personality = """
+            <?xml version="1.0" encoding="utf-8"?>
+            <Fixture Name="Test RGBD" ShortName="Test RGBD" Company="TitanDeck" Version="1">
+              <Control>
+                <Attribute ID="Dimmer" Name="Dimmer" Group="I" />
+              </Control>
+              <Mode Name="RGBD" Channels="4">
+                <Include>
+                  <Attribute ID="Red" ChannelOffset="1" />
+                  <Attribute ID="Green" ChannelOffset="2" />
+                  <Attribute ID="Blue" ChannelOffset="3" />
+                  <Attribute ID="Dimmer" ChannelOffset="4" />
+                </Include>
+              </Mode>
+            </Fixture>
+            """;
+        const string report = "Patch View\r\nUser No.,Fixture,Mode,Address,Legend\r\n"
+            + "1,Test RGBD,\"RGBD, 4 DMX\",1.1,One\r\n"
+            + "2,Test RGBD,\"RGBD, 4 DMX\",1.5,Two\r\n"
+            + "3,Test RGBD,\"RGBD, 4 DMX\",1.9,Three\r\n";
         var library = new PersonalityLibrary([]);
-        library.Add(TitanPersonality.Read(FakeTitan.PersonalityXml)!);
-        var patch = library.Fill(TitanPatch.Parse(new FakeTitan(new FakeTitanOptions(Fixtures: 3)).PatchReportCsv(), "fake.csv"));
+        library.Add(TitanPersonality.Read(personality)!);
+        var patch = library.Fill(TitanPatch.Parse(report, "report.csv"));
         Assert.Equal(3, patch.Count);
         Assert.Equal((1, 9, 4), (patch[2].Line, patch[2].Address, patch[2].Channels));
         Assert.Equal([3], patch[2].Intensity);
-        Assert.Equal(FakeTitan.Address(3), (patch[2].Line, patch[2].Address));
     }
 }
 

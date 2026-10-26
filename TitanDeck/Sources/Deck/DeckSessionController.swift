@@ -61,6 +61,8 @@ final class DeckSessionController: ObservableObject {
     /// selected ("102 Enter", "102 @ 50 Enter"), empty after a Clear. Shown
     /// on the Remote screen.
     @Published private(set) var selectedFixtures: [Int] = []
+    /// Where the Quick Keys selection strip starts (a tap on it moves on).
+    private var stripOffset = 0
     /// The first selected fixture's live level (0...1), for the flash key.
     @Published private(set) var liveLevel: Double?
     /// The desk link is up: the desk's selection is the one that counts.
@@ -126,9 +128,19 @@ final class DeckSessionController: ObservableObject {
     /// cue keys carry their cue and fade time.
     func displayedKey(at index: Int) -> KeyDefinition? {
         let menuLabel = DeckFlow.menuLabel(onPage: currentPageIndex, overlay: flowOverlay, profile: profile,
-                                           pageName: currentPage?.name, hasSelection: !selectedFixtures.isEmpty)
+                                           pageName: currentPage?.name, hasSelection: !selectedFixtures.isEmpty,
+                                           selectionText: DeckFlow.compactSelection(selectedFixtures))
         return DeckFlow.displayed(currentPage?.key(at: index), onPage: menuLabel, workspaceNames: workspaceNames)
             .map { DeckCues.displayed($0, slots: profile.cueSlots) }
+            .map { key in
+                // The selection strip shows the selected fixture numbers.
+                guard case .deckChoice(.selectionStrip(let slot))? = key.action else { return key }
+                let strip = DeckFlow.selectionStrip(selectedFixtures, offset: stripOffset, slots: stripSlots)
+                var shown = key
+                shown.label = strip.labels.indices.contains(slot) ? strip.labels[slot] : ""
+                if slot == 0, shown.label.isEmpty { shown.label = DeckFlow.nothingSelected }
+                return shown
+            }
             .map { key in
                 // The flash key carries the selected fixture's live level.
                 guard key.action == .flashSelection, liveLevel != nil || key.label == DeckFlow.flashLabel(level: nil)
@@ -167,12 +179,12 @@ final class DeckSessionController: ObservableObject {
     private func refreshSelection() {
         let current = deskLinked ? deskSelection : keypad.selection.map { [$0] } ?? []
         guard current != selectedFixtures else { return }
-        let hadSelection = !selectedFixtures.isEmpty
         selectedFixtures = current
+        stripOffset = 0
         onSelectionChanged?(current)
-        // The keypad's Menu key reads Quick Keys or Nothing Selected.
-        if hadSelection != !current.isEmpty, let page = currentPage {
-            for key in page.keys where key.action == .mainMenu { draw(logicalIndex: key.index) }
+        // The keypad's Menu key and the Quick Keys selection strip show it.
+        if let page = currentPage {
+            for key in page.keys where key.action == .mainMenu || Self.isStrip(key.action) { draw(logicalIndex: key.index) }
         }
     }
 
@@ -399,8 +411,23 @@ final class DeckSessionController: ObservableObject {
         DeckCues.flashFade(forFixture: selectedFixtures.first, rules: flashFadeRules)
     }
 
-    /// A press on one of the Connect Cue / fade pickers.
+    /// How many keys the selection strip on the current page has.
+    private var stripSlots: Int {
+        currentPage?.keys.filter { Self.isStrip($0.action) }.count ?? 0
+    }
+
+    private static func isStrip(_ action: TitanAction?) -> Bool {
+        if case .deckChoice(.selectionStrip)? = action { true } else { false }
+    }
+
+    /// A press on one of the Connect Cue / fade pickers, or the selection strip.
     private func choose(_ choice: DeckChoice, at index: Int) {
+        if case .selectionStrip = choice {
+            // On to the next selected fixtures (back to the start after the last).
+            stripOffset = DeckFlow.selectionStrip(selectedFixtures, offset: stripOffset, slots: stripSlots).next
+            redraw()
+            return
+        }
         guard let overlay = flowOverlay else { return }
         let home = overlay.returnTo
         switch (choice, overlay) {

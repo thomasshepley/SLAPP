@@ -70,7 +70,7 @@ public static class SacnPacket
         return universes;
     }
 
-    /// <summary>An E1.31 data packet (start code 0), for Fake Titan's output.</summary>
+    /// <summary>An E1.31 data packet (start code 0). Only the tests send one: the Host just listens.</summary>
     public static byte[] Build(int universe, ReadOnlySpan<byte> levels, byte sequence, Guid cid, string sourceName,
         byte priority = 100)
     {

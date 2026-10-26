@@ -11,7 +11,7 @@ public partial class MainWindow : Window
 {
     private readonly MainViewModel _model;
     private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromSeconds(3) };
-    /// <summary>The Titan log, Fake Titan and a download's progress: every second.</summary>
+    /// <summary>The Titan log, CITP and a download's progress: every second.</summary>
     private readonly DispatcherTimer _live = new() { Interval = TimeSpan.FromSeconds(1) };
     private bool _refreshingLive;
     private bool _scrollQueued;

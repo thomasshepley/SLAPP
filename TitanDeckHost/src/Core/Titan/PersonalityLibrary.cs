@@ -30,7 +30,7 @@ public sealed class PersonalityLibrary
     /// <summary>Folders that exist and were searched.</summary>
     public IReadOnlyList<string> Folders => _folders.Where(Directory.Exists).ToList();
 
-    /// <summary>A personality that isn't on disk (Fake Titan's), checked before the files.</summary>
+    /// <summary>A personality that isn't on disk (a test's), checked before the files.</summary>
     public void Add(TitanPersonality personality)
     {
         lock (_lock) _extra.Insert(0, personality);
