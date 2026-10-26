@@ -7,6 +7,15 @@ the GitHub Actions run that built it. The top entry is shown in the app
 so add an entry - and bump `MARKETING_VERSION` in `project.yml` to match -
 with every change that goes to `main`.
 
+## 0.27.0 - 2026-10-27 - Slate Book
+
+- **Slate Book: the look per slate and take, logged for you.** With TitanDeck Host 0.13, the Host keeps a record of the whole of Titan's output for every slate and take, UK style (a slate per setup, letters for pickups, no I or O), with Day/Night, FX and the time.
+- **On the deck:** hold Menu, then SLATES. The Slate page shows the slate and take, and has NEW SLATE (next slate, take 1), TAKE +, LETTER (112 → 112A), DAY/NIGHT and FX. Each press logs the look on stage.
+- **Changes log themselves:** when you merge a tweak, once the lights have been still for a few seconds it's logged under the current take, in plain words ("101 Dimmer 60 → 45%"), using Titan's patch to name fixtures and attributes. A running effect isn't logged.
+- **Slates tab:** the day's slates, newest first, each take with what changed during it. Notes on any line, earlier days from the calendar, the slate or take put right by hand, and a typed slate number (hold New Slate).
+- **Match:** pick any line and see what's different on stage now, biggest first. Great for getting back to a look for pickups.
+- Nothing is sent to Titan: the Slate Book only listens. Recalling a look as a Titan cue (playback page 1) comes next.
+
 ## 0.25.0 - 2026-10-26 - A clearer Wi-Fi channel map
 
 - **Wi-Fi channel map redrawn:** neighbouring networks are grey hills (taller is louder, with -50/-70/-90 dBm guides) and the loudest are named where there's room. Our access points' channels are shaded in each AP's colour, and every radio gets its own row underneath with its name, channel and width, so two APs on the same or nearby channels no longer write over each other. Channel numbers along the bottom thin out to what fits (1/6/11 and the start of each 5 GHz block first).

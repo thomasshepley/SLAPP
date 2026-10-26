@@ -176,8 +176,9 @@ final class DeckFlowTests: XCTestCase {
     func testMenuPageListsEveryPage() {
         let profile = DeckProfile.makeDefault()
         let menu = DeckFlow.menuPage(profile: profile)
-        XCTAssertEqual(menu.keys.map(\.label), profile.pages.map(\.name))
-        XCTAssertEqual(menu.keys.last?.action, .switchPage(profile.pages.count - 1))
+        XCTAssertEqual(menu.keys.map(\.label), profile.pages.map(\.name) + ["SLATES"], "every page, then the Slate Book")
+        XCTAssertEqual(menu.keys.dropLast().last?.action, .switchPage(profile.pages.count - 1))
+        XCTAssertEqual(menu.keys.last?.action, .deckChoice(.openSlates))
     }
 }
 

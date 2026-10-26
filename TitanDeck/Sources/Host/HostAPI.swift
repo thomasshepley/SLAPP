@@ -179,6 +179,69 @@ struct HostCitpSelection: Codable, Equatable {
     let problem: String?
 }
 
+// MARK: - Slate Book (Host 0.13+)
+
+/// The slate showing: slate on the clapper, take, day or night, FX.
+struct HostSlateState: Codable, Equatable {
+    var slate: String
+    var take: Int
+    var night: Bool
+    var fx: Bool
+}
+
+/// One thing that changed: fixture user number (nil for a bare address like
+/// "U1.37"), attribute, percent before and after.
+struct HostLookChange: Codable, Equatable, Hashable {
+    var fixture: Int?
+    var what: String
+    var before: Double
+    var after: Double
+}
+
+/// A line of the Slate Book. Kind is "slate", "take" or "change".
+struct HostSlateEntry: Codable, Equatable, Identifiable {
+    var id: Int
+    var time: Date
+    var kind: String
+    var slate: String
+    var take: Int
+    var night: Bool
+    var fx: Bool
+    var changes: [HostLookChange]
+    var note: String?
+}
+
+/// `GET /api/v1/slate`: the slate showing and a day's book, oldest first.
+struct HostSlateBook: Codable, Equatable {
+    var day: String
+    var state: HostSlateState
+    var entries: [HostSlateEntry]
+    var days: [String]
+    var listening: Bool
+    var patched: Int
+    var problem: String?
+}
+
+/// `GET /api/v1/slate/match/{day}/{id}`: what's different now (before = then, after = now).
+struct HostSlateMatch: Codable, Equatable {
+    var entry: HostSlateEntry
+    var differences: [HostLookChange]
+    var listening: Bool
+}
+
+struct HostSlateNewRequest: Codable { var slate: String? }
+struct HostSlateSetRequest: Codable {
+    var night: Bool?
+    var fx: Bool?
+    var slate: String?
+    var take: Int?
+}
+struct HostSlateNoteRequest: Codable {
+    var day: String
+    var id: Int
+    var note: String?
+}
+
 struct HostErrorBody: Codable {
     var error: String?
     var message: String?

@@ -12,6 +12,7 @@ final class AppState: ObservableObject {
         case deck
         case companion
         case network
+        case slates
         case settings
     }
 
@@ -66,6 +67,9 @@ final class AppState: ObservableObject {
     let fileDrop: FileDropStore
     /// The show Wi-Fi from the UniFi console (M17).
     let unifi: UniFiStore
+    /// The Slate Book, kept by TitanDeck Host from Titan's sACN.
+    let slates: SlateStore
+    private var slateWatch: Task<Void, Never>?
     /// TitanDeck Host on the PC: pairing, PC health, files both ways (M18).
     let host: HostStore
     /// What's typed on the deck keypad, shown under the remote desktop.
@@ -97,6 +101,7 @@ final class AppState: ObservableObject {
         unifi = UniFiStore()
         let hostStore = HostStore()
         self.host = hostStore
+        slates = SlateStore(client: { [weak hostStore] in hostStore?.client })
         keypad = KeypadReadoutStore()
         let titan = TitanClient(host: host, port: viaHost ? TitanEndpoints.viaHostPort : TitanEndpoints.defaultPort)
         self.titan = titan
@@ -117,11 +122,38 @@ final class AppState: ObservableObject {
         deck.onProfileChanged = { [weak self] profile in
             self?.save(profile)
         }
+        deck.onSlate = { [weak self] command, keyIndex in
+            guard let self else { return }
+            Task {
+                let ok = await self.slates.perform(command)
+                self.deck.report(success: ok, forKey: keyIndex)
+                if !ok, let problem = self.slates.problem {
+                    self.connectionLog.record(.key, .info, "Slate: \(problem)")
+                }
+            }
+        }
+        slates.onState = { [weak self] state in
+            self?.deck.slateState = state
+        }
+    }
+
+    /// Keeps the deck's Slate page showing the Host's slate and take while
+    /// it's up (the Slates tab refreshes itself).
+    private func watchSlates() {
+        slateWatch?.cancel()
+        slateWatch = Task { [weak self] in
+            while !Task.isCancelled {
+                guard let self else { return }
+                if case .slate? = self.deck.flowOverlay { await self.slates.refreshState() }
+                try? await Task.sleep(for: .seconds(3))
+            }
+        }
     }
 
     func start() {
         if showingStartup { deck.startSplash() }
         startConnectionLog()
+        watchSlates()
         UIApplication.shared.isIdleTimerDisabled = true
         deck.start()
         network.start()

@@ -145,3 +145,34 @@ public sealed record DeskKeysRequest(IReadOnlyList<string> Keys);
 
 /// <summary>`POST /local/citp`: the on/off switch.</summary>
 public sealed record CitpEnableRequest(bool Enabled);
+
+/// <summary>The slate showing (`GET /api/v1/slate`): slate, take, day or night, FX.</summary>
+public sealed record SlateStateDto(string Slate, int Take, bool Night, bool Fx);
+
+/// <summary>One thing that changed: fixture user number (null for a bare address), attribute, percent before and after.</summary>
+public sealed record LookChangeDto(int? Fixture, string What, double Before, double After);
+
+/// <summary>A line of the Slate Book, without its levels. Kind is "slate", "take" or "change".</summary>
+public sealed record SlateEntryDto(long Id, DateTimeOffset Time, string Kind, string Slate, int Take, bool Night, bool Fx,
+    IReadOnlyList<LookChangeDto> Changes, string? Note);
+
+/// <summary>
+/// `GET /api/v1/slate`: the slate showing and today's book (newest last;
+/// none with `?summary=true`).
+/// Listening is false when no sACN is coming in (nothing can be logged);
+/// Patched is how many fixtures the changes can be named by.
+/// </summary>
+public sealed record SlateBookDto(string Day, SlateStateDto State, IReadOnlyList<SlateEntryDto> Entries, IReadOnlyList<string> Days,
+    bool Listening, int Patched, string? Problem);
+
+/// <summary>`POST /api/v1/slate/new`: the next slate, or the one typed (blank = next).</summary>
+public sealed record SlateNewRequest(string? Slate);
+
+/// <summary>`POST /api/v1/slate/set`: change what's showing without logging a look. Nulls are left alone.</summary>
+public sealed record SlateSetRequest(bool? Night, bool? Fx, string? Slate, int? Take);
+
+/// <summary>`POST /api/v1/slate/note`: a note on a line of the book (blank removes it).</summary>
+public sealed record SlateNoteRequest(string Day, long Id, string? Note);
+
+/// <summary>`GET /api/v1/slate/match`: what's different now from a line of the book (Before = then, After = now).</summary>
+public sealed record SlateMatchDto(SlateEntryDto Entry, IReadOnlyList<LookChangeDto> Differences, bool Listening);

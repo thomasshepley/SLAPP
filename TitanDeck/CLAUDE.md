@@ -219,6 +219,15 @@ support posts):
   shared `TitanClient` uses port 4436 (`TitanEndpoints.viaHostPort`), the
   Host's logged pass-through to 127.0.0.1:4430. App Intents and the Watch still
   go straight to 4430.
+- **Slate Book** (`Slate/`: `SlateStore`, `SlateBookView`, pure `SlateText`;
+  Host 0.13 `GET/POST /api/v1/slate...`): the Host logs the look (every
+  universe of Titan's sACN) per slate and take (UK style: slate per setup,
+  letters skip I/O) with D/N and FX, and changes once the output settles
+  (moving channels ignored). The deck's Slate page is a built-in overlay
+  (`DeckFlow.slatePage`, `.slate(returnTo:)`), reached from the main menu's
+  SLATES key (`DeckChoice.openSlates`); its keys are `DeckChoice.slate*`, so
+  they never appear in the key editor. Phase 2 (planned): record each slate
+  as a Titan cue on playback page 1 for one-tap recall.
 - **Desk selection over CITP** (Titan 19, where the 4430 WebAPI is a separate
   service and the UI WebAPI doesn't exist): TitanDeck Host 0.9 joins Titan as
   a CITP visualiser and serves `GET /api/v1/citp/selection`
