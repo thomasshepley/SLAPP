@@ -64,6 +64,9 @@ enum TitanAction: Codable, Hashable {
     /// The flash itself: down to 0% (stepping over `seconds` if given), or
     /// back up by releasing the dimmer from the programmer over `seconds`.
     case dimmerFlash(down: Bool, seconds: Double?)
+    /// Release a playback by its titanId (ReleasePlayback, its master release
+    /// time): the second press of a latching GO.
+    case releaseHandle(titanId: Int)
 
     /// True for actions that go over the network to Titan.
     var isRemote: Bool {
@@ -109,6 +112,7 @@ enum TitanAction: Codable, Hashable {
         case .connectCue: return "Connect Cue"
         case .deckChoice: return "Deck choice"
         case .fireHandle(let id): return "Go handle \(id)"
+        case .releaseHandle(let id): return "Release handle \(id)"
         case .setCueFade(let id, let out, let s): return "Handle \(id) fade \(out ? "out" : "in") \(TitanEndpoints.format(number: s))s"
         case .flashSelection: return "Flash selection to 0%"
         case .dimmerFlash(let down, let s): return "Flash \(down ? "down" : "back")\(s.map { " over \(TitanEndpoints.format(number: $0))s" } ?? "")"

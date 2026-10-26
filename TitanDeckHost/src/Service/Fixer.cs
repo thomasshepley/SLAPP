@@ -52,6 +52,7 @@ public sealed class Fixer
                 FixAction.AddDefenderExclusion => AddDefenderExclusion(),
                 FixAction.InstallRdpWrapper => await InstallRdpWrapper(),
                 FixAction.EnableDeskLink => EnableDeskLink(),
+                FixAction.EnableWebApiCompatibility => _deskLink.EnableWebApiCompatibility(),
                 _ => throw new InvalidOperationException("Nothing to do."),
             };
             return new FixResponse(true, message);
@@ -168,6 +169,7 @@ public sealed class Fixer
             ("Host", "TCP", Protocol.NetworkPort),
             ("Host discovery", "UDP", 5353),
             ("Desk link", "TCP", TitanUiConfig.ProxyPort),
+            ("Titan WebAPI through the Host", "TCP", TitanUiConfig.PassThroughPort),
         };
         foreach (var rule in rules)
         {

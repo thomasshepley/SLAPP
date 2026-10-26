@@ -77,6 +77,16 @@ TitanDeckHost/
   WebAPI as a separate service (`WebAPI\<version>\WebAPIService.dll.config`,
   same keys): it's its own user and never sees the desk's selection, so only
   `Titan.dll.config` / `Titan.exe.config` are read (`IsSettingsFileName`).
+- **Titan 19 WebAPI** (`WebApiServiceConfig`, checklist id `webapi19`): Titan 19.2's
+  WebAPI service only takes the pre-19 calls TitanDeck uses with
+  `webapi.pre19Compatibility` = true (19.2 release notes). `DeskLink` finds
+  `WebAPIService.dll.config` alongside Titan's own settings files;
+  `FixAction.EnableWebApiCompatibility` (PC only) backs it up, turns it on and
+  restarts the Windows service whose ImagePath contains WebAPIService, if any.
+- **Pass-through** (port 4436, `DeskLink.PassThrough`): `/titan/...` to
+  127.0.0.1:4430, logged as "TitanDeck - WebAPI" with Titan's error text. It's
+  the same API the iPad could call directly, so nothing is refused; Patch calls
+  are flagged in the log. With Fake Titan running each call is logged twice.
 - **Network for TitanDeck** (`NetworkChoice`, Data\network.json, `GET/POST /local/network`;
   pure choice logic in `Core/Net/NetworkAdapters`): with an adapter picked, the
   `Advertiser` restarts mDNS on that NIC only, with only its IPv4 in the A

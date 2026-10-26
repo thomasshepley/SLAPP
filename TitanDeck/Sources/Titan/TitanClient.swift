@@ -19,7 +19,8 @@ struct TitanResult: Equatable {
 /// network never makes a key feel sticky.
 actor TitanClient {
     private(set) var host: String
-    let port: Int
+    /// 4430 (Titan's WebAPI), or 4436 to go through TitanDeck Host so every call is in its Titan log.
+    private(set) var port: Int
     /// Per-request timeout in seconds (0.5 by default).
     let timeout: TimeInterval
     private let session: URLSession
@@ -42,6 +43,20 @@ actor TitanClient {
         host = newHost
     }
 
+    func setPort(_ newPort: Int) {
+        port = newPort
+    }
+
+    /// Nil for a 200; otherwise "HTTP 500: <what Titan said>", since Titan
+    /// explains its errors in the body (a call it doesn't take, a wrong parameter).
+    static func errorText(status: Int?, body: Data) -> String? {
+        guard let status, status != 200 else { return nil }
+        var text = String(decoding: body.prefix(300), as: UTF8.self)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        if text.hasPrefix("<") { text = "" }   // an HTML error page says nothing useful
+        return text.isEmpty ? "HTTP \(status)" : "HTTP \(status): \(text)"
+    }
+
     func perform(_ action: TitanAction) async -> TitanResult {
         switch action {
         case .keypadEnter: return await runEnter()
@@ -58,15 +73,16 @@ actor TitanClient {
         }
         let result: TitanResult
         do {
-            let (_, response) = try await session.data(from: url)
+            let (data, response) = try await session.data(from: url)
             let status = (response as? HTTPURLResponse)?.statusCode
             result = TitanResult(action: action, ok: status == 200, statusCode: status,
-                                 milliseconds: Self.elapsed(since: start), error: nil, date: start)
+                                 milliseconds: Self.elapsed(since: start), error: Self.errorText(status: status, body: data),
+                                 date: start)
         } catch {
             result = TitanResult(action: action, ok: false, statusCode: nil,
                                  milliseconds: Self.elapsed(since: start), error: error.localizedDescription, date: start)
         }
-        Log.titan("\(action.summary) -> \(result.ok ? "OK" : "FAIL") \(result.statusCode.map(String.init) ?? "-") in \(result.milliseconds) ms \(url.absoluteString)")
+        Log.titan("\(action.summary) -> \(result.ok ? "OK" : "FAIL") \(result.statusCode.map(String.init) ?? "-") in \(result.milliseconds) ms \(url.absoluteString)\(result.error.map { " - \($0)" } ?? "")")
         return result
     }
 
@@ -130,9 +146,9 @@ actor TitanClient {
         request.setValue("text/plain", forHTTPHeaderField: "Content-Type")
         request.httpBody = Data(TitanEndpoints.format(number: seconds).utf8)
         do {
-            let (_, response) = try await session.data(for: request)
+            let (data, response) = try await session.data(for: request)
             let status = (response as? HTTPURLResponse)?.statusCode
-            return finish(action, start, ok: status == 200, status: status, error: nil)
+            return finish(action, start, ok: status == 200, status: status, error: Self.errorText(status: status, body: data))
         } catch {
             return finish(action, start, ok: false, status: nil, error: error.localizedDescription)
         }
@@ -196,9 +212,9 @@ actor TitanClient {
     private func get(_ url: URL?) async -> (ok: Bool, status: Int?, error: String?) {
         guard let url else { return (false, nil, "No Titan host set") }
         do {
-            let (_, response) = try await session.data(from: url)
+            let (data, response) = try await session.data(from: url)
             let status = (response as? HTTPURLResponse)?.statusCode
-            return (status == 200, status, nil)
+            return (status == 200, status, Self.errorText(status: status, body: data))
         } catch {
             return (false, nil, error.localizedDescription)
         }
@@ -208,7 +224,7 @@ actor TitanClient {
                         detail: String? = nil) -> TitanResult {
         let result = TitanResult(action: action, ok: ok, statusCode: status,
                                  milliseconds: Self.elapsed(since: start), error: error, date: start)
-        Log.titan("\(action.summary)\(detail.map { " (\($0))" } ?? "") -> \(ok ? "OK" : "FAIL") in \(result.milliseconds) ms")
+        Log.titan("\(action.summary)\(detail.map { " (\($0))" } ?? "") -> \(ok ? "OK" : "FAIL") in \(result.milliseconds) ms\(error.map { " - \($0)" } ?? "")")
         return result
     }
 

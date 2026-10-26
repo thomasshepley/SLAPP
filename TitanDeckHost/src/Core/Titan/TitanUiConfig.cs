@@ -23,6 +23,8 @@ public static class TitanUiConfig
     /// <summary>Titan's usual WebAPI port, the one TitanDeck always uses.</summary>
     public const int ApiPort = 4430;
     public const int ProxyPort = 4434;
+    /// <summary>Titan's WebAPI (4430) through the Host, so every call TitanDeck makes shows in the Titan log.</summary>
+    public const int PassThroughPort = 4436;
     public const string BackupSuffix = ".titandeck-backup";
 
     public sealed record State(bool Enabled, int? Port)
@@ -151,7 +153,7 @@ public static class TitanUiConfig
             "(Titan's experimental UI WebAPI; needs a Titan restart).", FixAction.EnableDeskLink, "Turn on");
     }
 
-    private static XElement? AppSettings(XDocument document, bool create)
+    internal static XElement? AppSettings(XDocument document, bool create)
     {
         var root = document.Root;
         if (root is null || root.Name.LocalName != "configuration") return null;
@@ -164,10 +166,10 @@ public static class TitanUiConfig
         return settings;
     }
 
-    private static string? Value(XElement settings, string key) =>
+    internal static string? Value(XElement settings, string key) =>
         settings.Elements("add").FirstOrDefault(e => (string?)e.Attribute("key") == key)?.Attribute("value")?.Value;
 
-    private static void Set(XElement settings, string key, string value)
+    internal static void Set(XElement settings, string key, string value)
     {
         var entry = settings.Elements("add").FirstOrDefault(e => (string?)e.Attribute("key") == key);
         if (entry is null) settings.Add(new XElement("add", new XAttribute("key", key), new XAttribute("value", value)));

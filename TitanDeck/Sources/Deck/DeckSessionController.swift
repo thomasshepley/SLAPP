@@ -353,10 +353,12 @@ final class DeckSessionController: ObservableObject {
             // Back to wherever the selection started, or this page.
             show(.colour(returnTo: flowOverlay?.returnTo ?? currentPageIndex))
         case .cueGo(let slot):
-            // Just a GO: fires its cue. Nothing on it yet: a red flash (Connect Cue puts one on).
+            // Labelled GO but latches, like a latch button on the desk: fires
+            // its cue, or releases it if it's live. Nothing on it yet: a red
+            // flash (Connect Cue puts one on).
             if let cue = profile.cue(onSlot: slot) {
                 setOverlay(.pressed, at: index)
-                onAction?(.fireHandle(titanId: cue.titanId), index)
+                onAction?(latchGo(titanId: cue.titanId), index)
             } else {
                 report(success: false, forKey: index)
             }
@@ -438,6 +440,19 @@ final class DeckSessionController: ObservableObject {
     private func changeProfile(_ change: (inout DeckProfile) -> Void) {
         change(&profile)
         onProfileChanged?(profile)
+    }
+
+    /// A latching GO: release when the cue is live, fire when it isn't. The
+    /// lit look flips straight away; the next poll of Titan corrects it.
+    func latchGo(titanId: Int) -> TitanAction {
+        if activeTitanIds.contains(titanId) {
+            activeTitanIds.remove(titanId)
+            redraw()
+            return .releaseHandle(titanId: titanId)
+        }
+        activeTitanIds.insert(titanId)
+        redraw()
+        return .fireHandle(titanId: titanId)
     }
 
     /// Titan's playbacks, for Connect Cue and for lighting connected GOs.

@@ -62,6 +62,8 @@ Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=
 Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall add rule name=""TitanDeck - Host discovery"" dir=in action=allow protocol=UDP localport=5353 profile=private,domain"; Flags: runhidden
 Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=""TitanDeck - Desk link"""; Flags: runhidden
 Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall add rule name=""TitanDeck - Desk link"" dir=in action=allow protocol=TCP localport=4434 profile=private,domain"; Flags: runhidden
+Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=""TitanDeck - Titan WebAPI through the Host"""; Flags: runhidden
+Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall add rule name=""TitanDeck - Titan WebAPI through the Host"" dir=in action=allow protocol=TCP localport=4436 profile=private,domain"; Flags: runhidden
 ; Fake Titan (4430 WebAPI, 4433 desk): only for the Host's own service, so it opens nothing for anything else.
 Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=""TitanDeck - Fake Titan"""; Flags: runhidden
 Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall add rule name=""TitanDeck - Fake Titan"" dir=in action=allow protocol=TCP localport=4430,4433 program=""{app}\TitanDeckHost.Service.exe"" profile=private,domain"; Flags: runhidden
@@ -77,6 +79,7 @@ Filename: "{sys}\sc.exe"; Parameters: "delete TitanDeckHost"; Flags: runhidden; 
 Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=""TitanDeck - Host"""; Flags: runhidden; RunOnceId: "FwHost"
 Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=""TitanDeck - Host discovery"""; Flags: runhidden; RunOnceId: "FwDiscovery"
 Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=""TitanDeck - Desk link"""; Flags: runhidden; RunOnceId: "FwDeskLink"
+Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=""TitanDeck - Titan WebAPI through the Host"""; Flags: runhidden; RunOnceId: "FwPassThrough"
 Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=""TitanDeck - Fake Titan"""; Flags: runhidden; RunOnceId: "FwFakeTitan"
 
 [Code]

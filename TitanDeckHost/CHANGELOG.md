@@ -6,7 +6,10 @@ until it's show-ready (1.0): MINOR for features, PATCH for fixes. Keep
 (ChangelogTests checks). Each version is published as a GitHub release
 `host-v<version>` with the installer attached.
 
-## 0.9.0 - 2026-10-26 - Follow selection via CITP (experimental)
+## 0.9.0 - 2026-10-26 - Titan 19 WebAPI fix, Titan log for every call, CITP selection
+
+- **Titan 19 WebAPI calls:** a new checklist line. Titan 19.2's WebAPI service only takes its new calls unless "webapi.pre19Compatibility" is on (Titan 19.2 release notes), and it ships off, so TitanDeck's keypad, Clear, Exit, fade times and Layouts got HTTP 500. "Turn on" (on the PC only) switches it on in WebAPI\<version>\WebAPIService.dll.config, keeps a copy of the old file, and restarts Titan's WebAPI service if it is one (otherwise restart Titan).
+- **Every TitanDeck call in the Titan log:** the Host now passes Titan's WebAPI through on port 4436. With TitanDeck 0.21's "Through TitanDeck Host" on, every call shows in the Titan log, and when Titan answers with an error, what Titan said. (Firewall rule added for 4436 on Private and Domain networks.)
 
 - **Follow selection via CITP:** a new card (Test mode only, off until you switch it on). Titan 19's WebAPI can't see the desk's selection, but Titan shares it with CITP visualisers like Capture. Switched on, the Host appears to Titan as a visualiser called TitanDeck Host, opens a "show" with it, asks for Titan's fixture list (to turn Titan's fixture ids into user numbers) and passes the selection on to TitanDeck 0.21.
 - **It can't patch Titan:** the Host only ever sends who it is, that its show is open or closed, a request for Titan's fixture list, and "no" to anything Titan asks of it. It never sends a fixture list, patch change, selection, identify or DMX, and every packet is checked against that list before it goes. If Titan offers to sync or change the patch with TitanDeck Host, say no.

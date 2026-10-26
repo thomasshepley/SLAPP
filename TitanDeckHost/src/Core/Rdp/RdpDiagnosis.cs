@@ -46,6 +46,8 @@ public enum FixAction
     InstallRdpWrapper,
     /// <summary>Turns on Titan's UI WebAPI (port 4433) so TitanDeck sees the desk's selection. PC only.</summary>
     EnableDeskLink,
+    /// <summary>Turns on Titan 19's WebAPI pre19Compatibility, so TitanDeck's calls work. PC only.</summary>
+    EnableWebApiCompatibility,
 }
 
 public sealed record Check(string Id, string Title, CheckState State, string Detail, FixAction Fix = FixAction.None,
@@ -62,6 +64,7 @@ public sealed record Check(string Id, string Title, CheckState State, string Det
         FixAction.AddDefenderExclusion => "Add exclusion",
         FixAction.InstallRdpWrapper => "Install",
         FixAction.EnableDeskLink => "Turn on",
+        FixAction.EnableWebApiCompatibility => "Turn on",
         _ => "",
     };
 }

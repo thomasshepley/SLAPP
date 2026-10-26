@@ -7,7 +7,13 @@ the GitHub Actions run that built it. The top entry is shown in the app
 so add an entry - and bump `MARKETING_VERSION` in `project.yml` to match -
 with every change that goes to `main`.
 
-## 0.21.0 - 2026-10-26 - Desk selection over CITP (experimental)
+## 0.21.0 - 2026-10-26 - Titan 19 fixes, desk selection over CITP
+
+- **Titan 19's HTTP 500 errors:** Titan 19.2's WebAPI only takes its new calls unless its "pre19Compatibility" switch is on, so the keypad, Clear, Exit, fade times and Layouts failed while playbacks still fired. TitanDeck Host 0.9 flags it and turns it on with one click on the PC.
+- **See what Titan says:** when Titan answers with an error, Settings > Recent calls now shows Titan's own message, not just "HTTP 500".
+- **Through TitanDeck Host** (Settings > Connection): sends TitanDeck's Titan calls through the Host (0.9), so the Host's Titan log shows every one, with Titan's answer. Needs the Host running.
+- **GO latches:** the Playbacks page's GO keys still say GO, but work like a latch button on the desk: press to fire the cue, press again to release it.
+- **Remote desktop with no Windows password:** says so plainly. Windows doesn't let an account with no password sign in remotely, so it explains giving the account a password (with automatic sign-in, so the PC still starts into Titan).
 
 - **Follow the desk's selection on Titan 19:** Titan 19's WebAPI is a separate service that can't see what's selected on the desk, so TitanDeck Host 0.9 can now hear the selection over CITP instead, the way Capture does. Switch on "Follow selection via CITP" in TitanDeck Host (Test mode only) and, with the desk link on, the deck follows what you select in Layouts or on the desk. The deck's own WebAPI user selects the same fixtures, so its keys act on them.
 - Settings > Desk link and the loading screen say "Linked over CITP" when that's how it's linked.

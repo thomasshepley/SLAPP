@@ -165,6 +165,7 @@ parameter is named `srcHandle`). Levels are `level_level=` (absolute, 0-1).
 | Cue fade time | `Playbacks/Editor/CueSelection/SelectCueByNumber?handle_titanId=N&cueNumber=1`, then POST `/titan/set/2/Playbacks/Editor/Times/CueFadeInTime` (or `CueFadeOutTime`), body the seconds as text. **Experimental:** body format undocumented |
 | Flash to 0 | `Programmer/Editor/Fixtures/SetDimmerLevel?level=0` (no time, so a faded flash is 20 `IncrementDimmer` steps of -5); back with `ClearSelectedControls?release=true&releaseTime=S` |
 | Desk selection (desk link) | `Selection/Context/Global/GetAllSelectedFixtureIds` on Titan's UI WebAPI (TitanDeck port 4434 via the Host, Titan 4433); returns titan ids, mapped with `/titan/handles/Fixtures` |
+| Latching GO (Playbacks page) | live: `Playbacks/ReleasePlayback?handle_titanId=N&fadeTime=0&useMasterReleaseTime=true`, else `FirePlaybackAtLevel?handle_titanId=N` |
 | Desk selection (Titan 19, CITP) | Host `GET /api/v1/citp/selection`; then `Selection/Context/Global/SelectFixturesFromHandles` on 4430 so the deck's user has the same selection |
 | Flash, no fade | `Programmer/Editor/Fixtures/FlashOut`, then `ClearFlash` |
 | Patch address (experimental, off) | 4430 only: `Selection/Context/Global/SelectFixturesFromHandles?handleList_userNumberList=N` (when linked), `Patch/Repatch/SetDmxAddressesFromSelectedFixture`, `GET /titan/get/2/Patch/CurrentDmxAssignment` (format unknown) |
@@ -189,6 +190,15 @@ support posts):
   at 4433 and proxies it on 4434. While linked, `AppState.fire` sends deck
   actions there. **Never send Patch calls to the desk link** (Titan's Patch
   menu holds the programmer); the Host proxy refuses them too.
+- **Titan 19.2's WebAPI** only takes the calls TitanDeck uses (keypad, Clear,
+  Exit, fade times, workspaces) with `webapi.pre19Compatibility` = true in
+  `WebAPI\<version>\WebAPIService.dll.config`; otherwise HTTP 500 (playbacks
+  still fire). TitanDeck Host 0.9 checks and fixes it. `TitanClient.errorText`
+  keeps Titan's error body for Recent calls.
+- **Through TitanDeck Host** (`AppState.titanViaHost`, `titan.viaHost`): the
+  shared `TitanClient` uses port 4436 (`TitanEndpoints.viaHostPort`), the
+  Host's logged pass-through to 127.0.0.1:4430. App Intents and the Watch still
+  go straight to 4430.
 - **Desk selection over CITP** (Titan 19, where the 4430 WebAPI is a separate
   service and the UI WebAPI doesn't exist): TitanDeck Host 0.9 joins Titan as
   a CITP visualiser and serves `GET /api/v1/citp/selection`

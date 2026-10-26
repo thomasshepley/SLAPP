@@ -10,6 +10,8 @@ import Foundation
 /// would be relative. Older Titan versions (pre-v12) use a different syntax.
 enum TitanEndpoints {
     static let defaultPort = 4430
+    /// Titan's WebAPI through TitanDeck Host (Host 0.9+), which logs every call.
+    static let viaHostPort = 4436
     static let scriptRoot = "/titan/script/2/"
 
     /// Full URL for an action, or nil for local-only actions or an unusable host.
@@ -55,6 +57,12 @@ enum TitanEndpoints {
                 ("handle_titanId", "\(id)"),
                 ("level_level", "1"),
                 ("alwaysRefire", "false"),
+            ])
+        case .releaseHandle(let id):
+            return script(host, port, "Playbacks/ReleasePlayback", [
+                ("handle_titanId", "\(id)"),
+                ("fadeTime", "0"),
+                ("useMasterReleaseTime", "true"),
             ])
         case .recallWorkspace(let n):
             return script(host, port, "Workspace/Apply", [("handle_userNumber", "\(n)")])

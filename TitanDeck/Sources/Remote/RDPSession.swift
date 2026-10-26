@@ -228,7 +228,8 @@ final class RDPSession: ObservableObject {
         Task { [weak self] in
             let answered = await TCPProbe.canConnect(host: request.host, port: request.port, timeout: 2.5)
             guard let self, self.state == shown else { return }   // reconnecting or moved on
-            self.state = .failed(RDPFailure.describe(message, host: request.host, port: request.port, answered: answered))
+            self.state = .failed(RDPFailure.describe(message, host: request.host, port: request.port, answered: answered,
+                                                     blankPassword: request.password.isEmpty))
             Log.deck("RDP: \(request.host):\(request.port) \(answered ? "answers" : "doesn't answer") on its port")
         }
     }

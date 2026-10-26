@@ -11,4 +11,6 @@ enum SettingsKeys {
     /// Show mode (true) or Test mode: Show hides the test tools and turns
     /// the experimental ones off (Settings > Mode).
     static let showMode = "app.showMode"
+    /// Titan calls go through TitanDeck Host (port 4436), so its Titan log shows them.
+    static let titanViaHost = "titan.viaHost"
 }

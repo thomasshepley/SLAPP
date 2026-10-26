@@ -284,6 +284,18 @@ Before you start: on the Titan PC, back up Titan's .exe.config yourself too.
 - [ ] Unplug the PC's network for 5 s: Status says not answering, the deck
       still works (on its own WebAPI user), and it re-links when plugged back.
 
+## 5e2. Titan 19 calls and the Titan log (TitanDeck 0.21, Host 0.9)
+
+- [ ] TitanDeck Host's checklist: "Titan 19 WebAPI calls" says Problem.
+      Turn on (on the PC). It says what it restarted; if it says restart
+      Titan, do that.
+- [ ] TitanDeck Settings > Connection: turn on Through TitanDeck Host.
+      Test connection still shows Titan's version.
+- [ ] Keypad 1 @ 5 0 Enter, Clear, Exit, a fade time, the Layouts page:
+      each works, and each call shows in the Host's Titan log
+      ("TitanDeck - WebAPI"). Anything red: Copy the log and send it over.
+- [ ] Playbacks page: GO fires the cue (key lights), GO again releases it.
+
 ## 5f. Desk selection over CITP (Titan 19: TitanDeck 0.21, Host 0.9, experimental)
 
 Titan 19's WebAPI can't see the desk's selection, so this goes the way

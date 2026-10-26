@@ -27,6 +27,16 @@ final class AppState: ObservableObject {
             watch.shareHost(host)
         }
     }
+    /// Titan calls through TitanDeck Host (4436) instead of straight to Titan
+    /// (4430), so the Host's Titan log shows every one, with Titan's errors.
+    @Published var titanViaHost: Bool {
+        didSet {
+            UserDefaults.standard.set(titanViaHost, forKey: SettingsKeys.titanViaHost)
+            let port = titanPort
+            Task { await titan.setPort(port) }
+        }
+    }
+    var titanPort: Int { titanViaHost ? TitanEndpoints.viaHostPort : TitanEndpoints.defaultPort }
     /// Newest first, capped - shown on the Settings screen as a latency log.
     @Published private(set) var recentResults: [TitanResult] = []
     @Published private(set) var titanVersion: String?
@@ -73,6 +83,8 @@ final class AppState: ObservableObject {
     init() {
         let host = UserDefaults.standard.string(forKey: SettingsKeys.titanHost) ?? ""
         titanHost = host
+        let viaHost = UserDefaults.standard.bool(forKey: SettingsKeys.titanViaHost)
+        titanViaHost = viaHost
         rdpSettings = RDPSettings.load()
         rdp = RDPSession()
         heartbeat = TitanHeartbeat()
@@ -86,7 +98,7 @@ final class AppState: ObservableObject {
         let hostStore = HostStore()
         self.host = hostStore
         keypad = KeypadReadoutStore()
-        let titan = TitanClient(host: host)
+        let titan = TitanClient(host: host, port: viaHost ? TitanEndpoints.viaHostPort : TitanEndpoints.defaultPort)
         self.titan = titan
         let deskLink = DeskLink(api: titan)
         self.deskLink = deskLink

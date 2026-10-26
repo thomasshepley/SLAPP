@@ -102,7 +102,7 @@ struct ActionDraft: Equatable {
         case .cueFade(let s, let out): kind = .cueFade; slot = s + 1; fadeOut = out
         case .connectCue: kind = .connectCue
         case .flashSelection: kind = .flashSelection
-        case .deckChoice, .fireHandle, .setCueFade, .dimmerFlash: kind = .none
+        case .deckChoice, .fireHandle, .releaseHandle, .setCueFade, .dimmerFlash: kind = .none
         }
     }
 
