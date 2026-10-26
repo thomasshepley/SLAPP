@@ -12,6 +12,7 @@ with every change that goes to `main`.
 - **Keyboard button** (top right of the remote desktop, next to Menu): shows and hides the iPad's on-screen keyboard, and whatever you type goes to the Titan PC. Letters, numbers, space, Return, Tab and Backspace go as real keys; everything else (£, @, é...) types the right character whatever the PC's keyboard layout.
 - **A row of extra keys** above it: Esc, Tab, Ctrl, Alt, the arrows and Del. Ctrl and Alt latch: tap Ctrl, then C, for Ctrl-C.
 - Hide it with the button or the keyboard's own hide key. A Magic Keyboard still types key by key as before.
+- **Remote desktop with no Windows password:** a blank password is now sent as a blank password, rather than as "no password given", so it signs in once TitanDeck Host has allowed accounts with no password.
 
 ## 0.21.0 - 2026-10-26 - Titan 19 fixes, desk selection over CITP
 

@@ -471,7 +471,10 @@ int titan_rdp_connect(TitanRDP *rdp, const char *host, uint16_t port, const char
         freerdp_settings_set_uint32(settings, FreeRDP_ServerPort, port ? port : 3389) &&
         titan_set_string(settings, FreeRDP_Username, username) &&
         titan_set_string(settings, FreeRDP_Domain, domain) &&
-        titan_set_string(settings, FreeRDP_Password, password) &&
+        // Always set, even empty: a Windows account with no password (Host's
+        // "Accounts with no password" allowed). Left unset, FreeRDP treats the
+        // password as missing and tries to ask for one, which an app can't answer.
+        freerdp_settings_set_string(settings, FreeRDP_Password, password ? password : "") &&
         freerdp_settings_set_bool(settings, FreeRDP_AutoLogonEnabled, has_password) &&
         freerdp_settings_set_uint32(settings, FreeRDP_DesktopWidth, titan_clamp_dimension(width)) &&
         freerdp_settings_set_uint32(settings, FreeRDP_DesktopHeight,
