@@ -69,6 +69,20 @@
                     </Grid>
                 </Border>
 
+                <!-- Network for TitanDeck -->
+                <Border Style="{StaticResource CardStyle}">
+                    <StackPanel>
+                        <TextBlock Text="Network for TitanDeck" Style="{StaticResource CardTitle}" />
+                        <TextBlock Text="{Binding NetworkText}" FontSize="15" TextWrapping="Wrap" Margin="0,0,0,8" />
+                        <TextBlock Text="{Binding NetworkProblem}" Foreground="#FFFF9F0A" TextWrapping="Wrap" Margin="0,0,0,8"
+                                   Visibility="{Binding HasNetworkProblem, Converter={StaticResource Visible}}" />
+                        <ComboBox ItemsSource="{Binding AdapterChoices}" DisplayMemberPath="Label" SelectedValuePath="Id"
+                                  SelectedValue="{Binding SelectedAdapterId, Mode=TwoWay}" MinWidth="320" HorizontalAlignment="Left" />
+                        <TextBlock Foreground="{StaticResource SecondaryText}" TextWrapping="Wrap" Margin="0,8,0,0"
+                                   Text="The iPad finds this PC by the adapter chosen here. Pick the one on the same network as the iPad (the show network), not the internet or another network." />
+                    </StackPanel>
+                </Border>
+
                 <!-- Updates -->
                 <Border Style="{StaticResource CardStyle}">
                     <StackPanel>

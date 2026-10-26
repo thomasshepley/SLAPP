@@ -214,6 +214,32 @@ enum HostAPI {
         return components.url
     }
 
+    /// Just the host of an address: "10.0.0.5:4431" -> "10.0.0.5",
+    /// "[fe80::1]:4431" -> "fe80::1". For Titan and the remote desktop, which
+    /// have their own ports.
+    static func hostOnly(_ address: String) -> String {
+        let text = cleanAddress(address)
+        if text.hasPrefix("["), let end = text.firstIndex(of: "]") {
+            return String(text[text.index(after: text.startIndex) ..< end])
+        }
+        let colons = text.filter { $0 == ":" }.count
+        return colons == 1 ? String(text.prefix { $0 != ":" }) : text
+    }
+
+    /// When the Host moves address (Change Address), Titan and the remote
+    /// desktop can move with it (they're on the same PC). The remote desktop
+    /// keeps following Titan (an empty address) wherever it can.
+    static func follow(titanHost: String, rdpHost: String, to newAddress: String,
+                       titan: Bool, remote: Bool) -> (titanHost: String, rdpHost: String) {
+        let new = hostOnly(newAddress)
+        let titanNow = titanHost.trimmingCharacters(in: .whitespacesAndNewlines)
+        let rdpOwn = rdpHost.trimmingCharacters(in: .whitespacesAndNewlines)
+        let rdpNow = rdpOwn.isEmpty ? titanNow : rdpOwn
+        let titanAfter = titan ? new : titanNow
+        let rdpWanted = remote ? new : rdpNow
+        return (titanAfter, rdpWanted == titanAfter ? "" : rdpWanted)
+    }
+
     /// Trims an address and drops an interface ending: "192.168.1.20%en0" ->
     /// "192.168.1.20" (also "[fe80::1%en0]:4431" -> "[fe80::1]:4431"), so one
     /// that came from discovery, or was pasted from it, still works.

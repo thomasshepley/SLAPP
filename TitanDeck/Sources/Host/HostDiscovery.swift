@@ -9,6 +9,9 @@ final class HostDiscovery: ObservableObject {
     struct Found: Identifiable, Hashable {
         let name: String
         let version: String?
+        /// The address the Host says to use (Host 0.8+, when an adapter is
+        /// picked in its Network for TitanDeck), else nil: resolve the endpoint.
+        let address: String?
         let endpoint: NWEndpoint
         var id: String { name }
     }
@@ -50,8 +53,19 @@ final class HostDiscovery: ObservableObject {
     private nonisolated static func found(from result: NWBrowser.Result) -> Found? {
         guard case .service(let name, _, _, _) = result.endpoint else { return nil }
         var version: String?
-        if case .bonjour(let txt) = result.metadata { version = txt["version"] }
-        return Found(name: name, version: version, endpoint: result.endpoint)
+        var address: String?
+        if case .bonjour(let txt) = result.metadata {
+            version = txt["version"]
+            address = txt["address"].map(HostAPI.cleanAddress).flatMap { $0.isEmpty ? nil : $0 }
+        }
+        return Found(name: name, version: version, address: address, endpoint: result.endpoint)
+    }
+
+    /// Where to reach a found Host: the address it announces, else wherever
+    /// connecting to it lands.
+    nonisolated static func address(of found: Found) async -> String? {
+        if let address = found.address { return address }
+        return await resolve(found.endpoint)
     }
 
     /// Turns a Bonjour service into an IPv4 address the HTTP client can use,

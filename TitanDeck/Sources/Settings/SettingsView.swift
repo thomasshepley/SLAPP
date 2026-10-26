@@ -195,7 +195,7 @@ private struct HostSection: View {
         Section {
             if host.isPaired {
                 NavigationLink {
-                    HostStatusView(host: host)
+                    HostStatusView(host: host, titanHost: $appState.titanHost, rdpSettings: $appState.rdpSettings)
                 } label: {
                     HStack(spacing: 12) {
                         HostConnectionBadge(host: host)

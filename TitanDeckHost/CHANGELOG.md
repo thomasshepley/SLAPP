@@ -6,6 +6,14 @@ until it's show-ready (1.0): MINOR for features, PATCH for fixes. Keep
 (ChangelogTests checks). Each version is published as a GitHub release
 `host-v<version>` with the installer attached.
 
+## 0.8.0 - 2026-10-26 - Network for TitanDeck
+
+- **Pick the network adapter TitanDeck uses:** a Network for TitanDeck card lists the PC's adapters (Ethernet 1, Ethernet 4...) with their addresses. Pick the one on the show network and the Host only announces that adapter's address, on that adapter, so the iPad stops landing on another network's address. Automatic (every adapter) is the default, as before.
+- The card shows the address to type into TitanDeck, for the Host, Titan and the remote desktop alike. (Remote desktop is let through Windows Firewall on Private networks: the checklist flags a show network marked Public, with a fix.)
+- If the chosen adapter is unplugged, the Host goes back to every adapter until it's back, and says so.
+- **Desk selection when Titan's WebAPI is already in its UI:** if Titan's settings file has its WebAPI turned on at port 4430 (the one TitanDeck uses), that's already the desk's own WebAPI: the desk link now uses 4430, the checklist says there's nothing to change, and it no longer offers to move it to 4433 (which would have moved the WebAPI TitanDeck relies on).
+- After switching, on the iPad: Settings > TitanDeck Host > Change Address (TitanDeck 0.20) keeps the pairing.
+
 ## 0.7.0 - 2026-10-25 - Test and Show modes
 
 - **Test or Show:** a Mode card at the top of the window, and a TEST or SHOW badge by the headline. Show asks first ("All test features will be disabled if you confirm this"), then stops Fake Titan (it can't be started in Show), hides its card and the experimental "Ask Titan to write one". The checklist, Titan log, patch report, updates and everything for the show stay. Switch back to Test any time; the Host remembers the mode after a restart.

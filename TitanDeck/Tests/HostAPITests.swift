@@ -121,6 +121,36 @@ final class HostAPITests: XCTestCase {
         XCTAssertFalse(HostProtocol.fixesAllowedFromIPad.contains("InstallRdpWrapper"))
     }
 
+    func testTitanAndRemoteDesktopFollowTheHost() {
+        XCTAssertEqual(HostAPI.hostOnly("10.0.0.5:4431"), "10.0.0.5")
+        XCTAssertEqual(HostAPI.hostOnly(" 10.0.0.5 "), "10.0.0.5")
+        XCTAssertEqual(HostAPI.hostOnly("[fe80::1%en0]:4431"), "fe80::1")
+        XCTAssertEqual(HostAPI.hostOnly("titan-pc.local"), "titan-pc.local")
+
+        // Both follow: Titan moves and the remote desktop keeps following Titan.
+        var moved = HostAPI.follow(titanHost: "192.168.1.20", rdpHost: "", to: "10.0.0.5", titan: true, remote: true)
+        XCTAssertEqual(moved.titanHost, "10.0.0.5")
+        XCTAssertEqual(moved.rdpHost, "")
+        moved = HostAPI.follow(titanHost: "192.168.1.20", rdpHost: "192.168.1.20", to: "10.0.0.5:4431", titan: true, remote: true)
+        XCTAssertEqual(moved.titanHost, "10.0.0.5")
+        XCTAssertEqual(moved.rdpHost, "", "back to following Titan")
+
+        // Only the remote desktop moves.
+        moved = HostAPI.follow(titanHost: "192.168.1.20", rdpHost: "", to: "10.0.0.5", titan: false, remote: true)
+        XCTAssertEqual(moved.titanHost, "192.168.1.20")
+        XCTAssertEqual(moved.rdpHost, "10.0.0.5")
+
+        // Only Titan moves: the remote desktop stays where it was, so it's written down.
+        moved = HostAPI.follow(titanHost: "192.168.1.20", rdpHost: "", to: "10.0.0.5", titan: true, remote: false)
+        XCTAssertEqual(moved.titanHost, "10.0.0.5")
+        XCTAssertEqual(moved.rdpHost, "192.168.1.20")
+
+        // Neither: nothing changes.
+        moved = HostAPI.follow(titanHost: "192.168.1.20", rdpHost: "", to: "10.0.0.5", titan: false, remote: false)
+        XCTAssertEqual(moved.titanHost, "192.168.1.20")
+        XCTAssertEqual(moved.rdpHost, "")
+    }
+
     func testAddressesLoseTheirInterfaceEnding() {
         XCTAssertEqual(HostAPI.cleanAddress(" 192.168.1.20%en0 "), "192.168.1.20", "what discovery used to fill in")
         XCTAssertEqual(HostAPI.cleanAddress("192.168.1.20%en0:5000"), "192.168.1.20:5000")

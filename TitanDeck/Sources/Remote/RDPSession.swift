@@ -213,11 +213,24 @@ final class RDPSession: ObservableObject {
             state = .failed(certificateRejected
                 ? "The PC's security certificate has changed. If that's expected (e.g. Windows was reinstalled), forget it in Settings."
                 : (message ?? "Connection failed"))
+            if !certificateRejected, let request = lastRequest { explainFailure(message ?? "Connection failed", request) }
         } else {
             state = .idle
             desktopSize = .zero
         }
         Log.deck("RDP state: \(state)")
+    }
+
+    /// FreeRDP's own reason is often just "The connection was cancelled.":
+    /// check whether the PC answers on the port at all, and say which.
+    private func explainFailure(_ message: String, _ request: Request) {
+        let shown = state
+        Task { [weak self] in
+            let answered = await TCPProbe.canConnect(host: request.host, port: request.port, timeout: 2.5)
+            guard let self, self.state == shown else { return }   // reconnecting or moved on
+            self.state = .failed(RDPFailure.describe(message, host: request.host, port: request.port, answered: answered))
+            Log.deck("RDP: \(request.host):\(request.port) \(answered ? "answers" : "doesn't answer") on its port")
+        }
     }
 
     fileprivate func handleResize(width: UInt32, height: UInt32) {

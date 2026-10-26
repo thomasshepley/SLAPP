@@ -73,6 +73,9 @@ public sealed class HostClient
         return answer.ValueKind == JsonValueKind.Object && answer.TryGetProperty("note", out var note) ? note.GetString() : null;
     }
 
+    public Task<NetworkDto?> Network() => Get<NetworkDto>("network");
+    public Task<NetworkDto?> ChooseNetwork(string? id) => Post<NetworkDto>("network", new NetworkChoiceRequest(id));
+
     public Task<ModeDto?> Mode() => Get<ModeDto>("mode");
     public Task<ModeDto?> SetMode(string mode) => Post<ModeDto>("mode", new ModeDto(mode));
 

@@ -121,5 +121,17 @@ public sealed record PatchDto(string? Source, DateTimeOffset? Written, DateTimeO
 /// <summary>Test or Show (`GET/POST /local/mode`): "test" or "show".</summary>
 public sealed record ModeDto(string Mode);
 
+/// <summary>A network adapter, for choosing the one TitanDeck uses.</summary>
+public sealed record NetworkAdapterDto(string Id, string Name, string Description, IReadOnlyList<string> Addresses, bool Up);
+
+/// <summary>`GET /local/network`: the chosen adapter (null = automatic, every
+/// adapter), the address(es) the Host announces, and why not, if the chosen
+/// adapter can't be used.</summary>
+public sealed record NetworkDto(string? Chosen, string? ChosenName, IReadOnlyList<string> Announcing, string? Problem,
+    IReadOnlyList<NetworkAdapterDto> Adapters);
+
+/// <summary>Pick the adapter for TitanDeck by id; null for automatic.</summary>
+public sealed record NetworkChoiceRequest(string? Id);
+
 /// <summary>A report file picked in the Host window.</summary>
 public sealed record PatchImportRequest(string Name, string Text);

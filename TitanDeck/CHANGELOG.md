@@ -7,6 +7,13 @@ the GitHub Actions run that built it. The top entry is shown in the app
 so add an entry - and bump `MARKETING_VERSION` in `project.yml` to match -
 with every change that goes to `main`.
 
+## 0.20.0 - 2026-10-26 - Change the Host's address
+
+- **Change Address** (Settings > TitanDeck Host): when the PC has more than one network and TitanDeck found the wrong one, point it at the right address without pairing again. Type it, or pick the PC from the ones found on the network.
+- **Titan and the remote desktop move too:** Change Address has "Titan uses this address too" and "Remote desktop uses this address too" (both on), so all three switch to the show network's address in one go.
+- **Clearer remote desktop failures:** instead of "The connection was cancelled", TitanDeck checks whether the PC answers on the remote desktop port and says which: nothing answering at that address (wrong address or network, PC off, firewall), or the PC answered but the login didn't finish.
+- With TitanDeck Host 0.8 set to one network adapter, pairing and Change Address use the address the Host announces for that adapter.
+
 ## 0.19.0 - 2026-10-25 - Test and Show modes
 
 - **Test or Show:** Settings > Mode. Test (as now) has the test tools and an orange TEST badge on the Remote screen, the loading screen and Settings. Show asks first ("All test features will be disabled if you confirm this"), then hides the test tools: the test fire buttons, the virtual Stream Deck, Recent calls and the soak test log (it still records in the background), and turns the experimental "Find addresses with Patch" off. Switch back any time.

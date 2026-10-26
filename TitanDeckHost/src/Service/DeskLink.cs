@@ -60,7 +60,7 @@ public sealed class DeskLink(TitanLog titanLog, ILogger<DeskLink> log)
     {
         try
         {
-            using var response = Probe.GetAsync($"http://127.0.0.1:{TitanUiConfig.UiPort}/titan/get/System/SoftwareVersion")
+            using var response = Probe.GetAsync($"http://127.0.0.1:{TargetPort}/titan/get/System/SoftwareVersion")
                 .GetAwaiter().GetResult();
             return response.IsSuccessStatusCode;
         }
@@ -70,11 +70,18 @@ public sealed class DeskLink(TitanLog titanLog, ILogger<DeskLink> log)
         }
     }
 
+    /// <summary>Where Titan's UI WebAPI is on this PC: 4430 when Titan's
+    /// settings file already runs it there, else 4433.</summary>
+    public int TargetPort => TitanUiConfig.TargetPort(Configs().Select(c => c.State).ToList());
+
     /// <summary>Turns the UI WebAPI on at port 4433 in every Titan config
-    /// found, keeping a copy of each file as it was first.</summary>
+    /// found, keeping a copy of each file as it was first. Never when it's
+    /// already on at 4430: that's the WebAPI TitanDeck uses for everything.</summary>
     public string Enable()
     {
         var files = Configs(fresh: true);
+        if (TitanUiConfig.UiIsOnApiPort(files.Select(f => f.State).ToList()))
+            return $"Nothing to change: Titan's WebAPI already runs inside Titan on port {TitanUiConfig.ApiPort}, and the desk link uses it.";
         if (files.Count == 0)
             throw new InvalidOperationException("Couldn't find Titan's settings file. Add webapi.enabled = true and " +
                                                 $"webapi.port = {TitanUiConfig.UiPort} to it by hand.");
@@ -107,7 +114,8 @@ public sealed class DeskLink(TitanLog titanLog, ILogger<DeskLink> log)
             Log(403, "refused: the desk link never passes this on to the desk", true);
             return;
         }
-        var target = $"http://127.0.0.1:{TitanUiConfig.UiPort}{http.Request.Path}{http.Request.QueryString}";
+        var port = TargetPort;
+        var target = $"http://127.0.0.1:{port}{http.Request.Path}{http.Request.QueryString}";
         using var request = new HttpRequestMessage(new HttpMethod(http.Request.Method), target);
         if (http.Request.ContentLength > 0 || http.Request.Headers.TransferEncoding.Count > 0)
         {
@@ -135,8 +143,8 @@ public sealed class DeskLink(TitanLog titanLog, ILogger<DeskLink> log)
         catch (Exception error) when (error is HttpRequestException or TaskCanceledException)
         {
             http.Response.StatusCode = StatusCodes.Status502BadGateway;
-            await http.Response.WriteAsync($"Titan's UI WebAPI isn't answering on port {TitanUiConfig.UiPort}.");
-            Log(502, $"Titan's UI WebAPI isn't answering on {TitanUiConfig.UiPort}", true);
+            await http.Response.WriteAsync($"Titan's UI WebAPI isn't answering on port {port}.");
+            Log(502, $"Titan's UI WebAPI isn't answering on {port}", true);
         }
     }
 

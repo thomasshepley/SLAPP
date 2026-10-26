@@ -35,6 +35,7 @@ builder.Services.AddSingleton<FakeTitanServer>();
 builder.Services.AddSingleton<HostUpdater>();
 builder.Services.AddHostedService(services => services.GetRequiredService<HostUpdater>());
 builder.Services.AddSingleton<Fixer>();
+builder.Services.AddSingleton<NetworkChoice>();
 builder.Services.AddHostedService<Advertiser>();
 builder.Services.AddSingleton<DmxUniverses>();
 builder.Services.AddSingleton<SacnListener>();
@@ -198,6 +199,10 @@ local.MapGet("/status", (WindowsProbe probe, DeskLink desk, HostModeStore mode) 
 
 // Test or Show. Show stops Fake Titan and turns the experimental bits off.
 local.MapGet("/mode", (HostModeStore mode) => new ModeDto(mode.Mode));
+
+// The network adapter TitanDeck uses (announced on, and shown as the address to type).
+local.MapGet("/network", (NetworkChoice network) => network.Status());
+local.MapPost("/network", (NetworkChoiceRequest request, NetworkChoice network) => network.Choose(request.Id));
 local.MapPost("/mode", async (ModeDto request, HostModeStore mode, FakeTitanServer fake) =>
 {
     if (request.Mode is not ("test" or "show")) return Results.BadRequest(new { error = "Mode is test or show." });
