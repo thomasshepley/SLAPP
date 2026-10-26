@@ -9,6 +9,9 @@ struct RemoteView: View {
     @ObservedObject var session: RDPSession
     /// The iPad's on-screen keyboard, typing on the PC.
     @State private var softKeyboardShown = false
+    /// The top bar's controls (keyboard, Menu, connection) folded away behind
+    /// one button, so the selection gets the width.
+    @AppStorage("remote.controlsFolded") private var controlsFolded = true
 
     var body: some View {
         GeometryReader { geometry in
@@ -33,28 +36,29 @@ struct RemoteView: View {
                         .allowsHitTesting(false)   // display only; touches go to the desktop
                 }
             }
-            .overlay(alignment: .topLeading) {
-                HStack(spacing: 8) {
-                    ModeBadge()
-                    SelectedFixtureChip(deck: appState.deck)
-                }
-                .padding(.top, 12)
-                .padding(.leading, 16)
-                .allowsHitTesting(false)   // touches go through to the desktop
-            }
-            .overlay(alignment: .topTrailing) {
+            .overlay(alignment: .top) {
+                // Empty space in the bar passes touches through to the desktop.
                 HStack(spacing: 10) {
-                    if session.state == .connected {
-                        keyboardButton
-                        menuButton
+                    ModeBadge()
+                        .allowsHitTesting(false)
+                    SelectionStrip(deck: appState.deck)
+                        .layoutPriority(1)
+                    Spacer(minLength: 0)
+                    if !controlsFolded {
+                        if session.state == .connected {
+                            keyboardButton
+                            menuButton
+                        }
+                        ConnectionPill(heartbeat: appState.heartbeat, session: session,
+                                       network: appState.network, localNetwork: appState.localNetwork,
+                                       titanHost: appState.titanHost,
+                                       remoteHost: appState.rdpSettings.effectiveHost(titanHost: appState.titanHost))
+                            .transition(.opacity)
                     }
-                    ConnectionPill(heartbeat: appState.heartbeat, session: session,
-                                   network: appState.network, localNetwork: appState.localNetwork,
-                                   titanHost: appState.titanHost,
-                                   remoteHost: appState.rdpSettings.effectiveHost(titanHost: appState.titanHost))
+                    foldButton
                 }
                 .padding(.top, 12)
-                .padding(.trailing, 16)
+                .padding(.horizontal, 16)
             }
             .ignoresSafeArea()
             .onAppear {
@@ -121,6 +125,27 @@ struct RemoteView: View {
         .padding(28)
         .frame(maxWidth: .infinity)
         .glassEffect(.regular, in: .rect(cornerRadius: 28))
+    }
+
+    /// Folds the bar's controls away (or back): with them folded, a dot still
+    /// shows whether Titan and the remote desktop are OK.
+    private var foldButton: some View {
+        Button {
+            withAnimation(.snappy) { controlsFolded.toggle() }
+        } label: {
+            HStack(spacing: 6) {
+                if controlsFolded {
+                    StatusDot(heartbeat: appState.heartbeat, session: session)
+                }
+                Image(systemName: controlsFolded ? "chevron.left" : "chevron.right")
+            }
+            .font(.caption.weight(.semibold))
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+        }
+        .buttonStyle(.plain)
+        .glassEffect(.regular.interactive(), in: .capsule)
+        .accessibilityLabel(controlsFolded ? "Show the menu and connection" : "Hide the menu and connection")
     }
 
     /// Shows and hides the iPad's on-screen keyboard; it types on the PC.
@@ -191,31 +216,87 @@ struct RemoteView: View {
     }
 }
 
-/// "Currently Selected: 101" in the top left: the fixture the deck's keypad
-/// left in Titan's programmer. Gone after a Clear empties the programmer.
-private struct SelectedFixtureChip: View {
+/// What's selected, along the top: every fixture number that fits the bar,
+/// then "+N more"; a tap lists them all. Gone with nothing selected.
+private struct SelectionStrip: View {
     @ObservedObject var deck: DeckSessionController
+    @State private var showingAll = false
 
     var body: some View {
-        if let fixture = deck.selectionLabel {
-            // Same look as the Menu button and the connection pill opposite.
-            HStack(spacing: 5) {
-                Image(systemName: "scope")
-                    .foregroundStyle(.secondary)
-                Text("Currently Selected:")
-                    .foregroundStyle(.secondary)
-                Text(fixture)
-                    .contentTransition(.numericText())
+        let fixtures = deck.selectedFixtures
+        if !fixtures.isEmpty {
+            Button {
+                showingAll = true
+            } label: {
+                HStack(spacing: 5) {
+                    Image(systemName: "scope")
+                        .foregroundStyle(.secondary)
+                    Text("Selected:")
+                        .foregroundStyle(.secondary)
+                        .fixedSize()
+                    // The longest text that fits: all of it, or fewer runs and "+N more".
+                    ViewThatFits(in: .horizontal) {
+                        ForEach(DeckFlow.selectionTexts(fixtures), id: \.self) { text in
+                            Text(text).lineLimit(1).fixedSize()
+                        }
+                        Text("\(fixtures.count) fixtures").lineLimit(1).fixedSize()
+                    }
+                }
+                .font(.caption.weight(.semibold).monospacedDigit())
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
             }
-            .font(.caption.weight(.semibold).monospacedDigit())
-            .fixedSize()
-            .padding(.horizontal, 14)
-            .padding(.vertical, 8)
-            .glassEffect(.regular, in: .capsule)
-            .animation(.snappy, value: fixture)
+            .buttonStyle(.plain)
+            .glassEffect(.regular.interactive(), in: .capsule)
+            .animation(.snappy, value: fixtures)
             .transition(.opacity)
-            .accessibilityElement(children: .combine)
+            .popover(isPresented: $showingAll) {
+                SelectionList(fixtures: fixtures)
+            }
+            .accessibilityLabel("Selected fixtures: \(DeckFlow.selectionRuns(fixtures).joined(separator: ", "))")
         }
+    }
+}
+
+/// Every selected fixture, from a tap on the selection strip.
+private struct SelectionList: View {
+    let fixtures: [Int]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("\(fixtures.count) fixture\(fixtures.count == 1 ? "" : "s") selected")
+                .font(.headline)
+            ScrollView {
+                Text(DeckFlow.selectionRuns(fixtures).joined(separator: ", "))
+                    .font(.body.monospacedDigit())
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .textSelection(.enabled)
+            }
+        }
+        .padding(20)
+        .frame(width: 380)
+        .frame(maxHeight: 420)
+    }
+}
+
+/// Folded controls: green when Titan and the remote desktop are both fine.
+private struct StatusDot: View {
+    @ObservedObject var heartbeat: TitanHeartbeat
+    @ObservedObject var session: RDPSession
+
+    private var colour: Color {
+        switch (heartbeat.health, session.state) {
+        case (.ok, .connected): .green
+        case (.slow, .connected): .yellow
+        case (.down, _): .red
+        default: .orange
+        }
+    }
+
+    var body: some View {
+        Circle()
+            .fill(colour)
+            .frame(width: 8, height: 8)
     }
 }
 

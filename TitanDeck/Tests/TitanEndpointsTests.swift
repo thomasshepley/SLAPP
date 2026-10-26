@@ -73,7 +73,9 @@ final class TitanEndpointsTests: XCTestCase {
 
     func testIntensityNudge() {
         XCTAssertEqual(TitanEndpoints.url(for: .adjustIntensity(percent: -5), host: host)?.absoluteString,
-                       "http://10.0.0.1:4430/titan/script/2/Programmer/Editor/Fixtures/IncrementDimmer?value=-204.8&timeDelta=1&shiftEnabled=false")
+                       "http://10.0.0.1:4430/titan/script/2/Programmer/Editor/Fixtures/IncrementDimmer?value=-204.8&timeDelta=21&shiftEnabled=false")
+        XCTAssertEqual(TitanEndpoints.wheelSeconds(steps: 10), 1, "10 steps a second: linear on the desk")
+        XCTAssertEqual(TitanEndpoints.wheelSeconds(steps: 409.6), 41)
         XCTAssertEqual(TitanEndpoints.url(for: .adjustIntensity(percent: 10), host: host)
             .flatMap { URLComponents(url: $0, resolvingAgainstBaseURL: false) }?.queryItems?.first?.value, "409.6",
                        "10% of Titan's 4096-step wheel")
@@ -141,8 +143,29 @@ final class TitanEndpointsTests: XCTestCase {
 
     func testTitansShapeComesFirstThenTheLikelyOnes() {
         let bodies = TitanTimeSpan.bodies(seconds: 0.3, current: Data(#"{"Seconds":2}"#.utf8)).map(text)
-        XCTAssertEqual(bodies, [#"{"Seconds":0.3}"#, #""00:00:00.3000000""#, "0.3"], "duplicates dropped")
-        XCTAssertEqual(TitanTimeSpan.bodies(seconds: 1, current: nil).map(text),
-                       [#""00:00:01""#, #"{"Seconds":1}"#, "1"])
+        XCTAssertEqual(bodies, [#"{"Seconds":0.3}"#, #""00:00:00.3000000""#, "0.3"])
+        XCTAssertEqual(TitanTimeSpan.bodies(seconds: 1, current: nil).map(text), [#""00:00:01""#, "1"],
+                       "never a guessed object: Titan could take it as 0 s")
+    }
+
+    func testTimesAreReadBack() {
+        func read(_ text: String) -> Double? { TitanTimeSpan.seconds(from: Data(text.utf8)) }
+        XCTAssertEqual(read(#""00:00:02.5000000""#), 2.5)
+        XCTAssertEqual(read(#""00:01:30""#), 90)
+        XCTAssertEqual(read(#""1.00:00:01""#), 86401, "days")
+        XCTAssertEqual(read("0.3"), 0.3)
+        XCTAssertEqual(read(#"{"Ticks":25000000}"#), 2.5)
+        XCTAssertEqual(read(#"{"Time":"00:00:04","IsDefault":false}"#), 4)
+        XCTAssertNil(read(#"{"Name":"Cue 1"}"#))
+        XCTAssertNil(read("soon"))
+    }
+
+    func testCueTimesCanBeSetLikeTitansMacros() {
+        let url = TitanEndpoints.setPropertyFloatURL(id: TitanEndpoints.cueFadePropertyID(fadeOut: true), value: 0.3,
+                                                     host: "10.0.0.5")
+        XCTAssertEqual(url?.path, "/titan/script/2/ActionScript/SetProperty/Float")
+        let query = url.flatMap { URLComponents(url: $0, resolvingAgainstBaseURL: false) }?.queryItems ?? []
+        XCTAssertEqual(query.first { $0.name == "id" }?.value, "Playbacks.Editor.Times.CueFadeOutTime")
+        XCTAssertEqual(query.first { $0.name == "value" }?.value, "0.3")
     }
 }

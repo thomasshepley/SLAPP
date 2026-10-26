@@ -307,6 +307,16 @@ Before you start: on the Titan PC, back up Titan's .exe.config yourself too.
       on the deck moves it too. Clear, Exit. Each key shows in the Host's
       Titan log as Desk keys. Close the Host window (tray > Close): the
       keypad still works over the remote desktop if that's connected.
+- [ ] Selection at a glance (0.23): select several fixtures. The Remote
+      screen's top bar shows their numbers then "+N more"; tap it for all of
+      them. The chevron on the right folds the Menu / keyboard / connection
+      controls away and back (green dot = OK). On the deck, Quick Keys' row
+      above Clear shows the numbers; tap it for the next ones. The keypad's
+      Menu key shows e.g. "901 +18".
+- [ ] Intensity on the desk (0.23, keypad types on the desk, live level known
+      - nudge once if the flash key doesn't show a %): +10% / -10% move the
+      fixture by 10% on the desk's own programmer; Hold for 0% takes it out
+      and puts it back.
 - [ ] On-screen keyboard (0.22): the keyboard button (top right) shows the
       iPad keyboard with Esc / Tab / Ctrl / Alt / arrows / Del above it. Type
       in a Titan legend box: letters, capitals, numbers, £ @ " #, Backspace,

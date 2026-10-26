@@ -206,6 +206,14 @@ support posts):
   the desk's own command line. Typing is serial (one Task chain). The WebAPI user
   mirrors the keypad selection so intensity keys still work. Keep the key names
   in step with `TitanDeckHost/src/Core/Titan/DeskKeys.cs`.
+- **Desk-typed levels** (`AppState.deskLevelKeys`): with the keypad typing on
+  the desk, intensity nudges and Hold for 0% type `@ level Enter` on the desk
+  (`DeskKeys.level`), from `deck.liveLevel` (or the level just typed, for 2 s);
+  unknown level = the WebAPI as before. IncrementDimmer accelerates when the
+  wheel turns fast, so `TitanEndpoints.wheelSeconds` keeps it at 10 steps/s.
+- **Selection strip**: `DeckFlow.selectionTexts` (Remote screen top bar, the
+  longest that fits via ViewThatFits), `selectionStrip` (Quick Keys keys 9-11,
+  `DeckChoice.selectionStrip`, a tap pages on), `compactSelection` (keypad Menu key).
 - **Through TitanDeck Host** (`AppState.titanViaHost`, `titan.viaHost`): the
   shared `TitanClient` uses port 4436 (`TitanEndpoints.viaHostPort`), the
   Host's logged pass-through to 127.0.0.1:4430. App Intents and the Watch still

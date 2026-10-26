@@ -234,11 +234,22 @@ final class AppState: ObservableObject {
     }
     /// Keys typed on the desk go one after another, in the order pressed.
     private var deskTyping: Task<Void, Never>?
+    /// The level (0-1) a desk-typed hold-for-0% puts back when let go.
+    private var flashRestore: Double?
+    /// The level last typed on the desk, for quick nudges in a row (the sACN
+    /// reading takes a moment to catch up).
+    private var typedLevel: (level: Double, at: Date)?
+
+    /// The selected fixture's level now: what was just typed, else the live reading.
+    private var currentLevel: Double? {
+        if let typed = typedLevel, Date().timeIntervalSince(typed.at) < 2 { return typed.level }
+        return deck.liveLevel
+    }
 
     func fire(_ action: TitanAction, fromKey keyIndex: Int? = nil) {
         let keypadLine = keypad.press(action)
         intensity.deckWillSend(action)
-        if keypadTypesOnDesk, let keys = DeskKeys.names(for: action) {
+        if keypadTypesOnDesk, let keys = DeskKeys.names(for: action) ?? deskLevelKeys(for: action) {
             let previous = deskTyping
             deskTyping = Task { [weak self] in
                 await previous?.value
@@ -267,6 +278,36 @@ final class AppState: ObservableObject {
             if !result.ok {
                 connectionLog.record(.key, .info, "Key \(keyIndex + 1) \(result.action.summary) failed: \(result.error ?? "HTTP \(result.statusCode ?? 0)")")
             }
+        }
+    }
+
+    /// Intensity nudges and the hold-for-0% flash, typed on the desk as
+    /// "@ level Enter" so they act on the desk's own programmer (where the
+    /// typed selection is), worked out from the selected fixture's live level.
+    /// Nil when the level isn't known yet: then they go to the WebAPI as before
+    /// (which also teaches TitanDeck the fixture's level). All the selected
+    /// fixtures go to the same level.
+    private func deskLevelKeys(for action: TitanAction) -> [String]? {
+        guard !deck.selectedFixtures.isEmpty else { return nil }
+        switch action {
+        case .adjustIntensity(let percent):
+            guard let level = currentLevel else { return nil }
+            let target = min(max(level * 100 + percent, 0), 100).rounded()
+            typedLevel = (target / 100, Date())
+            return DeskKeys.level(target)
+        case .dimmerFlash(let down, _):
+            if down {
+                guard let level = currentLevel else { return nil }
+                flashRestore = level
+                typedLevel = (0, Date())
+                return DeskKeys.level(0)
+            }
+            guard let level = flashRestore else { return nil }
+            flashRestore = nil
+            typedLevel = (level, Date())
+            return DeskKeys.level(level * 100)
+        default:
+            return nil
         }
     }
 

@@ -173,6 +173,12 @@ public sealed class FakeTitan
                         : new(200, JsonValue.Create(""), "nothing copied into the patch editor");
                 case "/titan/get/System/SoftwareVersion":
                     return new(200, JsonValue.Create(Version), null);
+                case "/titan/get/2/Playbacks/Editor/Times/CueFadeInTime":
+                case "/titan/get/2/Playbacks/Editor/Times/CueFadeOutTime":
+                    if (editing is not { } shown) return new(409, null, "no cue selected (SelectCueByNumber first)");
+                    var property = path[(path.LastIndexOf('/') + 1)..];
+                    var time = cueTimes.TryGetValue(shown, out var known) && known.TryGetValue(property, out var s) ? s : 0;
+                    return new(200, JsonValue.Create(TimeSpan.FromSeconds(time).ToString("c", CultureInfo.InvariantCulture)), null);
                 case "/titan/get/2/Command/CommandLineText":
                     return new(200, JsonValue.Create(me.Line), null);
                 case "/titan/handles/Playbacks":
@@ -219,6 +225,18 @@ public sealed class FakeTitan
                         return new(404, null, $"no playback with titanId {Get(q, "handle_titanId")}");
                     editing = cuePlayback;
                     return new(200, null, $"editing playback {cuePlayback}, cue {Get(q, "cueNumber", "1")}");
+                case "ActionScript/SetProperty/Float":
+                {
+                    // Titan's own macros set cue times like this, in seconds.
+                    var id = Get(q, "id");
+                    var name = id.StartsWith("Playbacks.Editor.Times.", StringComparison.Ordinal) ? id[23..] : "";
+                    if (name is not ("CueFadeInTime" or "CueFadeOutTime")) return new(404, null, $"Fake Titan can't set {id}");
+                    if (editing is not { } playback) return new(409, null, $"{name} with no cue selected (SelectCueByNumber first)");
+                    if (!TryNumber(Get(q, "value"), out var seconds)) return new(400, null, "value isn't a number");
+                    if (!cueTimes.TryGetValue(playback, out var times)) cueTimes[playback] = times = [];
+                    times[name] = seconds;
+                    return new(200, null, $"playback {playback} {name} = {Num(seconds)}s");
+                }
                 case "Selection/Context/Global/Clear":
                     me.Selected = [];
                     return new(200, null, $"selection cleared ({Who(user)} user)");

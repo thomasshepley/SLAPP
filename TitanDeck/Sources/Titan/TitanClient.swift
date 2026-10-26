@@ -128,10 +128,13 @@ actor TitanClient {
 
     // MARK: - Cue fades
 
-    /// Selects cue 1 of the playback, reads its fade time to see the shape
-    /// Titan writes times in (an AcwTimeSpan on Titan 19, which refuses a bare
-    /// number), then writes the new time in that shape, trying the likely
-    /// shapes in turn if Titan didn't say (`TitanTimeSpan`).
+    /// Selects cue 1 of the playback, then sets its fade time. Titan 19 wants
+    /// cue times as an AcwTimeSpan, which its JSON property setter won't take
+    /// as a plain number, so this tries in turn: Titan's own URL setter with
+    /// the seconds (as its macros do), the JSON in the shape Titan reads it
+    /// in, a .NET TimeSpan string, and a plain number (older Titans). When
+    /// Titan can read the time back, each try is checked, so one Titan takes
+    /// without using the value doesn't count.
     private func runCueFade(titanId: Int, fadeOut: Bool, seconds: Double) async -> TitanResult {
         let action = TitanAction.setCueFade(titanId: titanId, fadeOut: fadeOut, seconds: seconds)
         let start = Date()
@@ -139,33 +142,54 @@ actor TitanClient {
         guard select.ok else {
             return finish(action, start, ok: false, status: select.status, error: select.error ?? "Couldn't select the cue")
         }
-        guard let url = TitanEndpoints.cueFadePropertyURL(fadeOut: fadeOut, write: true, host: host, port: port) else {
+        guard let postURL = TitanEndpoints.cueFadePropertyURL(fadeOut: fadeOut, write: true, host: host, port: port),
+              let readURL = TitanEndpoints.cueFadePropertyURL(fadeOut: fadeOut, write: false, host: host, port: port) else {
             return finish(action, start, ok: false, status: nil, error: "No Titan host set")
         }
-        let current = await body(TitanEndpoints.cueFadePropertyURL(fadeOut: fadeOut, write: false, host: host, port: port))
+        let current = await body(readURL)
         let currentText = current.map { String(decoding: $0.prefix(200), as: UTF8.self) }
         if let currentText { Log.titan("Cue fade \(fadeOut ? "out" : "in") reads as \(currentText)") }
-        var last: (status: Int?, error: String?) = (nil, nil)
+        let canCheck = current.flatMap(TitanTimeSpan.seconds(from:)) != nil
+
+        /// Titan has the new time (or can't say, so the 200 has to do).
+        func took() async -> Bool {
+            guard canCheck else { return true }
+            guard let now = await body(readURL), let read = TitanTimeSpan.seconds(from: now) else { return false }
+            return abs(read - seconds) < 0.05
+        }
+
+        var attempts: [(name: String, request: URLRequest)] = []
+        if let url = TitanEndpoints.setPropertyFloatURL(id: TitanEndpoints.cueFadePropertyID(fadeOut: fadeOut),
+                                                        value: seconds, host: host, port: port) {
+            attempts.append(("SetProperty.Float", URLRequest(url: url)))
+        }
         for body in TitanTimeSpan.bodies(seconds: seconds, current: current) {
-            var request = URLRequest(url: url)
+            var request = URLRequest(url: postURL)
             request.httpMethod = "POST"
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
             request.httpBody = body
+            attempts.append((String(decoding: body, as: UTF8.self), request))
+        }
+
+        var errors: [String] = []
+        var lastStatus: Int?
+        for attempt in attempts {
             do {
-                let (data, response) = try await session.data(for: request)
+                let (data, response) = try await session.data(for: attempt.request)
                 let status = (response as? HTTPURLResponse)?.statusCode
-                if status == 200 {
-                    return finish(action, start, ok: true, status: status, error: nil,
-                                  detail: "sent \(String(decoding: body, as: UTF8.self))")
+                lastStatus = status
+                if status == 200, await took() {
+                    return finish(action, start, ok: true, status: status, error: nil, detail: "set with \(attempt.name)")
                 }
-                last = (status, Self.errorText(status: status, body: data))
+                errors.append("\(attempt.name): " + (Self.errorText(status: status, body: data) ?? "taken but the time didn't change"))
             } catch {
-                last = (nil, error.localizedDescription)
+                errors.append("\(attempt.name): \(error.localizedDescription)")
             }
         }
-        let error = (last.error ?? "Titan didn't take the time")
-            + (currentText.map { " (Titan reads it as \($0))" } ?? " (and Titan didn't say how it reads it)")
-        return finish(action, start, ok: false, status: last.status, error: error)
+        let error = (errors.first ?? "Titan didn't take the time")
+            + (currentText.map { ". Titan reads the time as \($0)" } ?? ". Titan didn't say how it reads the time")
+        Log.titan("Cue fade not set. Tried: " + errors.joined(separator: " | "))
+        return finish(action, start, ok: false, status: lastStatus, error: error)
     }
 
     // MARK: - Flash (hold to 0%)

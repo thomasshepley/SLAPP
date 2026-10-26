@@ -7,6 +7,15 @@ the GitHub Actions run that built it. The top entry is shown in the app
 so add an entry - and bump `MARKETING_VERSION` in `project.yml` to match -
 with every change that goes to `main`.
 
+## 0.23.0 - 2026-10-26 - Selection at a glance, intensity on the desk
+
+- **What's selected, across the top of the Remote screen:** every fixture number that fits ("901, 933-936, 940...") then "+N more", and a tap lists them all. The keyboard, Menu and connection controls fold away behind one button on the right (a dot on it shows the connection is OK) to give the selection the room; tap it to bring them back.
+- **And on the Stream Deck:** Quick Keys has a selection strip (the row above Clear) showing the selected fixture numbers, "+N more" when they don't fit, and a tap shows the next ones. The keypad's Menu key shows the first of them too ("901 +18").
+- **Intensity and Hold for 0% on the desk:** with Keypad types on the desk, the +/- keys and Hold for 0% now type "@ level Enter" on the desk too, worked out from the fixture's live level, so they act on the desk's programmer where the selection is (they'd been going to the WebAPI's separate one). Before the live level is known they work as before. All the selected fixtures go to the same level.
+- **Fixed: +10% jumping about 60%.** Titan's intensity wheel speeds up when turned fast, so a big nudge in one go overshot; it's now "turned" slowly enough to stay in step.
+- **Fade times on Titan 19, again:** TitanDeck now sets them the way Titan's own macros do (a number of seconds), checks Titan really took the new time when it can read it back, and never sends a guessed format that Titan could quietly take as 0.
+- **Clear on the desk:** TitanDeck Host 0.10.1 types Alt+C (Titan's Clear) holding Alt down first, as a hand would; sent all at once, Titan could miss the Alt.
+
 ## 0.22.0 - 2026-10-26 - On-screen keyboard on the remote desktop
 
 - **Keyboard button** (top right of the remote desktop, next to Menu): shows and hides the iPad's on-screen keyboard, and whatever you type goes to the Titan PC. Letters, numbers, space, Return, Tab and Backspace go as real keys; everything else (£, @, é...) types the right character whatever the PC's keyboard layout.

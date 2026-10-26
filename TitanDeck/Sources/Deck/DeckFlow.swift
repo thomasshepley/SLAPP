@@ -103,6 +103,65 @@ enum DeckFlow {
     /// "101-110", "101, 105, 107", or the first two runs and how many more.
     static func selectionLabel(_ fixtures: [Int]) -> String? {
         guard !fixtures.isEmpty else { return nil }
+        let runs = selectionRanges(fixtures)
+        let text = { (run: ClosedRange<Int>) in
+            run.count == 1 ? "\(run.lowerBound)" : "\(run.lowerBound)-\(run.upperBound)"
+        }
+        guard runs.count > 3 else { return runs.map(text).joined(separator: ", ") }
+        let shown = runs.prefix(2)
+        let more = fixtures.count - shown.reduce(0) { $0 + $1.count }
+        return shown.map(text).joined(separator: ", ") + " +\(more)"
+    }
+
+    /// Every run of the selection as text, in order: "901", "933-936", "940".
+    static func selectionRuns(_ fixtures: [Int]) -> [String] {
+        selectionRanges(fixtures).map { $0.count == 1 ? "\($0.lowerBound)" : "\($0.lowerBound)-\($0.upperBound)" }
+    }
+
+    /// The selection as text that fits, longest first: every run, then fewer
+    /// runs with "+N more" (N fixtures). The Remote screen shows the first
+    /// that fits its top bar. At most `limit` choices.
+    static func selectionTexts(_ fixtures: [Int], limit: Int = 40) -> [String] {
+        let ranges = selectionRanges(fixtures)
+        let runs = selectionRuns(fixtures)
+        guard !runs.isEmpty else { return [] }
+        var texts = [runs.joined(separator: ", ")]
+        var shown = min(runs.count - 1, limit)
+        while shown >= 1, texts.count < limit {
+            let more = fixtures.count - ranges.prefix(shown).reduce(0) { $0 + $1.count }
+            texts.append(runs.prefix(shown).joined(separator: ", ") + " +\(more) more")
+            shown -= 1
+        }
+        return texts
+    }
+
+    /// The deck's selection strip: `slots` keys showing the selection from run
+    /// `offset`; when there's more than fits, the last key says "+N more" (and
+    /// a tap moves on to `next`, back to 0 at the end).
+    static func selectionStrip(_ fixtures: [Int], offset: Int, slots: Int) -> (labels: [String], next: Int) {
+        let ranges = selectionRanges(fixtures)
+        let runs = selectionRuns(fixtures)
+        guard slots > 0, !runs.isEmpty else { return (Array(repeating: "", count: max(slots, 0)), 0) }
+        let start = runs.indices.contains(offset) ? offset : 0
+        let rest = runs[start...]
+        if rest.count <= slots {
+            return (Array(rest) + Array(repeating: "", count: slots - rest.count), 0)
+        }
+        let shown = Array(rest.prefix(slots - 1))
+        let more = ranges[(start + shown.count)...].reduce(0) { $0 + $1.count }
+        return (shown + ["+\(more)\nmore"], start + shown.count)
+    }
+
+    /// For the keypad's Menu key: the first run, and how many more.
+    static func compactSelection(_ fixtures: [Int]) -> String? {
+        let ranges = selectionRanges(fixtures)
+        guard let first = ranges.first else { return nil }
+        let text = first.count == 1 ? "\(first.lowerBound)" : "\(first.lowerBound)-\(first.upperBound)"
+        let more = fixtures.count - first.count
+        return more > 0 ? "\(text) +\(more)" : text
+    }
+
+    private static func selectionRanges(_ fixtures: [Int]) -> [ClosedRange<Int>] {
         var runs: [ClosedRange<Int>] = []
         for number in fixtures {
             if let last = runs.last, number == last.upperBound + 1 {
@@ -111,13 +170,7 @@ enum DeckFlow {
                 runs.append(number ... number)
             }
         }
-        let text = { (run: ClosedRange<Int>) in
-            run.count == 1 ? "\(run.lowerBound)" : "\(run.lowerBound)-\(run.upperBound)"
-        }
-        guard runs.count > 3 else { return runs.map(text).joined(separator: ", ") }
-        let shown = runs.prefix(2)
-        let more = fixtures.count - shown.reduce(0) { $0 + $1.count }
-        return shown.map(text).joined(separator: ", ") + " +\(more)"
+        return runs
     }
 
     /// The flash key's label: the fixture's live level when it's known.
@@ -166,6 +219,16 @@ enum DeckFlow {
             var extra = template
             extra.index = free
             keys.append(extra)
+        }
+        // The selection strip: the row above Clear on the 15-key deck (if it's
+        // free), else one key in the first free spot.
+        let used = Set(keys.map(\.index))
+        let row = threeWide ? [9, 10, 11] : []
+        let spots = !row.isEmpty && row.allSatisfy({ !used.contains($0) })
+            ? row : Array((0 ..< profile.keyCount).filter { !used.contains($0) }.prefix(1))
+        for (slot, spot) in spots.enumerated() {
+            keys.append(KeyDefinition(index: spot, label: "", colorHex: selectionColour,
+                                      action: .deckChoice(.selectionStrip(slot))))
         }
         return DeckPage(name: quickKeysName, keys: keys.sorted { $0.index < $1.index })
     }
@@ -246,6 +309,8 @@ enum DeckFlow {
     }
 
     static let returnLabel = "Return to Keypad"
+    /// The selection strip's keys.
+    static let selectionColour = "#0E5560"
 
     /// Where a tap on the Menu key goes: from the keypad to Quick Keys (with
     /// nothing selected, nowhere: only a hold does anything), from anywhere
@@ -271,13 +336,16 @@ enum DeckFlow {
     /// goes) or "Nothing Selected"; the page's name elsewhere; nil (its own
     /// Return to Keypad label) on Quick Keys and the colour keys.
     static func menuLabel(onPage index: Int, overlay: Overlay?, profile: DeckProfile, pageName: String?,
-                          hasSelection: Bool) -> String? {
+                          hasSelection: Bool, selectionText: String? = nil) -> String? {
         switch overlay {
         case .selection?, .colour?:
             return nil
         case nil:
             if index == quickKeysPageIndex(in: profile) { return nil }
-            if index == keypadPageIndex(in: profile) { return hasSelection ? quickKeysName : nothingSelected }
+            if index == keypadPageIndex(in: profile) {
+                guard hasSelection else { return nothingSelected }
+                return selectionText.map { "\($0)\n\(quickKeysName)" } ?? quickKeysName
+            }
             return pageName
         default:
             return pageName

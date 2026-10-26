@@ -27,4 +27,14 @@ final class DeskKeysTests: XCTestCase {
             XCTAssertNotNil(DeskKeys.table[DeskKeys.names(for: action)![0]])
         }
     }
+
+    func testLevelsAreTypedAsAtLevelEnter() {
+        XCTAssertEqual(DeskKeys.level(60), ["@", "6", "0", "enter"])
+        XCTAssertEqual(DeskKeys.level(0), ["@", "0", "enter"])
+        XCTAssertEqual(DeskKeys.level(100), ["@", "1", "0", "0", "enter"])
+        XCTAssertEqual(DeskKeys.level(112), ["@", "1", "0", "0", "enter"], "never past full")
+        XCTAssertEqual(DeskKeys.level(-5), ["@", "0", "enter"])
+        XCTAssertEqual(DeskKeys.level(54.6), ["@", "5", "5", "enter"])
+        for name in DeskKeys.level(73) { XCTAssertNotNil(DeskKeys.table[name]) }
+    }
 }

@@ -14,6 +14,13 @@ enum TitanEndpoints {
     /// a value of 10 moved a fixture about 0.25%, i.e. one step is 1/4096 of
     /// full. So a percentage is sent as percent x 40.96 steps.
     static let dimmerStepsPerPercent = 40.96
+
+    /// The wheel accelerates when turned fast (409.6 steps in one go moved a
+    /// fixture about 60%, not 10%), and timeDelta is how long the turn took.
+    /// 10 steps in a second was linear, so a nudge is "turned" at that speed.
+    static func wheelSeconds(steps: Double) -> Double {
+        max(1, (abs(steps) / 10).rounded(.up))
+    }
     /// Titan's WebAPI through TitanDeck Host (Host 0.9+), which logs every call.
     static let viaHostPort = 4436
     static let scriptRoot = "/titan/script/2/"
@@ -50,10 +57,11 @@ enum TitanEndpoints {
         case .keypadExit:
             return script(host, port, "Menu/ExitRootOrLatched", [])
         case .adjustIntensity(let percent):
-            // Wheel steps (see dimmerStepsPerPercent); timeDelta 1 s = turned slowly, so no acceleration.
+            // Wheel steps (see dimmerStepsPerPercent), "turned" slowly enough not to accelerate.
+            let steps = percent * dimmerStepsPerPercent
             return script(host, port, "Programmer/Editor/Fixtures/IncrementDimmer", [
-                ("value", format(number: percent * dimmerStepsPerPercent)),
-                ("timeDelta", "1"),
+                ("value", format(number: steps)),
+                ("timeDelta", format(number: wheelSeconds(steps: steps))),
                 ("shiftEnabled", "false"),
             ])
         case .fireHandle(let id):
@@ -90,6 +98,19 @@ enum TitanEndpoints {
         script(host, port, "Playbacks/Editor/CueSelection/SelectCueByNumber", [
             ("handle_titanId", "\(titanId)"), ("cueNumber", "1"),
         ])
+    }
+
+    /// Sets a Titan property from a number in the URL, the way Titan's own
+    /// macros do (`ActionScript.SetProperty.Float`). Titan converts it to the
+    /// property's type: the cue times' AcwTimeSpan takes seconds, as in
+    /// `Programmer/Editor/Fixtures/Release?fadeTime=5`.
+    static func setPropertyFloatURL(id: String, value: Double, host: String, port: Int = defaultPort) -> URL? {
+        script(host, port, "ActionScript/SetProperty/Float", [("id", id), ("value", format(number: value))])
+    }
+
+    /// Titan's property id for the selected cue's fade in or out time.
+    static func cueFadePropertyID(fadeOut: Bool) -> String {
+        "Playbacks.Editor.Times.\(fadeOut ? "CueFadeOutTime" : "CueFadeInTime")"
     }
 
     /// The selected cue's fade in or out time, read with GET and written with
@@ -253,10 +274,49 @@ enum TitanTimeSpan {
         var bodies: [Data] = []
         if let current, let shaped = shaped(seconds: seconds, like: current) { bodies.append(shaped) }
         bodies.append(Data("\"\(timeSpanText(seconds))\"".utf8))                         // .NET TimeSpan
-        bodies.append(Data("{\"Seconds\":\(TitanEndpoints.format(number: seconds))}".utf8))
         bodies.append(Data(TitanEndpoints.format(number: seconds).utf8))                  // older Titans
+        // Never a guessed object like {"Seconds": n}: Titan ignores names it
+        // doesn't know and could take it as 0 s without saying so.
         var seen = Set<Data>()
         return bodies.filter { seen.insert($0).inserted }
+    }
+
+    /// The seconds in one of Titan's answers about a time (a number, a
+    /// TimeSpan string, or an object with a time in it), or nil.
+    static func seconds(from data: Data) -> Double? {
+        guard let value = try? JSONDecoder().decode(JSONValue.self, from: data) else {
+            return seconds(in: .string(String(decoding: data, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)),
+                           key: nil)
+        }
+        return seconds(in: value, key: nil)
+    }
+
+    private static func seconds(in value: JSONValue, key: String?) -> Double? {
+        let name = key?.lowercased() ?? ""
+        switch value {
+        case .number(let number):
+            if name.contains("tick") { return number / 10_000_000 }
+            if name.contains("milli") { return number / 1000 }
+            if key == nil || name.contains("second") || name.contains("time") || name.contains("duration") || name == "value" {
+                return number
+            }
+            return nil
+        case .string(let text):
+            if let number = Double(text) { return number }
+            guard isTimeSpan(text) else { return nil }
+            let parts = text.split(separator: ":")
+            guard parts.count == 3, let h = Double(parts[0].split(separator: ".").last ?? ""),
+                  let m = Double(parts[1]), let s = Double(parts[2]) else { return nil }
+            let days = parts[0].contains(".") ? Double(parts[0].split(separator: ".").first ?? "") ?? 0 : 0
+            return days * 86400 + h * 3600 + m * 60 + s
+        case .object(let fields):
+            for (field, inner) in fields.sorted(by: { $0.key < $1.key }) {
+                if let found = seconds(in: inner, key: field) { return found }
+            }
+            return nil
+        case .bool, .array, .null:
+            return nil
+        }
     }
 
     /// "00:00:02.5000000", as .NET writes a TimeSpan.

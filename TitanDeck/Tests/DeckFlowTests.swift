@@ -60,7 +60,7 @@ final class DeckFlowTests: XCTestCase {
         XCTAssertEqual(page.key(at: 12)?.action, .keypadClear)
         XCTAssertEqual(page.key(at: 0)?.action, .adjustIntensity(percent: 1))
         XCTAssertEqual(page.key(at: 7)?.action, .flashSelection)
-        XCTAssertNil(page.key(at: 10))
+        XCTAssertEqual(page.key(at: 10)?.action, .deckChoice(.selectionStrip(1)), "the selection strip, row 4")
         XCTAssertEqual(page.keys.filter { $0.action == .mainMenu }.count, 1)
         XCTAssertEqual(Set(page.keys.map(\.index)).count, page.keys.count, "one key per position")
 
@@ -238,5 +238,43 @@ final class DeckSplashTests: XCTestCase {
         XCTAssertEqual(DeckFlow.blend("#207C33", toward: "#FFFFFF", by: 0), "#207C33")
         XCTAssertEqual(DeckFlow.blend("#207C33", toward: "#FFFFFF", by: 2), "#FFFFFF")
         XCTAssertEqual(DeckFlow.blend("junk", toward: "#FFFFFF", by: 1), "junk")
+    }
+
+    // MARK: Selection strip
+
+    func testSelectionRunsAndTheTextsThatMightFit() {
+        let fixtures = [901, 933, 934, 935, 936, 940, 950, 951]
+        XCTAssertEqual(DeckFlow.selectionRuns(fixtures), ["901", "933-936", "940", "950-951"])
+        let texts = DeckFlow.selectionTexts(fixtures)
+        XCTAssertEqual(texts.first, "901, 933-936, 940, 950-951", "everything, if it fits")
+        XCTAssertEqual(texts[1], "901, 933-936, 940 +2 more")
+        XCTAssertEqual(texts.last, "901 +7 more")
+        XCTAssertEqual(DeckFlow.selectionTexts([5]), ["5"])
+        XCTAssertTrue(DeckFlow.selectionTexts([]).isEmpty)
+        XCTAssertEqual(DeckFlow.selectionTexts(Array(stride(from: 1, to: 400, by: 2))).count, 40, "capped")
+    }
+
+    func testDeckStripPagesThroughTheSelection() {
+        let fixtures = [901, 933, 934, 935, 936, 940, 950, 951, 960]
+        let first = DeckFlow.selectionStrip(fixtures, offset: 0, slots: 3)
+        XCTAssertEqual(first.labels, ["901", "933-936", "+4\nmore"])
+        let second = DeckFlow.selectionStrip(fixtures, offset: first.next, slots: 3)
+        XCTAssertEqual(second.labels, ["940", "950-951", "960"])
+        XCTAssertEqual(second.next, 0, "back to the start")
+        XCTAssertEqual(DeckFlow.selectionStrip([7], offset: 0, slots: 3).labels, ["7", "", ""])
+        XCTAssertEqual(DeckFlow.selectionStrip([], offset: 0, slots: 3).labels, ["", "", ""])
+        XCTAssertEqual(DeckFlow.compactSelection(fixtures), "901 +8")
+        XCTAssertEqual(DeckFlow.compactSelection([3, 4, 5]), "3-5")
+        XCTAssertNil(DeckFlow.compactSelection([]))
+    }
+
+    func testQuickKeysHasTheStripAndTheMenuKeyShowsTheSelection() {
+        let profile = DeckProfile.makeDefault()
+        let page = DeckFlow.selectionPage(profile: profile, returnTo: 0)
+        XCTAssertEqual([9, 10, 11].map { page.key(at: $0)?.action },
+                       [.deckChoice(.selectionStrip(0)), .deckChoice(.selectionStrip(1)), .deckChoice(.selectionStrip(2))])
+        let keypad = DeckFlow.keypadPageIndex(in: profile)!
+        XCTAssertEqual(DeckFlow.menuLabel(onPage: keypad, overlay: nil, profile: profile, pageName: "Keypad",
+                                          hasSelection: true, selectionText: "901 +8"), "901 +8\nQuick Keys")
     }
 }

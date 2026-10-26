@@ -98,6 +98,11 @@ public class FakeTitanTests
         Assert.Equal(200, titan.Set("/titan/set/2/Playbacks/Editor/Times/CueFadeInTime", "{\"Seconds\":0.25}").Status);
         Assert.Equal(0.25, titan.CueTime(12, "CueFadeInTime"));
         Assert.Equal(400, titan.Set("/titan/set/2/Playbacks/Editor/Times/CueFadeInTime", "soon").Status);
+        // Titan's macros' way, in seconds, and read back as a TimeSpan.
+        Script(titan, "ActionScript/SetProperty/Float", "id=Playbacks.Editor.Times.CueFadeInTime&value=0.3");
+        Assert.Equal(0.3, titan.CueTime(12, "CueFadeInTime"));
+        Assert.Equal("00:00:00.3000000",
+            titan.Handle("/titan/get/2/Playbacks/Editor/Times/CueFadeInTime", "", FakeUser.Api).Body!.GetValue<string>());
         Assert.Equal(404, titan.Set("/titan/set/2/Show/Name", "x").Status);
     }
 

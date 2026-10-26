@@ -170,6 +170,15 @@ class FakeTitan:
 
         if path == "/titan/get/System/SoftwareVersion":
             return 200, VERSION, None
+        if path in ("/titan/get/2/Playbacks/Editor/Times/CueFadeInTime",
+                    "/titan/get/2/Playbacks/Editor/Times/CueFadeOutTime"):
+            if self.editing is None:
+                return 409, None, "no cue selected (SelectCueByNumber first)"
+            seconds = self.cue_times.get(self.editing, {}).get(path.rsplit("/", 1)[-1], 0.0)
+            whole = int(seconds)
+            text = "%02d:%02d:%02d" % (whole // 3600, whole // 60 % 60, whole % 60)
+            fraction = round((seconds - whole) * 10_000_000)
+            return 200, text + (".%07d" % fraction if fraction else ""), None
         if path == "/titan/get/2/Command/CommandLineText":
             return 200, self.command_line, None
         if path == "/titan/handles/Playbacks":
@@ -215,6 +224,19 @@ class FakeTitan:
 
         if re.fullmatch(r"Selection/Context/(Global|Programmer)/Get(All)?SelectedFixtureIds", function):
             return 200, [5000 + n for n in self.selected], None
+        if function == "ActionScript/SetProperty/Float":
+            # Titan's own macros set cue times like this, in seconds.
+            name = q.get("id", "").removeprefix("Playbacks.Editor.Times.")
+            if name not in ("CueFadeInTime", "CueFadeOutTime"):
+                return 404, None, f"Fake Titan can't set {q.get('id')}"
+            if self.editing is None:
+                return 409, None, f"{name} with no cue selected (SelectCueByNumber first)"
+            try:
+                seconds = float(q.get("value", ""))
+            except ValueError:
+                return 400, None, "value isn't a number"
+            self.cue_times.setdefault(self.editing, {})[name] = seconds
+            return 200, None, f"playback {self.editing} {name} = {seconds:g}s"
         if function == "Selection/Context/Global/Clear":
             self.selected = []
             return 200, None, f"selection cleared ({user} user)"

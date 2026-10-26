@@ -27,7 +27,7 @@ internal static class DeskTyper
             try
             {
                 var keys = await http.GetFromJsonAsync<string[]>("desk/keys/wait", stop) ?? [];
-                foreach (var key in keys) Type(key);
+                await Task.Run(() => { foreach (var key in keys) Type(key); }, stop);   // off the window's thread
             }
             catch (OperationCanceledException) when (stop.IsCancellationRequested)
             {
@@ -42,17 +42,30 @@ internal static class DeskTyper
         }
     }
 
+    /// One key, as a hand would press it: each event on its own with a short
+    /// gap, and Alt held down before (and let go after) its key. Sent all at
+    /// once, Titan saw the C of Alt+C (Clear) without the Alt.
     private static void Type(string name)
     {
         if (!DeskKeys.All.TryGetValue(name, out var key)) return;
-        var inputs = new List<Input>();
         const ushort alt = 0x38;
-        if (key.Alt) inputs.Add(Scan(alt, extended: false, up: false));
-        inputs.Add(Scan(key.Scancode, key.Extended, up: false));
-        inputs.Add(Scan(key.Scancode, key.Extended, up: true));
-        if (key.Alt) inputs.Add(Scan(alt, extended: false, up: true));
-        SendInput((uint)inputs.Count, [.. inputs], Marshal.SizeOf<Input>());
+        if (key.Alt)
+        {
+            Send(Scan(alt, extended: false, up: false));
+            Thread.Sleep(40);
+        }
+        Send(Scan(key.Scancode, key.Extended, up: false));
+        Thread.Sleep(20);
+        Send(Scan(key.Scancode, key.Extended, up: true));
+        if (key.Alt)
+        {
+            Thread.Sleep(40);
+            Send(Scan(alt, extended: false, up: true));
+        }
+        Thread.Sleep(15);
     }
+
+    private static void Send(Input input) => SendInput(1, [input], Marshal.SizeOf<Input>());
 
     private static Input Scan(ushort scancode, bool extended, bool up) => new()
     {
