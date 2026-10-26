@@ -8,6 +8,7 @@ final class DeskKeysTests: XCTestCase {
         XCTAssertEqual(DeskKeys.names(for: .keypadEnter), ["enter"])
         XCTAssertEqual(DeskKeys.names(for: .keypadClear), ["clear"])
         XCTAssertEqual(DeskKeys.names(for: .keypadExit), ["exit"])
+        XCTAssertEqual(DeskKeys.names(for: .keypadThro), ["thro"])
         XCTAssertNil(DeskKeys.names(for: .adjustIntensity(percent: 10)), "not a keypad key: still the WebAPI")
         XCTAssertNil(DeskKeys.names(for: .playbackGo(userNumber: 1)))
     }
@@ -23,7 +24,7 @@ final class DeskKeysTests: XCTestCase {
 
     func testEveryKeyTheDeckTypesIsInTheTable() {
         for digit in 0...9 { XCTAssertNotNil(DeskKeys.table[DeskKeys.names(for: .keypadDigit(digit))![0]]) }
-        for action in [TitanAction.keypadAt, .keypadEnter, .keypadClear, .keypadExit] {
+        for action in [TitanAction.keypadAt, .keypadEnter, .keypadClear, .keypadExit, .keypadThro] {
             XCTAssertNotNil(DeskKeys.table[DeskKeys.names(for: action)![0]])
         }
     }

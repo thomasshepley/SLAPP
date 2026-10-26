@@ -7,6 +7,8 @@ final class KeypadReadoutTests: XCTestCase {
         for character in text {
             if character == "@" {
                 last = readout.press(.keypadAt)
+            } else if character == ">" {
+                last = readout.press(.keypadThro)
             } else if let digit = character.wholeNumberValue {
                 last = readout.press(.keypadDigit(digit))
             }
@@ -20,6 +22,12 @@ final class KeypadReadoutTests: XCTestCase {
         _ = type("102@30", into: &readout)
         XCTAssertEqual(readout.current?.text, "102@30")
         XCTAssertTrue(readout.history.isEmpty)
+    }
+
+    func testThruReadsAsAWord() {
+        var readout = KeypadReadout()
+        _ = type("1>10", into: &readout)
+        XCTAssertEqual(readout.current?.text, "1 THRU 10")
     }
 
     func testEnterMovesTheLineToHistoryKeepingItsID() {

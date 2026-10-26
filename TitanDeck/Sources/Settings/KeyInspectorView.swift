@@ -263,7 +263,7 @@ struct KeyInspectorView: View {
                 LabeledContent("Kelvin", value: "\(draft.kelvin)K")
             }
         case .none, .nextPage, .previousPage, .openSettings, .keypadAt, .keypadEnter, .keypadExit,
-             .keypadClear, .mainMenu, .colourPresets, .connectCue, .flashSelection:
+             .keypadClear, .keypadThro, .mainMenu, .colourPresets, .connectCue, .flashSelection:
             EmptyView()
         }
     }
@@ -277,7 +277,7 @@ struct KeyInspectorView: View {
             Text("Titan's macro id string, not its user number.")
         case .raw:
             Text("Sent as http://<Titan>:4430/titan/script/2/<path>. See api.avolites.com for functions.")
-        case .keypadDigit, .keypadAt, .keypadEnter, .keypadClear:
+        case .keypadDigit, .keypadAt, .keypadEnter, .keypadClear, .keypadThro:
             Text("Works on Titan's command line, like the console keypad.")
         case .intensity:
             Text("Nudges the selected fixtures' intensity. Negative numbers bring it down.")

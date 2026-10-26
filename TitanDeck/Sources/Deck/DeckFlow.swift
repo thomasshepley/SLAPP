@@ -41,10 +41,15 @@ enum DeckFlow {
     /// Exit, and the fixture that leaves selected in Titan.
     struct KeypadBuffer: Equatable {
         private(set) var text = ""
-        /// The fixture in the programmer, as far as the deck knows: "102 Enter"
-        /// and "102 @ 50 Enter" both leave 102 selected, "@ 50 Enter" keeps
-        /// whatever was, and a Clear with nothing typed drops it.
-        private(set) var selection: Int?
+        /// The fixtures in the programmer, as far as the deck knows: "102 Enter"
+        /// and "102 @ 50 Enter" both leave 102 selected, "1 THRU 10 Enter"
+        /// leaves 1-10, "@ 50 Enter" keeps whatever was, and a Clear with
+        /// nothing typed drops it.
+        private(set) var selected: [Int] = []
+        /// The first fixture selected.
+        var selection: Int? { selected.first }
+        /// "1 THRU 10" covers at most this many fixtures.
+        static let maxThru = 10_000
 
         enum Event: Equatable {
             case none
@@ -61,24 +66,35 @@ enum DeckFlow {
                 text += "\(min(max(digit, 0), 9))"
             case .keypadAt:
                 text += "@"
+            case .keypadThro:
+                text += ">"
             case .keypadClear:
                 // Like Titan: the first Clear empties the line, the next the programmer.
                 guard text.isEmpty else { text = ""; return .none }
-                selection = nil
+                selected = []
                 return .clearedProgrammer
             case .keypadExit:
                 text = ""
             case .keypadEnter:
                 defer { text = "" }
-                let fixture = text.prefix { $0 != "@" }
-                if !fixture.isEmpty, fixture.allSatisfy(\.isNumber), let number = Int(fixture) {
-                    selection = number
-                }
-                return !text.isEmpty && text.allSatisfy(\.isNumber) ? .selected : .none
+                let fixtures = Self.fixtures(in: String(text.prefix { $0 != "@" }))
+                if let fixtures { selected = fixtures }
+                return fixtures != nil && !text.contains("@") ? .selected : .none
             default:
                 break
             }
             return .none
+        }
+
+        /// "102" or "1>10" (Thro) as fixture numbers, or nil if it's neither.
+        static func fixtures(in text: String) -> [Int]? {
+            let parts = text.split(separator: ">", omittingEmptySubsequences: false)
+            guard (1...2).contains(parts.count),
+                  parts.allSatisfy({ !$0.isEmpty && $0.allSatisfy(\.isNumber) }) else { return nil }
+            let numbers = parts.compactMap { Int($0) }
+            guard numbers.count == parts.count, let first = numbers.first, let last = numbers.last,
+                  abs(last - first) < maxThru else { return nil }
+            return first <= last ? Array(first...last) : Array((last...first).reversed())
         }
     }
 
@@ -331,6 +347,19 @@ enum DeckFlow {
     }
 
     static let nothingSelected = "Nothing Selected"
+    static let thruLabel = "THRU"
+
+    /// On the keypad, Clear becomes THRU while nothing is selected (to type
+    /// "1 THRU 10 Enter", as on the desk) and comes back once something is.
+    static func keypadKey(_ key: KeyDefinition?, onKeypad: Bool, hasSelection: Bool) -> KeyDefinition? {
+        guard onKeypad, !hasSelection, var shown = key, shown.action == .keypadClear else { return key }
+        shown.label = thruLabel
+        shown.action = .keypadThro
+        shown.colorHex = DeckProfile.pageColor
+        shown.sfSymbol = nil
+        shown.emoji = nil
+        return shown
+    }
 
     /// What the Menu key reads: on the keypad, "Quick Keys" (where a tap
     /// goes) or "Nothing Selected"; the page's name elsewhere; nil (its own

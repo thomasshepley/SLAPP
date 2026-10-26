@@ -36,7 +36,7 @@ struct KeypadReadout: Equatable {
     /// True for the keys that build or end a command line.
     static func isKeypad(_ action: TitanAction) -> Bool {
         switch action {
-        case .keypadDigit, .keypadAt, .keypadEnter, .keypadClear, .keypadExit: return true
+        case .keypadDigit, .keypadAt, .keypadThro, .keypadEnter, .keypadClear, .keypadExit: return true
         default: return false
         }
     }
@@ -51,6 +51,8 @@ struct KeypadReadout: Equatable {
             return type(String(digit), makeID: makeID)
         case .keypadAt:
             return type("@", makeID: makeID)
+        case .keypadThro:
+            return type(" THRU ", makeID: makeID)
         case .keypadEnter:
             guard var line = current else { return nil }   // Enter on an empty line: nothing to show
             line.outstanding += 1

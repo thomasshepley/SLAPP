@@ -34,6 +34,51 @@ final class DeckFlowTests: XCTestCase {
         XCTAssertNil(keypad.selection, "Exit drops what's typed")
     }
 
+    func testThruSelectsARange() {
+        var keypad = DeckFlow.KeypadBuffer()
+        for action: TitanAction in [.keypadDigit(1), .keypadThro, .keypadDigit(1), .keypadDigit(0)] {
+            XCTAssertEqual(keypad.apply(action), .none)
+        }
+        XCTAssertEqual(keypad.text, "1>10")
+        XCTAssertEqual(keypad.apply(.keypadEnter), .selected, "1 THRU 10 Enter selects 1-10")
+        XCTAssertEqual(keypad.selected, Array(1...10))
+        XCTAssertEqual(keypad.selection, 1)
+
+        for action: TitanAction in [.keypadDigit(5), .keypadThro, .keypadDigit(3), .keypadAt, .keypadDigit(5), .keypadDigit(0)] {
+            _ = keypad.apply(action)
+        }
+        XCTAssertEqual(keypad.apply(.keypadEnter), .none, "5 THRU 3 @ 50 sets a level")
+        XCTAssertEqual(keypad.selected, [5, 4, 3], "but leaves 5-3 selected, in typed order")
+
+        _ = keypad.apply(.keypadThro)
+        XCTAssertEqual(keypad.apply(.keypadEnter), .none, "THRU on its own isn't a selection")
+        XCTAssertEqual(keypad.selected, [5, 4, 3])
+        XCTAssertEqual(keypad.apply(.keypadClear), .clearedProgrammer)
+        XCTAssertEqual(keypad.selected, [])
+    }
+
+    func testThruTextIsChecked() {
+        XCTAssertEqual(DeckFlow.KeypadBuffer.fixtures(in: "102"), [102])
+        XCTAssertEqual(DeckFlow.KeypadBuffer.fixtures(in: "7>9"), [7, 8, 9])
+        XCTAssertNil(DeckFlow.KeypadBuffer.fixtures(in: ""))
+        XCTAssertNil(DeckFlow.KeypadBuffer.fixtures(in: "7>"))
+        XCTAssertNil(DeckFlow.KeypadBuffer.fixtures(in: ">7"))
+        XCTAssertNil(DeckFlow.KeypadBuffer.fixtures(in: "1>2>3"))
+        XCTAssertNil(DeckFlow.KeypadBuffer.fixtures(in: "1>99999"), "too many to list")
+    }
+
+    func testClearIsThruWhileNothingIsSelected() {
+        let clear = KeyDefinition(index: 12, label: "CLEAR", colorHex: DeckProfile.releaseColor, action: .keypadClear)
+        let thru = DeckFlow.keypadKey(clear, onKeypad: true, hasSelection: false)
+        XCTAssertEqual(thru?.action, .keypadThro)
+        XCTAssertEqual(thru?.label, "THRU")
+        XCTAssertEqual(thru?.index, 12)
+        XCTAssertEqual(DeckFlow.keypadKey(clear, onKeypad: true, hasSelection: true), clear, "something selected: Clear")
+        XCTAssertEqual(DeckFlow.keypadKey(clear, onKeypad: false, hasSelection: false), clear, "only on the keypad")
+        let enter = KeyDefinition(index: 11, label: "ENTER", action: .keypadEnter)
+        XCTAssertEqual(DeckFlow.keypadKey(enter, onKeypad: true, hasSelection: false), enter)
+    }
+
     func testAnythingWithAtIsNotASelection() {
         var keypad = DeckFlow.KeypadBuffer()
         for action: TitanAction in [.keypadDigit(1), .keypadAt, .keypadDigit(5)] { _ = keypad.apply(action) }

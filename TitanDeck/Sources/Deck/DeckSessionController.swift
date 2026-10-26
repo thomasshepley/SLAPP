@@ -124,13 +124,20 @@ final class DeckSessionController: ObservableObject {
         profile.pages.indices.contains(index) ? profile.pages[index] : nil
     }
 
+    /// A key on the current page as it acts: the keypad's Clear is THRU
+    /// while nothing is selected.
+    private func key(at index: Int) -> KeyDefinition? {
+        let onKeypad = flowOverlay == nil && currentPageIndex == DeckFlow.keypadPageIndex(in: profile)
+        return DeckFlow.keypadKey(currentPage?.key(at: index), onKeypad: onKeypad, hasSelection: !selectedFixtures.isEmpty)
+    }
+
     /// A key as drawn: the Menu key says where it goes or the page it's on,
     /// cue keys carry their cue and fade time.
     func displayedKey(at index: Int) -> KeyDefinition? {
         let menuLabel = DeckFlow.menuLabel(onPage: currentPageIndex, overlay: flowOverlay, profile: profile,
                                            pageName: currentPage?.name, hasSelection: !selectedFixtures.isEmpty,
                                            selectionText: DeckFlow.compactSelection(selectedFixtures))
-        return DeckFlow.displayed(currentPage?.key(at: index), onPage: menuLabel, workspaceNames: workspaceNames)
+        return DeckFlow.displayed(key(at: index), onPage: menuLabel, workspaceNames: workspaceNames)
             .map { DeckCues.displayed($0, slots: profile.cueSlots) }
             .map { key in
                 // The selection strip shows the selected fixture numbers.
@@ -177,14 +184,17 @@ final class DeckSessionController: ObservableObject {
     }
 
     private func refreshSelection() {
-        let current = deskLinked ? deskSelection : keypad.selection.map { [$0] } ?? []
+        let current = deskLinked ? deskSelection : keypad.selected
         guard current != selectedFixtures else { return }
         selectedFixtures = current
         stripOffset = 0
         onSelectionChanged?(current)
-        // The keypad's Menu key and the Quick Keys selection strip show it.
+        // The keypad's Menu key and the Quick Keys selection strip show it;
+        // the keypad's Clear is THRU while nothing is selected.
         if let page = currentPage {
-            for key in page.keys where key.action == .mainMenu || Self.isStrip(key.action) { draw(logicalIndex: key.index) }
+            for key in page.keys where key.action == .mainMenu || key.action == .keypadClear || Self.isStrip(key.action) {
+                draw(logicalIndex: key.index)
+            }
         }
     }
 
@@ -312,7 +322,7 @@ final class DeckSessionController: ObservableObject {
     /// `index` is the logical key (as laid out in the profile).
     private func handleKey(_ index: Int, pressed: Bool) {
         if pressed { heldKeys.insert(index) } else { heldKeys.remove(index) }
-        guard splashFrame == nil, let key = currentPage?.key(at: index) else { return }
+        guard splashFrame == nil, let key = key(at: index) else { return }
 
         // A latching key flips its look on every press, action or not.
         if pressed, key.pressedStyle?.resolvedMode == .latch {
