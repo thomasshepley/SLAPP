@@ -64,6 +64,8 @@ final class TitanEndpointsTests: XCTestCase {
                        "http://10.0.0.1:4430/titan/script/2/Command/AppendStringAndPreview?text=7")
         XCTAssertEqual(TitanEndpoints.url(for: .keypadAt, host: host)?.absoluteString,
                        "http://10.0.0.1:4430/titan/script/2/Command/AppendStringAndPreview?text=%40")
+        XCTAssertEqual(TitanEndpoints.url(for: .keypadThro, host: host)?.absoluteString,
+                       "http://10.0.0.1:4430/titan/script/2/Command/AppendStringAndPreview?text=%3E")
     }
 
     func testKeypadExitHasNoQuery() {

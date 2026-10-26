@@ -67,6 +67,9 @@ enum TitanAction: Codable, Hashable {
     /// Release a playback by its titanId (ReleasePlayback, its master release
     /// time): the second press of a latching GO.
     case releaseHandle(titanId: Int)
+    /// Keypad Thro ("1 THRU 10"). On the default keypad it takes Clear's
+    /// place while nothing is selected.
+    case keypadThro
 
     /// True for actions that go over the network to Titan.
     var isRemote: Bool {
@@ -101,6 +104,7 @@ enum TitanAction: Codable, Hashable {
         case .keypadEnter: return "Keypad Enter"
         case .keypadExit: return "Keypad Exit"
         case .keypadClear: return "Keypad Clear"
+        case .keypadThro: return "Keypad Thru"
         case .adjustIntensity(let p): return "Intensity \(p >= 0 ? "+" : "")\(TitanEndpoints.format(number: p))%"
         case .mainMenu: return "Main menu"
         case .previousPage: return "Previous deck page"

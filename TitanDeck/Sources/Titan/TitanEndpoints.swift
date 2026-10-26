@@ -54,6 +54,10 @@ enum TitanEndpoints {
             return script(host, port, "Command/AppendStringAndPreview", [("text", "\(min(max(digit, 0), 9))")])
         case .keypadAt:
             return script(host, port, "Command/AppendStringAndPreview", [("text", "@")])
+        case .keypadThro:
+            // Only when the keys can't be typed on the desk: ">" is Titan's
+            // command-line Thro as far as we know (unconfirmed).
+            return script(host, port, "Command/AppendStringAndPreview", [("text", ">")])
         case .keypadExit:
             return script(host, port, "Menu/ExitRootOrLatched", [])
         case .adjustIntensity(let percent):

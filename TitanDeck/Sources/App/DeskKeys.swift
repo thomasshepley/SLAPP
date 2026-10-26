@@ -15,6 +15,7 @@ enum DeskKeys {
         switch action {
         case .keypadDigit(let digit): ["\(min(max(digit, 0), 9))"]
         case .keypadAt: ["@"]
+        case .keypadThro: ["thro"]
         case .keypadEnter: ["enter"]
         case .keypadClear: ["clear"]
         case .keypadExit: ["exit"]

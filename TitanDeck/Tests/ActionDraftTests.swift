@@ -18,6 +18,7 @@ final class ActionDraftTests: XCTestCase {
             .keypadEnter,
             .keypadExit,
             .keypadClear,
+            .keypadThro,
             .adjustIntensity(percent: -10),
             .mainMenu,
         ]

@@ -21,6 +21,7 @@ struct ActionDraft: Equatable {
         case keypadEnter
         case keypadExit
         case keypadClear
+        case keypadThro
         case intensity
         case mainMenu
         case colourTemperature
@@ -50,6 +51,7 @@ struct ActionDraft: Equatable {
             case .keypadEnter: return "Keypad Enter"
             case .keypadExit: return "Keypad Exit"
             case .keypadClear: return "Keypad Clear"
+            case .keypadThro: return "Keypad Thru"
             case .intensity: return "Intensity +/- %"
             case .mainMenu: return "Page name: tap for next page"
             case .colourTemperature: return "Colour temperature"
@@ -93,6 +95,7 @@ struct ActionDraft: Equatable {
         case .keypadEnter: kind = .keypadEnter
         case .keypadExit: kind = .keypadExit
         case .keypadClear: kind = .keypadClear
+        case .keypadThro: kind = .keypadThro
         case .adjustIntensity(let p): kind = .intensity; percent = p
         case .mainMenu: kind = .mainMenu
         case .colourTemperature(let k): kind = .colourTemperature; kelvin = k
@@ -130,6 +133,7 @@ struct ActionDraft: Equatable {
         case .keypadEnter: return .keypadEnter
         case .keypadExit: return .keypadExit
         case .keypadClear: return .keypadClear
+        case .keypadThro: return .keypadThro
         case .intensity: return percent == 0 ? nil : .adjustIntensity(percent: min(max(percent, -100), 100))
         case .mainMenu: return .mainMenu
         case .colourTemperature: return .colourTemperature(kelvin: min(max(kelvin, 1000), 20000))

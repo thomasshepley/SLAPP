@@ -154,7 +154,7 @@ parameter is named `srcHandle`). Levels are `level_level=` (absolute, 0-1).
 | Release | `Playbacks/ReleasePlayback?handle_userNumber=N&fadeTime=0&useMasterReleaseTime=true` |
 | Fader level | `Playbacks/SetPlaybackLevel?srcHandle_userNumber=N&level_level=0.5` |
 | Macro | `Macros/Run?macroId=<id string>` |
-| Keypad digit / @ | `Command/AppendStringAndPreview?text=7` (or `@`) |
+| Keypad digit / @ / Thru | `Command/AppendStringAndPreview?text=7` (or `@`, or `>` for Thru: unconfirmed, desk typing is the main path) |
 | Keypad Enter | GET `/titan/get/2/Command/CommandLineText`, then `Command/RunCommand?command=<text>`, then `Command/StartNewCommand` |
 | Keypad Clear | `Command/StartNewCommand` if something's typed, else `Programmer/Editor/ClearAll?presets=false&allProgrammers=false` (Titan 19.2 has Programmer.Editor and the old Playbacks.Editor names; prefer Programmer.Editor where both exist) |
 | Keypad Exit | `Menu/ExitRootOrLatched` |
@@ -202,7 +202,9 @@ support posts):
   `deck.keypadTypesOnDesk`): keypad actions become Titan's PC keyboard shortcuts
   (number keys, number-pad * = @, / = Thro, Enter, Esc = Exit, Alt+C = Clear),
   typed by the Host window (`POST /api/v1/desk/keys`) or over RDP, so they reach
-  the desk's own command line. Typing is serial (one Task chain). The WebAPI user
+  the desk's own command line. On the default keypad, Clear shows as THRU
+  (`.keypadThro`, `DeckFlow.keypadKey`) while nothing is selected;
+  `KeypadBuffer` turns "1>10 Enter" into a selection of 1-10. Typing is serial (one Task chain). The WebAPI user
   mirrors the keypad selection so intensity keys still work. Keep the key names
   in step with `TitanDeckHost/src/Core/Titan/DeskKeys.cs`.
 - **Desk-typed levels** (`AppState.deskLevelKeys`): with the keypad typing on

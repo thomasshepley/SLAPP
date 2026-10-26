@@ -7,6 +7,11 @@ the GitHub Actions run that built it. The top entry is shown in the app
 so add an entry - and bump `MARKETING_VERSION` in `project.yml` to match -
 with every change that goes to `main`.
 
+## 0.24.0 - 2026-10-26 - THRU on the keypad
+
+- **THRU on the deck's keypad:** while nothing is selected, the keypad's Clear key becomes THRU (Titan's Thro), so "1 THRU 10 Enter" selects 1 to 10, typed on the desk like the rest of the keypad. As soon as something is selected, Clear comes back. The deck knows a typed range is selected, so Quick Keys comes up and the selection strip shows it.
+- THRU can also go on any key in the key editor (Keypad Thru).
+
 ## 0.23.0 - 2026-10-26 - Selection at a glance, intensity on the desk
 
 - **What's selected, across the top of the Remote screen:** every fixture number that fits ("901, 933-936, 940...") then "+N more", and a tap lists them all. The keyboard, Menu and connection controls fold away behind one button on the right (a dot on it shows the connection is OK) to give the selection the room; tap it to bring them back.
