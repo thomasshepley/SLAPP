@@ -7,6 +7,12 @@ the GitHub Actions run that built it. The top entry is shown in the app
 so add an entry - and bump `MARKETING_VERSION` in `project.yml` to match -
 with every change that goes to `main`.
 
+## 0.25.0 - 2026-10-26 - A clearer Wi-Fi channel map
+
+- **Wi-Fi channel map redrawn:** neighbouring networks are grey hills (taller is louder, with -50/-70/-90 dBm guides) and the loudest are named where there's room. Our access points' channels are shaded in each AP's colour, and every radio gets its own row underneath with its name, channel and width, so two APs on the same or nearby channels no longer write over each other. Channel numbers along the bottom thin out to what fits (1/6/11 and the start of each 5 GHz block first).
+- **Overlap warning:** if two of our APs share airtime, it says which, under the map.
+- **RF scan chart:** bars sit at each channel's real place in the band, with this AP's channel shaded, interference in red over the Wi-Fi busy share, labels that don't collide, and the quietest channel called out.
+
 ## 0.24.0 - 2026-10-26 - THRU on the keypad
 
 - **THRU on the deck's keypad:** while nothing is selected, the keypad's Clear key becomes THRU (Titan's Thro), so "1 THRU 10 Enter" selects 1 to 10, typed on the desk like the rest of the keypad. As soon as something is selected, Clear comes back. The deck knows a typed range is selected, so Quick Keys comes up and the selection strip shows it.
