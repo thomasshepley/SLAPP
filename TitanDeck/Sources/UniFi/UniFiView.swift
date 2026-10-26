@@ -55,12 +55,12 @@ struct UniFiView: View {
                 .pickerStyle(.segmented)
                 ChannelMap(band: band, ourRadios: store.accessPoints.flatMap { ap in ap.radios.map { (name: ap.displayName, radio: $0) } },
                            neighbours: store.neighbours(in: band))
-                    .frame(height: 220)
+                    .padding(.vertical, 4)
                 quietest
             } header: {
                 Text("Channels")
             } footer: {
-                Text("Our access points as coloured blocks, neighbouring networks in grey (taller is louder). From what our APs hear, not a spectrum analyser.")
+                Text("Neighbouring networks as grey hills (taller is louder, dBm on the left), our access points' channels shaded in their colours with each radio on its own row below. From what our APs hear, not a spectrum analyser.")
             }
 
             Section("Access points") {
@@ -282,7 +282,7 @@ private struct AccessPointCard: View {
             .buttonStyle(.bordered)
             .controlSize(.small)
             if showingScan, let scan {
-                SpectrumChart(scan: scan)
+                SpectrumChart(scan: scan, radios: ap.radios)
             }
         }
         .padding(.vertical, 4)
@@ -297,98 +297,311 @@ private struct AccessPointCard: View {
     }
 }
 
-/// An RF scan: airtime busy per channel, with the non-Wi-Fi share on top.
+/// An RF scan: how busy each channel's airtime was, with the share lost to
+/// non-Wi-Fi interference in red, and this AP's own channel shaded behind.
 private struct SpectrumChart: View {
     let scan: UniFiSpectrumScan
+    let radios: [UniFiDevice.RadioSummary]
+
+    private struct Bar: Identifiable {
+        let id: Int
+        let channel: Int
+        let span: ChannelSpan
+        let busy: Double
+        let interference: Double
+    }
 
     var body: some View {
         let byBand = scan.entriesByBand
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 14) {
             if byBand.isEmpty {
                 Text("No scan results yet. Run an RF scan (here or in UniFi).").font(.caption).foregroundStyle(.secondary)
             }
             ForEach(byBand.keys.sorted(), id: \.self) { band in
-                Text(band.title).font(.caption.weight(.bold))
-                Chart(byBand[band] ?? [], id: \.channel) { entry in
-                    BarMark(x: .value("Channel", "\(entry.channel ?? 0)"), y: .value("Busy", entry.utilization ?? 0))
-                        .foregroundStyle(.blue.opacity(0.7))
-                    BarMark(x: .value("Channel", "\(entry.channel ?? 0)"), y: .value("Interference", entry.interference ?? 0))
-                        .foregroundStyle(.red.opacity(0.8))
-                }
-                .chartYScale(domain: 0.0 ... 100.0)
-                .chartYAxisLabel("% busy")
-                .frame(height: 120)
+                bandChart(band, entries: byBand[band] ?? [])
             }
+            HStack(spacing: 14) {
+                key(.blue, "Wi-Fi busy")
+                key(.red, "Interference")
+                key(.accentColor.opacity(0.25), "This AP")
+            }
+            .font(.caption2)
+            .foregroundStyle(.secondary)
             if let date = scan.lastScanned {
-                Text("Scanned \(date.formatted(.relative(presentation: .named))). Blue: Wi-Fi traffic, red: interference.")
+                Text("Scanned \(date.formatted(.relative(presentation: .named))).")
                     .font(.caption2).foregroundStyle(.secondary)
             }
+        }
+        .padding(12)
+        .background(.fill.quinary, in: .rect(cornerRadius: 12))
+    }
+
+    @ViewBuilder
+    private func bandChart(_ band: WiFiBand, entries: [UniFiSpectrumScan.Entry]) -> some View {
+        let bars = entries.enumerated().compactMap { index, entry -> Bar? in
+            guard let channel = entry.channel else { return nil }
+            return Bar(id: index, channel: channel, span: ChannelSpan.of(band: band, channel: channel, width: 20),
+                       busy: min(max(entry.utilization ?? 0, 0), 100),
+                       interference: min(max(entry.interference ?? 0, 0), 100))
+        }
+        let ours = radios.first { $0.band == band }?.span
+        let quietest = bars.min { $0.busy < $1.busy }
+        let labelled = SpectrumLayout.axisChannels(band).filter { $0.priority >= (band == .ghz2 ? 2 : 1) }.map(\.channel)
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(band.title).font(.subheadline.weight(.semibold))
+                Spacer()
+                if let quietest {
+                    Text("Quietest: ch \(quietest.channel), \(Int(quietest.busy.rounded()))% busy")
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                }
+            }
+            Chart {
+                if let ours {
+                    RectangleMark(xStart: .value("Low", Double(ours.low)), xEnd: .value("High", Double(ours.high)),
+                                  yStart: .value("Floor", 0.0), yEnd: .value("Top", 100.0))
+                        .foregroundStyle(Color.accentColor.opacity(0.15))
+                }
+                ForEach(bars) { bar in
+                    RectangleMark(xStart: .value("Low", Double(bar.span.low) + 2), xEnd: .value("High", Double(bar.span.high) - 2),
+                                  yStart: .value("Floor", 0.0), yEnd: .value("Busy", max(bar.busy, bar.interference)))
+                        .foregroundStyle(Color.blue.opacity(0.75))
+                        .cornerRadius(3)
+                    if bar.interference > 0 {
+                        RectangleMark(xStart: .value("Low", Double(bar.span.low) + 2), xEnd: .value("High", Double(bar.span.high) - 2),
+                                      yStart: .value("Floor", 0.0), yEnd: .value("Interference", bar.interference))
+                            .foregroundStyle(Color.red.opacity(0.85))
+                            .cornerRadius(3)
+                    }
+                }
+            }
+            .chartXScale(domain: SpectrumLayout.domain(band))
+            .chartYScale(domain: 0.0 ... 100.0)
+            .chartXAxis {
+                AxisMarks(values: labelled.map { Double(band.frequency(channel: $0)) }) { value in
+                    AxisGridLine().foregroundStyle(.quaternary)
+                    AxisValueLabel {
+                        if let mhz = value.as(Double.self), let channel = labelled.first(where: { Double(band.frequency(channel: $0)) == mhz }) {
+                            Text("\(channel)").font(.caption2.monospacedDigit())
+                        }
+                    }
+                }
+            }
+            .chartYAxis {
+                AxisMarks(position: .leading, values: [0.0, 50.0, 100.0]) { value in
+                    AxisGridLine().foregroundStyle(.quaternary)
+                    AxisValueLabel {
+                        if let percent = value.as(Double.self) { Text("\(Int(percent))%").font(.caption2.monospacedDigit()) }
+                    }
+                }
+            }
+            .frame(height: 140)
+        }
+    }
+
+    private func key(_ colour: Color, _ title: String) -> some View {
+        HStack(spacing: 5) {
+            RoundedRectangle(cornerRadius: 2).fill(colour).frame(width: 10, height: 10)
+            Text(title)
         }
     }
 }
 
-/// Our radios as blocks across the band, neighbours as grey bars by signal.
+/// The band as a picture: neighbouring networks as grey hills (taller is
+/// louder) with the loudest named, our access points' channels shaded in
+/// their colours, then each of our radios on its own lane underneath, so no
+/// two names ever sit on top of each other.
 private struct ChannelMap: View {
     let band: WiFiBand
     let ourRadios: [(name: String, radio: UniFiDevice.RadioSummary)]
     let neighbours: [UniFiNeighbour]
+    @State private var width: CGFloat = 600
 
-    private struct Block: Identifiable {
-        let id: String
+    private static let palette: [Color] = [.blue, .orange, .green, .pink, .purple, .teal, .yellow, .indigo]
+    private static let landscapeHeight: CGFloat = 120
+    private static let axisHeight: CGFloat = 20
+    private static let laneHeight: CGFloat = 26
+    private static let laneFont: CGFloat = 11
+    private static let axisFont: CGFloat = 10
+    private static let neighbourFont: CGFloat = 9
+    private static let gutter: CGFloat = 28
+
+    private struct Ours: Identifiable {
+        let id: Int
+        let name: String
         let label: String
-        let low: Int
-        let high: Int
-        let strength: Double
-        let ours: Bool
+        let span: ChannelSpan
+        let colour: Color
     }
 
-    private var blocks: [Block] {
-        var result: [Block] = []
-        for neighbour in neighbours.prefix(60) {
-            guard let channel = neighbour.channel, let dBm = neighbour.dBm else { continue }
-            let span = ChannelSpan.of(band: band, channel: channel, width: 20)
-            result.append(Block(id: neighbour.id, label: neighbour.essid ?? "", low: span.low, high: span.high,
-                                strength: Double(max(0, dBm + 100)), ours: false))
-        }
-        for (index, entry) in ourRadios.enumerated() where entry.radio.band == band {
-            guard let span = entry.radio.span else { continue }
-            result.append(Block(id: "ours-\(index)", label: entry.name, low: span.low, high: span.high, strength: 70, ours: true))
-        }
-        return result
+    private struct Placed {
+        let ours: Ours
+        let x0: CGFloat
+        let x1: CGFloat
+        let lane: Int
+        /// Where the name goes: inside the bar, or to its right or left.
+        let labelX: CGFloat
+        let inside: Bool
     }
 
-    private var domain: ClosedRange<Double> {
-        switch band {
-        case .ghz2: 2400 ... 2495
-        case .ghz5: 5150 ... 5895
-        case .ghz6: 5925 ... 7125
+    private var ours: [Ours] {
+        let names = ourRadios.map(\.name).reduce(into: [String]()) { if !$0.contains($1) { $0.append($1) } }
+        return ourRadios.enumerated().compactMap { index, entry in
+            guard entry.radio.band == band, let span = entry.radio.span, let channel = entry.radio.channel else { return nil }
+            let colour = Self.palette[(names.firstIndex(of: entry.name) ?? 0) % Self.palette.count]
+            let widthText = entry.radio.width.map { " · \($0) MHz" } ?? ""
+            return Ours(id: index, name: entry.name, label: "\(entry.name)  ch \(channel)\(widthText)", span: span, colour: colour)
+        }
+    }
+
+    /// Our radios on lanes, worked out for the current width.
+    private func placed(plotWidth: CGFloat) -> [Placed] {
+        let domain = SpectrumLayout.domain(band)
+        let items = ours.map { item -> (Ours, CGFloat, CGFloat, CGFloat, Bool, ClosedRange<Double>) in
+            let x0 = CGFloat(SpectrumLayout.x(Double(item.span.low), in: domain, width: Double(plotWidth)))
+            let x1 = CGFloat(SpectrumLayout.x(Double(item.span.high), in: domain, width: Double(plotWidth)))
+            let text = CGFloat(SpectrumLayout.textWidth(item.label, size: Double(Self.laneFont)))
+            if x1 - x0 >= text + 12 {
+                return (item, x0, x1, (x0 + x1) / 2, true, Double(x0) ... Double(x1))
+            }
+            if x1 + 6 + text <= plotWidth {
+                return (item, x0, x1, x1 + 6 + text / 2, false, Double(x0) ... Double(x1 + 6 + text))
+            }
+            return (item, x0, x1, x0 - 6 - text / 2, false, Double(x0 - 6 - text) ... Double(x1))
+        }
+        let lanes = SpectrumLayout.lanes(items.map(\.5), gap: 8)
+        return items.enumerated().map { index, item in
+            Placed(ours: item.0, x0: item.1, x1: item.2, lane: lanes[index], labelX: item.3, inside: item.4)
         }
     }
 
     var body: some View {
-        Chart(blocks) { block in
-            RectangleMark(xStart: .value("Low", Double(block.low)), xEnd: .value("High", Double(block.high)),
-                          yStart: .value("Floor", 0.0), yEnd: .value("Signal", block.strength))
-                .foregroundStyle(block.ours ? AnyShapeStyle(Color.accentColor.opacity(0.55)) : AnyShapeStyle(Color.gray.opacity(0.25)))
-                .annotation(position: .top, alignment: .center, spacing: 2) {
-                    if block.ours {
-                        Text(block.label).font(.system(size: 9, weight: .semibold)).lineLimit(1)
-                    }
-                }
-        }
-        .chartXScale(domain: domain)
-        .chartYScale(domain: 0.0 ... 80.0)
-        .chartYAxis(.hidden)
-        .chartXAxis {
-            AxisMarks(values: band.candidateChannels.map { Double(band.frequency(channel: $0)) }) { value in
-                AxisGridLine()
-                AxisValueLabel {
-                    if let mhz = value.as(Double.self), let channel = band.candidateChannels.first(where: { Double(band.frequency(channel: $0)) == mhz }) {
-                        Text("\(channel)").font(.system(size: 9))
-                    }
-                }
+        let plotWidth = max(width - Self.gutter, 100)
+        let placed = placed(plotWidth: plotWidth)
+        let laneCount = max(placed.map(\.lane).max().map { $0 + 1 } ?? 0, 1)
+        let height = Self.landscapeHeight + Self.axisHeight + CGFloat(laneCount) * Self.laneHeight + 4
+        let clashes = SpectrumLayout.clashes(ours.map { ($0.name, $0.span) })
+        VStack(alignment: .leading, spacing: 8) {
+            Canvas { context, _ in
+                draw(in: &context, plotWidth: plotWidth, placed: placed)
+            }
+            .frame(height: height)
+            .accessibilityLabel(accessibilityText)
+            if ours.isEmpty {
+                Text("None of our access points is on \(band.title).").font(.caption).foregroundStyle(.secondary)
+            }
+            ForEach(Array(clashes.enumerated()), id: \.offset) { _, pair in
+                Label("\(pair.0) and \(pair.1) overlap: they share airtime. Move one to a channel of its own.",
+                      systemImage: "exclamationmark.triangle.fill")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
             }
         }
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
+    }
+
+    private func draw(in context: inout GraphicsContext, plotWidth: CGFloat, placed: [Placed]) {
+        let domain = SpectrumLayout.domain(band)
+        let left = Self.gutter
+        let top: CGFloat = 14   // room for neighbour names
+        let floor = Self.landscapeHeight
+        func x(_ mhz: Double) -> CGFloat { left + CGFloat(SpectrumLayout.x(mhz, in: domain, width: Double(plotWidth))) }
+        func y(dBm: Int) -> CGFloat { floor - (floor - top) * CGFloat(SpectrumLayout.loudness(dBm: dBm)) }
+
+        // Signal guides, quiet so the hills read first.
+        for dBm in [-50, -70, -90] {
+            var line = Path()
+            line.move(to: CGPoint(x: left, y: y(dBm: dBm)))
+            line.addLine(to: CGPoint(x: left + plotWidth, y: y(dBm: dBm)))
+            context.stroke(line, with: .color(.secondary.opacity(0.18)), style: StrokeStyle(lineWidth: 0.5, dash: [3, 3]))
+            context.draw(Text("\(dBm)").font(.system(size: 8).monospacedDigit()).foregroundStyle(.secondary),
+                         at: CGPoint(x: left - 4, y: y(dBm: dBm)), anchor: .trailing)
+        }
+
+        // Our channels, shaded behind everything.
+        for item in placed {
+            let rect = CGRect(x: left + item.x0, y: top, width: max(item.x1 - item.x0, 2), height: floor - top)
+            context.fill(Path(rect), with: .color(item.ours.colour.opacity(0.13)))
+            var edge = Path()
+            edge.move(to: CGPoint(x: rect.minX, y: rect.minY))
+            edge.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
+            context.stroke(edge, with: .color(item.ours.colour.opacity(0.7)), lineWidth: 2)
+        }
+
+        // Neighbours: a hill each, quietest first so the loud ones sit on top.
+        let heard = neighbours.prefix(80).compactMap { n -> (UniFiNeighbour, ChannelSpan, Int)? in
+            guard let channel = n.channel, let dBm = n.dBm else { return nil }
+            return (n, ChannelSpan.of(band: band, channel: channel, width: 20), dBm)
+        }
+        .sorted { $0.2 < $1.2 }
+        for (_, span, dBm) in heard {
+            let x0 = x(Double(span.low)), x1 = x(Double(span.high))
+            let peak = y(dBm: dBm)
+            let ramp = min(8, (x1 - x0) / 3)
+            var hill = Path()
+            hill.move(to: CGPoint(x: x0, y: floor))
+            hill.addQuadCurve(to: CGPoint(x: x0 + ramp, y: peak), control: CGPoint(x: x0 + ramp * 0.2, y: peak))
+            hill.addLine(to: CGPoint(x: x1 - ramp, y: peak))
+            hill.addQuadCurve(to: CGPoint(x: x1, y: floor), control: CGPoint(x: x1 - ramp * 0.2, y: peak))
+            let loud = SpectrumLayout.loudness(dBm: dBm)
+            context.fill(hill, with: .color(.gray.opacity(0.08 + 0.17 * loud)))
+            context.stroke(hill, with: .color(.gray.opacity(0.35 + 0.35 * loud)), lineWidth: 1)
+        }
+
+        // Names of the loudest neighbours, only where they fit.
+        let named = heard.reversed().filter { ($0.0.essid ?? "").isEmpty == false }.prefix(8)
+        let names = named.map { $0.0.essid! }
+        let centres = named.map { Double(x(Double($0.1.low + $0.1.high) / 2) - left) }
+        let widths = names.map { SpectrumLayout.textWidth($0, size: Double(Self.neighbourFont)) }
+        let keep = SpectrumLayout.thinned(centres: centres, widths: widths, priority: named.map { $0.2 + 200 },
+                                          gap: 6, limit: Double(plotWidth))
+        for (index, entry) in named.enumerated() where keep.contains(index) {
+            context.draw(Text(names[index]).font(.system(size: Self.neighbourFont)).foregroundStyle(.secondary),
+                         at: CGPoint(x: left + CGFloat(centres[index]), y: y(dBm: entry.2) - 2), anchor: .bottom)
+        }
+
+        // Channel numbers, thinned to what fits.
+        var baseline = Path()
+        baseline.move(to: CGPoint(x: left, y: floor))
+        baseline.addLine(to: CGPoint(x: left + plotWidth, y: floor))
+        context.stroke(baseline, with: .color(.secondary.opacity(0.5)), lineWidth: 1)
+        let channels = SpectrumLayout.axisChannels(band)
+        let axisCentres = channels.map { Double(x(Double(band.frequency(channel: $0.channel))) - left) }
+        let axisWidths = channels.map { SpectrumLayout.textWidth("\($0.channel)", size: Double(Self.axisFont)) }
+        let shown = SpectrumLayout.thinned(centres: axisCentres, widths: axisWidths, priority: channels.map(\.priority),
+                                           gap: 6, limit: Double(plotWidth))
+        for (index, entry) in channels.enumerated() {
+            let tickX = left + CGFloat(axisCentres[index])
+            var tick = Path()
+            tick.move(to: CGPoint(x: tickX, y: floor))
+            tick.addLine(to: CGPoint(x: tickX, y: floor + (shown.contains(index) ? 4 : 2)))
+            context.stroke(tick, with: .color(.secondary.opacity(0.6)), lineWidth: 1)
+            if shown.contains(index) {
+                context.draw(Text("\(entry.channel)").font(.system(size: Self.axisFont, weight: entry.priority == 2 ? .semibold : .regular).monospacedDigit())
+                                .foregroundStyle(.secondary),
+                             at: CGPoint(x: tickX, y: floor + 5), anchor: .top)
+            }
+        }
+
+        // Our radios, one lane each where they'd collide.
+        let lanesTop = floor + Self.axisHeight
+        for item in placed {
+            let laneY = lanesTop + CGFloat(item.lane) * Self.laneHeight
+            let bar = CGRect(x: left + item.x0, y: laneY + 3, width: max(item.x1 - item.x0, 4), height: Self.laneHeight - 6)
+            context.fill(Path(roundedRect: bar, cornerRadius: 6), with: .color(item.ours.colour.opacity(0.85)))
+            let label = Text(item.ours.label).font(.system(size: Self.laneFont, weight: .semibold))
+            if item.inside {
+                context.draw(label.foregroundStyle(.white), at: CGPoint(x: left + item.labelX, y: bar.midY), anchor: .center)
+            } else {
+                context.draw(label.foregroundStyle(item.ours.colour), at: CGPoint(x: left + item.labelX, y: bar.midY), anchor: .center)
+            }
+        }
+    }
+
+    private var accessibilityText: String {
+        let mine = ours.map(\.label).joined(separator: ", ")
+        return "\(band.title): \(mine.isEmpty ? "none of our access points" : mine). \(neighbours.count) neighbouring networks."
     }
 }
 
