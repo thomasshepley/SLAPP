@@ -7,6 +7,13 @@ the GitHub Actions run that built it. The top entry is shown in the app
 so add an entry - and bump `MARKETING_VERSION` in `project.yml` to match -
 with every change that goes to `main`.
 
+## 0.25.0 - 2026-10-26 - Clear and +10% on the desk, fixed
+
+- **Fixed: the desk's own Clear and wheels stopped working** after the deck's Clear. TitanDeck typed Alt+C (Titan's Clear shortcut) on the PC, and a held Alt is the likely culprit. The deck never types Alt (or any modifier) now: Clear backs out anything typed with Exit, then clears every programmer, the desk's included, through Titan's WebAPI (as the console's Clear all programmers). If the desk still acts oddly after updating, press and let go of Alt on the PC's keyboard once.
+- **+10% is your level plus 10:** with Keypad types on the desk, the +/- keys type "@ level Enter" on the desk, taking the selected fixtures' current level and adding (or taking off) the nudge: 40% and +10 is 50%. The current level comes from Titan's live output (sACN through TitanDeck Host), with Titan's patch now coming straight from Titan over CITP (Host 0.12), so no patch report is needed. A level set from the deck's keypad ("101 @ 50") counts too.
+- If TitanDeck doesn't know the level yet, the key flashes red and says why, instead of nudging the WebAPI's separate programmer (which is what gave odd levels).
+- Settings > Desk link: "Use Titan's patch" is on by default.
+
 ## 0.24.0 - 2026-10-26 - THRU on the keypad
 
 - **THRU on the deck's keypad:** while nothing is selected, the keypad's Clear key becomes THRU (Titan's Thro), so "1 THRU 10 Enter" selects 1 to 10, typed on the desk like the rest of the keypad. As soon as something is selected, Clear comes back. The deck knows a typed range is selected, so Quick Keys comes up and the selection strip shows it.

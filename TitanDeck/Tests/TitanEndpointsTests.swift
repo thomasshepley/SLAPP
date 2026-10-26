@@ -98,6 +98,9 @@ final class TitanEndpointsTests: XCTestCase {
                        "http://10.0.0.1:4430/titan/script/2/Command/StartNewCommand")
         XCTAssertEqual(TitanEndpoints.clearProgrammerURL(host: host)?.absoluteString,
                        "http://10.0.0.1:4430/titan/script/2/Programmer/Editor/ClearAll?presets=false&allProgrammers=false")
+        XCTAssertEqual(TitanEndpoints.clearProgrammerURL(host: host, allProgrammers: true)?.absoluteString,
+                       "http://10.0.0.1:4430/titan/script/2/Programmer/Editor/ClearAll?presets=false&allProgrammers=true",
+                       "Clear for the desk: every programmer, the desk's too")
     }
 
     func testLatchingGoReleasesByTitanId() throws {

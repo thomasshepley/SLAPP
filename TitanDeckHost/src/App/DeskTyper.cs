@@ -42,26 +42,14 @@ internal static class DeskTyper
         }
     }
 
-    /// One key, as a hand would press it: each event on its own with a short
-    /// gap, and Alt held down before (and let go after) its key. Sent all at
-    /// once, Titan saw the C of Alt+C (Clear) without the Alt.
+    /// One key, as a hand would press it: down and up as separate events with
+    /// a short gap. No modifiers are ever held (see <see cref="DeskKeys"/>).
     private static void Type(string name)
     {
         if (!DeskKeys.All.TryGetValue(name, out var key)) return;
-        const ushort alt = 0x38;
-        if (key.Alt)
-        {
-            Send(Scan(alt, extended: false, up: false));
-            Thread.Sleep(40);
-        }
         Send(Scan(key.Scancode, key.Extended, up: false));
         Thread.Sleep(20);
         Send(Scan(key.Scancode, key.Extended, up: true));
-        if (key.Alt)
-        {
-            Thread.Sleep(40);
-            Send(Scan(alt, extended: false, up: true));
-        }
         Thread.Sleep(15);
     }
 

@@ -1,4 +1,5 @@
 using TitanDeckHost.Core.Citp;
+using TitanDeckHost.Core.Titan;
 using Xunit;
 
 namespace TitanDeckHost.Core.Tests;
@@ -255,6 +256,33 @@ public class CitpTests
     {
         var list = CitpMessages.ReadFixtureList(FixtureList(0, (1001, 12)))!.Value;
         Assert.Equal(new CaexFixture(1001, "Robe", "MegaPointe", "Mode 1", 39, true, 2, 101, 12), Assert.Single(list.Fixtures));
+    }
+
+    [Fact]
+    public void TitansFixtureListIsAPatch()
+    {
+        CaexFixture Fixture(ushort user, int universe, int channel, bool patched = true) =>
+            new(user, "Robe", "Robin 600", "Mode 1", 37, patched, universe, channel, user);
+        // 1-based: nothing at 0 on a patched fixture.
+        var patch = CitpPatch.From([Fixture(101, 1, 1), Fixture(102, 2, 38), Fixture(103, 0, 0, patched: false)]);
+        Assert.Equal(2, patch.Count);
+        Assert.Equal(new PatchFixture(101, "Robin 600", "Mode 1", 1, 1, 37), patch[0]);
+        Assert.Equal((2, 38), (patch[1].Line, patch[1].Address));
+        // 0-based: a patched fixture at universe 0, channel 0 is universe 1, address 1.
+        var zero = CitpPatch.From([Fixture(1, 0, 0), Fixture(2, 0, 37)]);
+        Assert.Equal([(1, 1), (1, 38)], zero.Select(f => (f.Line, f.Address)));
+        Assert.Empty(CitpPatch.From([new CaexFixture(9, "", "", "", 1, true, 1, 1, 0)]));   // no user number
+    }
+
+    [Fact]
+    public void TheWholePatchIsPassedOnWhenItChanges()
+    {
+        IReadOnlyList<CaexFixture>? patched = null;
+        var session = new CitpSession("TitanDeck Host", _ => { }, _ => { }, fixtures => patched = fixtures);
+        session.Receive(CitpPacket.Parse(FixtureList(0, (1001, 12), (1002, 13)).ToBytes())!, DateTimeOffset.UnixEpoch);
+        Assert.Equal([12, 13], patched!.Select(f => (int)f.Channel).Order());
+        session.Receive(CitpPacket.Parse(FixtureList(1, (1003, 14)).ToBytes())!, DateTimeOffset.UnixEpoch);
+        Assert.Equal(3, patched!.Count);   // 1 = added: kept with the rest
     }
 
     [Fact]

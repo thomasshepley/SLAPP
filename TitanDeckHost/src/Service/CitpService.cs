@@ -22,7 +22,7 @@ namespace TitanDeckHost.Service;
 /// refused, so another desk on the show network can't link to it. Every CITP
 /// message shows in the Titan log.
 /// </summary>
-public sealed class CitpService(HostPaths paths, TitanLog titanLog, ILogger<CitpService> log) : BackgroundService
+public sealed class CitpService(HostPaths paths, TitanLog titanLog, PatchReader patch, ILogger<CitpService> log) : BackgroundService
 {
     public const string Who = "CITP";
     public const string OurName = "TitanDeck Host";
@@ -380,7 +380,7 @@ public sealed class CitpService(HostPaths paths, TitanLog titanLog, ILogger<Citp
             {
                 if (!quiet || line.Flagged || line.What.Contains("Selection") || line.What.StartsWith("FSEL"))
                     Log(line.Outgoing, from, line.What, line.Note, line.Flagged);
-            });
+            }, fixtures => patch.UseCitp(fixtures, from));
             if (!quiet)
                 Log(outgoing, from, "TCP connection", outgoing ? $"linked (TitanDeck Host connected to Titan's port {((IPEndPoint)client.Client.RemoteEndPoint!).Port})" : "linked (Titan connected)", false);
             try

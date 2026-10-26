@@ -5,14 +5,17 @@ namespace TitanDeckHost.Core.Titan;
 /// lands on the desk's command line and the selection shows on the desk.
 /// Titan captures the PC keyboard while it runs; its shortcuts (Avolites
 /// manual, Front panel buttons, keyboard shortcuts): number keys, number-pad
-/// * = @, / = Thro, + = And, - = Not, Enter, Esc = Exit, Alt+C = Clear.
+/// * = @, / = Thro, + = And, - = Not, Enter, Esc = Exit. Never Alt
+/// shortcuts: after Host 0.11 typed Alt+C (Clear), the desk's own Clear and
+/// wheels stopped working, and a held modifier is the likely cause. TitanDeck
+/// clears through the WebAPI instead.
 /// Only these keys can be sent: a paired iPad can't type anything else on the PC.
 /// Scan codes are PC set 1 (Extended = the E0 prefix). Keep in step with
 /// TitanDeck's DeskKeys.swift.
 /// </summary>
 public static class DeskKeys
 {
-    public sealed record Key(ushort Scancode, bool Extended = false, bool Alt = false);
+    public sealed record Key(ushort Scancode, bool Extended = false);
 
     public const int MaxPerRequest = 32;
 
@@ -27,7 +30,6 @@ public static class DeskKeys
         ["not"] = new(0x4A),                   // - on the number pad
         ["enter"] = new(0x1C),
         ["exit"] = new(0x01),                  // Esc
-        ["clear"] = new(0x2E, Alt: true),      // Alt+C
         ["backspace"] = new(0x0E),
     };
 

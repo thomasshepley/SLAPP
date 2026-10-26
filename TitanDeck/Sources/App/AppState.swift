@@ -236,27 +236,48 @@ final class AppState: ObservableObject {
     private var deskTyping: Task<Void, Never>?
     /// The level (0-1) a desk-typed hold-for-0% puts back when let go.
     private var flashRestore: Double?
-    /// The level last typed on the desk, for quick nudges in a row (the sACN
-    /// reading takes a moment to catch up).
-    private var typedLevel: (level: Double, at: Date)?
+    /// The level last typed on the desk for a selection, for quick nudges in a
+    /// row (the sACN reading takes a moment to catch up) and for when there's
+    /// no live reading at all.
+    private var typedLevel: (level: Double, at: Date, fixtures: [Int])?
 
-    /// The selected fixture's level now: what was just typed, else the live reading.
+    /// The selected fixtures' level now: what was just typed, else the live
+    /// reading (sACN, with the patch from Titan over CITP or a report), else
+    /// whatever the deck last typed for this same selection.
     private var currentLevel: Double? {
-        if let typed = typedLevel, Date().timeIntervalSince(typed.at) < 2 { return typed.level }
-        return deck.liveLevel
+        let typed: (level: Double, at: Date, fixtures: [Int])? =
+            typedLevel.flatMap { Set($0.fixtures) == Set(deck.selectedFixtures) ? $0 : nil }
+        if let typed, Date().timeIntervalSince(typed.at) < 2 { return typed.level }
+        return deck.liveLevel ?? typed?.level
+    }
+
+    private func rememberTyped(_ level: Double, fixtures: [Int]? = nil) {
+        typedLevel = (level, Date(), fixtures ?? deck.selectedFixtures)
     }
 
     func fire(_ action: TitanAction, fromKey keyIndex: Int? = nil) {
+        let typing = keypad.current?.text
         let keypadLine = keypad.press(action)
         intensity.deckWillSend(action)
+        if keypadTypesOnDesk, action == .keypadEnter, let typing, let level = DeskKeys.typedLevel(typing) {
+            // "101 @ 50" is about 101 (the deck selects it after this key); "@ 50" the selection now.
+            rememberTyped(level / 100, fixtures: DeskKeys.typedFixtures(typing) ?? deck.selectedFixtures)
+        }
+        if keypadTypesOnDesk, action == .keypadClear {
+            // Exit backs out anything typed on the desk, then the WebAPI clears every programmer.
+            queueOnDesk(action, keys: typing == nil ? [] : ["exit"], keypadLine: keypadLine, keyIndex: keyIndex)
+            return
+        }
+        if keypadTypesOnDesk, case .adjustIntensity = action, !deck.selectedFixtures.isEmpty, currentLevel == nil {
+            // The WebAPI's own programmer isn't the desk's: nudging there gave odd levels.
+            finish(TitanResult(action: action, ok: false, statusCode: nil, milliseconds: 0,
+                               error: "TitanDeck doesn't know the level yet: needs live levels (sACN through TitanDeck Host, with Titan's patch over CITP or a patch report), or set it once from the keypad (\"@ 50\")",
+                               date: Date()),
+                   keypadLine: keypadLine, keyIndex: keyIndex)
+            return
+        }
         if keypadTypesOnDesk, let keys = DeskKeys.names(for: action) ?? deskLevelKeys(for: action) {
-            let previous = deskTyping
-            deskTyping = Task { [weak self] in
-                await previous?.value
-                guard let self else { return }
-                let result = await self.typeOnDesk(action, keys: keys)
-                self.finish(result, keypadLine: keypadLine, keyIndex: keyIndex)
-            }
+            queueOnDesk(action, keys: keys, keypadLine: keypadLine, keyIndex: keyIndex)
             return
         }
         // Linked to the desk, commands act on the desk's own programmer.
@@ -264,6 +285,17 @@ final class AppState: ObservableObject {
         Task {
             let result = await client.perform(action)
             finish(result, keypadLine: keypadLine, keyIndex: keyIndex)
+        }
+    }
+
+    /// Keys typed on the desk go one after another, in the order pressed.
+    private func queueOnDesk(_ action: TitanAction, keys: [String], keypadLine: UUID?, keyIndex: Int?) {
+        let previous = deskTyping
+        deskTyping = Task { [weak self] in
+            await previous?.value
+            guard let self else { return }
+            let result = await self.typeOnDesk(action, keys: keys)
+            self.finish(result, keypadLine: keypadLine, keyIndex: keyIndex)
         }
     }
 
@@ -283,28 +315,28 @@ final class AppState: ObservableObject {
 
     /// Intensity nudges and the hold-for-0% flash, typed on the desk as
     /// "@ level Enter" so they act on the desk's own programmer (where the
-    /// typed selection is), worked out from the selected fixture's live level.
-    /// Nil when the level isn't known yet: then they go to the WebAPI as before
-    /// (which also teaches TitanDeck the fixture's level). All the selected
+    /// typed selection is): the current level plus the nudge (+10% on 40% is
+    /// 50%). Nil when the level isn't known yet: the flash then goes to the
+    /// WebAPI as before; nudges are refused in `fire`. All the selected
     /// fixtures go to the same level.
     private func deskLevelKeys(for action: TitanAction) -> [String]? {
         guard !deck.selectedFixtures.isEmpty else { return nil }
         switch action {
         case .adjustIntensity(let percent):
             guard let level = currentLevel else { return nil }
-            let target = min(max(level * 100 + percent, 0), 100).rounded()
-            typedLevel = (target / 100, Date())
+            let target = DeskKeys.nudged(level * 100, by: percent)
+            rememberTyped(target / 100)
             return DeskKeys.level(target)
         case .dimmerFlash(let down, _):
             if down {
                 guard let level = currentLevel else { return nil }
                 flashRestore = level
-                typedLevel = (0, Date())
+                rememberTyped(0)
                 return DeskKeys.level(0)
             }
             guard let level = flashRestore else { return nil }
             flashRestore = nil
-            typedLevel = (level, Date())
+            rememberTyped(level)
             return DeskKeys.level(level * 100)
         default:
             return nil
@@ -317,6 +349,21 @@ final class AppState: ObservableObject {
     /// WebAPI programmer, where the intensity keys' changes are.
     private func typeOnDesk(_ action: TitanAction, keys: [String]) async -> TitanResult {
         let start = Date()
+        if action == .keypadClear {
+            if !keys.isEmpty { _ = await typeKeys(keys) }
+            return await titan.clearAllProgrammers()
+        }
+        let (typed, why) = await typeKeys(keys)
+        guard typed else {
+            if let why { Log.titan("Keypad not typed on the desk (\(why)); using the WebAPI") }
+            return await titan.perform(action)
+        }
+        return TitanResult(action: action, ok: true, statusCode: nil,
+                          milliseconds: Int((Date().timeIntervalSince(start) * 1000).rounded()), error: nil, date: start)
+    }
+
+    /// Types keys on the PC through the Host, else the remote desktop.
+    private func typeKeys(_ keys: [String]) async -> (typed: Bool, why: String?) {
         var typed = false
         var why: String?
         if let client = host.client {
@@ -333,13 +380,7 @@ final class AppState: ObservableObject {
             }
             typed = true
         }
-        if action == .keypadClear { _ = await titan.perform(.keypadClear) }
-        guard typed else {
-            if let why { Log.titan("Keypad not typed on the desk (\(why)); using the WebAPI") }
-            return await titan.perform(action)
-        }
-        return TitanResult(action: action, ok: true, statusCode: nil,
-                          milliseconds: Int((Date().timeIntervalSince(start) * 1000).rounded()), error: nil, date: start)
+        return (typed, why)
     }
 
     func checkConnection() {

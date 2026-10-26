@@ -91,7 +91,14 @@ TitanDeckHost/
   keyboard. Only `DeskKeys.All` keys can be typed (never letters); refused when
   the window isn't polling or Titan isn't running; keys older than 2 s dropped.
   If Titan ever runs elevated, SendInput from the (non-elevated) window can't
-  reach it (UIPI): the iPad falls back to typing over RDP.
+  reach it (UIPI): the iPad falls back to typing over RDP. **Never Alt (or any
+  modifier) shortcuts:** after Host 0.11 typed Alt+C for Clear, the desk's own
+  Clear and wheels stopped working; Clear goes through the WebAPI.
+- **Patch from CITP** (`Core/Citp/CitpPatch`, `PatchReader.UseCitp`): Titan's
+  CAEX FixtureList (read only, asked for again after a FixtureModify) becomes the
+  patch, so live levels need no report. Universe/channel are taken as 0-based
+  only if a patched fixture sits at 0 (the spec doesn't say). Newest of CITP,
+  the Reports folder and a picked report wins.
 - **Pass-through** (port 4436, `DeskLink.PassThrough`): `/titan/...` to
   127.0.0.1:4430, logged as "TitanDeck - WebAPI" with Titan's error text. It's
   the same API the iPad could call directly, so nothing is refused; Patch calls
