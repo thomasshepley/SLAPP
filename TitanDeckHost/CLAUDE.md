@@ -68,6 +68,13 @@ TitanDeckHost/
   menu. Enabling edits Titan's file, so it's PC-only (not in
   `Fixer.AllowedFromIPad`); only files that already contain `webapi.enabled`
   are touched, each backed up as `*.titandeck-backup` first.
+- **Network for TitanDeck** (`NetworkChoice`, Data\network.json, `GET/POST /local/network`;
+  pure choice logic in `Core/Net/NetworkAdapters`): with an adapter picked, the
+  `Advertiser` restarts mDNS on that NIC only, with only its IPv4 in the A
+  records and in a TXT `address` (the iPad prefers it). Kestrel still listens on
+  every adapter. A missing/unplugged choice falls back to every adapter.
+  (Makaretu's MulticastService needs an IPv6 socket, so mDNS fails in IPv6-less
+  Linux containers; fine on Windows.)
 - **Test / Show mode** (`HostModeStore`, Data\mode.json, `GET/POST /local/mode`,
   also `mode` in `/status`): Show stops Fake Titan and refuses to start it,
   and refuses `PatchReader.AskTitan`; the window hides those. New test-only

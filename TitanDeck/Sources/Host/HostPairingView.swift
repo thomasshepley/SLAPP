@@ -160,7 +160,7 @@ struct HostPairingView: View {
         resolving = found.name
         error = nil
         Task {
-            let resolved = await HostDiscovery.resolve(found.endpoint)
+            let resolved = await HostDiscovery.address(of: found)
             resolving = nil
             if let resolved {
                 address = resolved

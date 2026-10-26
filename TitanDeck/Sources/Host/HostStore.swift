@@ -87,6 +87,26 @@ final class HostStore: ObservableObject {
         await refresh()
     }
 
+    /// The paired Host is at a new address (another network adapter picked in
+    /// its Network for TitanDeck, or a new IP): use it, keeping the pairing.
+    /// The Host has to answer there and still know this iPad.
+    func changeAddress(to newAddress: String) async throws {
+        let address = HostAPI.cleanAddress(newAddress)
+        guard !address.isEmpty else { throw HostError.noAddress }
+        guard let token else { throw HostError.notPaired }
+        let hello = try await HostClient(address: address, token: token).hello()
+        guard hello.paired else {
+            throw HostError.refused("\(hello.machineName) answered there, but it doesn't know this iPad. Pair with it instead.")
+        }
+        self.address = address
+        hostName = hello.machineName
+        defaults.set(address, forKey: Self.addressKey)
+        defaults.set(hello.machineName, forKey: Self.nameKey)
+        Log.titan("Host: now at \(address)")
+        lastStatusFetch = .distantPast
+        await refresh(full: true)
+    }
+
     /// Forgets the pairing on this device. (The PC's window can remove it too.)
     func forget() {
         Keychain.setPassword(nil, for: Self.tokenAccount)

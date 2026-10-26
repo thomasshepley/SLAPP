@@ -6,6 +6,7 @@ import SwiftUI
 struct HostStatusView: View {
     @ObservedObject var host: HostStore
     @State private var confirmForget = false
+    @State private var changingAddress = false
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -73,7 +74,6 @@ struct HostStatusView: View {
                             .foregroundStyle(status.titanRunning ? .green : .secondary)
                     }
                     LabeledContent("TitanDeck Host", value: status.hostVersion)
-                    LabeledContent("Address", value: host.address)
                 }
             } else if host.isOnline {
                 Section {
@@ -82,6 +82,13 @@ struct HostStatusView: View {
                         Text("Asking the PC...").foregroundStyle(.secondary)
                     }
                 }
+            }
+
+            Section {
+                LabeledContent("Address", value: host.address)
+                Button("Change Address", systemImage: "network") { changingAddress = true }
+            } footer: {
+                Text("If the PC has more than one network, pick the show network's adapter in TitanDeck Host (Network for TitanDeck), then choose it here. The pairing stays.")
             }
 
             Section {
@@ -104,6 +111,7 @@ struct HostStatusView: View {
         } message: {
             Text("Sending files and fixes through the Host stop until you pair again.")
         }
+        .sheet(isPresented: $changingAddress) { ChangeHostAddressView(host: host) }
         .animation(.snappy, value: host.status)
     }
 
