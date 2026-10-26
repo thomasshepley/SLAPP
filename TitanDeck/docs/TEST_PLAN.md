@@ -22,71 +22,6 @@ tell me what happened and I'll fix it.
 - [ ] Quick check from any browser on the same Wi-Fi:
       `http://<PC-IP>:4430/titan/get/System/SoftwareVersion` shows Titan's version.
 
-## 1b. No AvoKey? Use Fake Titan
-
-Titan won't run without an AvoKey (or another Avolites USB device). Until you
-have one, Fake Titan pretends to be Titan's WebAPI, so everything except the
-remote desktop can be tested. **Best: on the Titan PC, built into TitanDeck
-Host 0.5+**, so the desk link and live intensity work exactly as on the real
-rig, and every call shows in the Host's Titan log.
-
-On the Titan PC:
-
-- [ ] Close Titan (they'd both want port 4430).
-- [ ] Open TitanDeck Host from the tray, find the **Fake Titan** card, leave
-      Desk and sACN ticked and press **Start**.
-- [ ] Put the PC's IP in TitanDeck's **Titan PC address**.
-- [ ] Press keys on the deck: each call appears in the **Titan log** card with
-      Titan's answer, how long it took and the fake desk's state after it. Red
-      rows are refused or unknown calls. **Copy** grabs the lot to send over.
-- [ ] Desk link: leave **Settings > Desk link > Port** at **4434**. Type `3,4` in
-      **Select on the desk** and press Select, as if you'd clicked them in
-      Layouts. The deck should pop up the intensity keys and Currently Selected
-      should say "3-4". **Clear** deselects.
-- [ ] Live intensity: pair TitanDeck with the Host, nudge a fixture once from the
-      deck, and the flash key shows its level. Fake Titan sends each fixture as
-      Red, Green, Blue, Dimmer from (n-1)*4+1 on universe 1.
-- [ ] Slow replies (ms) 700 makes every reply slow, so keys should flash red.
-- [ ] Stop Fake Titan before opening the real Titan again.
-
-Mac only, with `Tools/fake_titan.py` (no Host, so no live intensity or log
-window; it prints to the Terminal instead):
-
-```bash
-cd ~/Developer/SLAPP && git pull
-python3 TitanDeck/Tools/fake_titan.py
-```
-
-- [ ] If macOS asks whether Python may accept incoming
-      connections: **Allow** (Private networks).
-- [ ] It prints the computer's IP. Put that in TitanDeck's **Titan PC address**.
-- [ ] Running it on the Mac: type the **PC's** IP in the remote desktop's own
-      address box, or it will try the Mac.
-- [ ] Every key press shows up in the Terminal, with the command line, selected
-      fixtures, their levels and the live playbacks after it. Unknown calls
-      show in red with a 404.
-- [ ] Extras:
-  - `--latency 700` makes every reply slow, so keys should flash red.
-  - `--no-user-numbers` leaves user numbers out of the playback list, so
-    Settings should show its "can't light keys" explanation.
-- [ ] Desk link on the Mac: Fake Titan is also "the desk" on port 4433 (on by
-      default). There's no Host, so set **Settings > Desk link > Port** to
-      **4433**. Status says Linked. Then pretend to click fixtures in Layouts,
-      in a second Terminal window:
-
-      ```bash
-      curl "http://localhost:4430/fake/desk-select?fixtures=3,4"   # select 3 and 4
-      curl "http://localhost:4430/fake/desk-select?fixtures="      # clear
-      ```
-
-      The deck should pop up the intensity keys, Currently Selected should say
-      "3-4", and the deck's keys now act on the desk's selection (the Terminal
-      shows "desk selected 3,4" and the levels). If you changed the port to
-      4433 on the Mac, set it back to 4434 for the real rig.
-
-Fake Titan only checks the app's side. The **(unconfirmed)** items below still
-need the real Titan.
-
 ## 2. Mac: build onto the iPad
 
 TestFlight replaces this section: install TitanDeck from the TestFlight app and
@@ -186,7 +121,7 @@ each key land.
       with a shine moving across it; its keys do nothing until Continue.
 - [ ] Turn the iPad round with rotation lock off: TitanDeck stays landscape.
 - [ ] Leave the iPad alone longer than its auto-lock time: it stays on.
-- [ ] Host 0.6 with Fake Titan running (or a real patch report): Settings >
+- [ ] Host 0.6 with a real patch report: Settings >
       Desk link > Use Titan's patch report on. Select a fixture: the flash key
       shows its level straight away, no nudge first. Settings shows "from the
       patch report".
@@ -201,10 +136,10 @@ each key land.
       virtual Stream Deck, no Recent calls or soak log, no Find addresses with
       Patch; no TEST badge on the Remote screen.
 - [ ] Back to Test: all of those return and the TEST badge is back.
-- [ ] Host window > Mode > Show (same confirmation): Fake Titan stops and its
-      card goes; Ask Titan goes; badge says SHOW. Restart the PC: still Show.
+- [ ] Host window > Mode > Show (same confirmation): Ask Titan goes; the CITP
+      card stays (and keeps following, Host 0.11+); badge says SHOW. Restart
+      the PC: still Show.
 - [ ] iPad in Show, Host in Test: the loading screen warns about the Host.
-      iPad in Show with Fake Titan answering: it warns that it's Fake Titan.
 
 ## 5c. Deck pages (0.13)
 
@@ -326,14 +261,14 @@ Before you start: on the Titan PC, back up Titan's .exe.config yourself too.
       Allow (on the PC). Leave the password blank in TitanDeck's Remote
       desktop settings and Connect: Titan's screen appears.
 
-## 5f. Desk selection over CITP (Titan 19: TitanDeck 0.21, Host 0.9, experimental)
+## 5f. Desk selection over CITP (Titan 19: TitanDeck 0.21, Host 0.9; full feature from Host 0.11)
 
 Titan 19's WebAPI can't see the desk's selection, so this goes the way
 Capture does. **Use a copy of your show** (Disk > Save As first), and save
 the CITP lines from the Titan log (Copy) for Claude whatever happens.
 
-- [ ] TitanDeck Host in Test mode: the **Follow selection via CITP
-      (experimental)** card is there and says Off. Switch on (read the warning).
+- [ ] TitanDeck Host (Test or Show mode): the **Follow selection via CITP**
+      card is there and says Off. Switch on (read the warning).
 - [ ] The card says "Waiting for Titan to connect". Does Titan appear in its
       list (LightingConsole "Titan" ..., on this PC)? Note the TCP port.
 - [ ] In Titan, look for TitanDeck Host as a visualiser (probably Patch >
@@ -349,7 +284,8 @@ the CITP lines from the Titan log (Copy) for Claude whatever happens.
       you selected on the desk.
 - [ ] Afterwards, check the patch didn't change at all (same addresses,
       no new or missing fixtures). If anything changed, tell Claude straight away.
-- [ ] Switch the Host to Show: the card disappears and CITP stops.
+- [ ] Switch the Host to Show (Host 0.11+): the card stays, CITP stays linked
+      and the deck still follows the desk's selection.
 
 
 - [ ] Settings → Remote desktop: PC address (blank uses the Titan address),

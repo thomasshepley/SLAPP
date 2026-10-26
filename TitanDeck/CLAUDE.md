@@ -67,8 +67,7 @@ TitanDeck/
 ├── Resources/Companion/ fixtures.json (251 fixtures; DMX modes from the makers' charts, merged by
 │                   Tools/merge_fixture_modes.py), gels.json (LEE/Rosco/GAM,
 │                   built by Tools/import_gels.py), flicker.json (researched refresh rates by fixture id)
-├── Tools/          fake_titan.py - pretend Titan WebAPI for testing without an AvoKey;
-│                   export_companion_data.ts - regenerates Resources/Companion;
+├── Tools/          export_companion_data.ts - regenerates Resources/Companion;
 │                   merge_fixture_modes.py - checks researched DMX modes (footprints add up,
 │                   no clashing slots) and folds them in. Modes carry the maker's number and
 │                   brief ("Mode 89 · D CCT GM CRO RGB"); big pixel modes list cell 1 with
@@ -225,7 +224,7 @@ support posts):
   `DeskLink.tick` asks the Host first; while it's linked over CITP the state is
   `.linkedViaCitp`, the deck's own 4430 user selects the same fixtures
   (`TitanClient.selectFixtures`), and `commandClient` stays nil (commands go to
-  4430). It's experimental and Test-mode-only on the Host.
+  4430). It's a full feature on the Host (0.11+): on in Test and Show.
 - Keypad levels: `@ @` = full; `@ 5` is 5% unless the user setting Channel
   Levels is "Set In Tens" (`GET /titan/get/2/UserSettings/SingleDigitLevels`).
 
@@ -273,10 +272,9 @@ key images. Never index hardware keys with profile indices directly.
   (every build, TestFlight included) opens Stream Deck Kit's virtual deck. It
   goes through the same code path as real hardware.
 
-- No Titan (or no AvoKey)? TitanDeck Host (0.5+) has Fake Titan built in, with a
-  log of every call. `python3 Tools/fake_titan.py` does the same on a Mac. Add
-  new actions to both (`TitanDeckHost/src/Core/Titan/FakeTitan.cs` and the .py)
-  when you add them to `TitanEndpoints`.
+- Testing is on the real Titan now: Fake Titan (Host) and `fake_titan.py` were
+  removed in Host 0.11.0. Don't bring them back. The Host's Titan log shows
+  every call that goes through it.
 
 - **Test / Show mode** (`SettingsKeys.showMode`, Settings > Mode): Show hides
   test tools in Settings and forces experimental features off. Anything new

@@ -171,4 +171,13 @@ public class SacnTests
         store.Accept(Data(2, Levels((1, 2)), sequence: 40), T0.AddSeconds(5));
         Assert.Equal(2, store.Get(2, T0.AddSeconds(5))!.Levels[0]);
     }
+
+    [Fact]
+    public void BuiltPacketsReadBack()
+    {
+        var parsed = SacnPacket.ParseData(SacnPacket.Build(1, Levels((12, 153)), 7, Titan, "Titan"));
+        Assert.NotNull(parsed);
+        Assert.Equal(("Titan", 7, 1), (parsed.SourceName, (int)parsed.Sequence, parsed.Universe));
+        Assert.Equal(153, parsed.Levels[11]);
+    }
 }

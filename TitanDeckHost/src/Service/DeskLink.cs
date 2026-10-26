@@ -205,7 +205,7 @@ public sealed class DeskLink(TitanLog titanLog, ILogger<DeskLink> log)
         if (http.Request.ContentLength > 0 || http.Request.Headers.TransferEncoding.Count > 0)
         {
             // Whole, with a length: a stream goes out chunked, and Titan (and
-            // fake_titan.py) may read only Content-Length - a fade time from
+            // a test server) may read only Content-Length - a fade time from
             // the deck arrived as an empty body.
             using var buffer = new MemoryStream();
             await http.Request.Body.CopyToAsync(buffer, http.RequestAborted);

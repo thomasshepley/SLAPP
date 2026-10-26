@@ -25,7 +25,7 @@ final class StartupChecks: ObservableObject {
     var warnings: Int { rows.filter { $0.state == .warning }.count }
 
     private var run: Task<Void, Never>?
-    /// In Show mode a test tool answering (Fake Titan, a Host in Test mode) is worth a warning.
+    /// In Show mode a Host still in Test mode is worth a warning.
     private var showMode = false
 
     func start(_ app: AppState, remoteDesktop: Bool, showMode: Bool) {
@@ -66,9 +66,6 @@ final class StartupChecks: ObservableObject {
         // A few tries: Wi-Fi can take a moment to come up after unlocking.
         for attempt in 0 ..< 4 {
             if let version = await app.titan.softwareVersion() {
-                if showMode && version.localizedCaseInsensitiveContains("Fake Titan") {
-                    return set("titan", .warning, "That's Fake Titan at \(host), not the desk. Stop it in TitanDeck Host and start Titan.")
-                }
                 return set("titan", .ok, "Titan \(version) at \(host)")
             }
             if attempt < 3 { try? await Task.sleep(nanoseconds: 500_000_000) }

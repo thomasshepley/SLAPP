@@ -189,42 +189,12 @@
                     </StackPanel>
                 </Border>
 
-                <!-- Fake Titan (Test mode only) -->
-                <Border Style="{StaticResource CardStyle}" Visibility="{Binding IsTestMode, Converter={StaticResource Visible}}">
+                <!-- Follow selection via CITP (Test and Show) -->
+                <Border Style="{StaticResource CardStyle}">
                     <StackPanel>
-                        <TextBlock Text="Fake Titan" Style="{StaticResource CardTitle}" />
+                        <TextBlock Text="Follow selection via CITP" Style="{StaticResource CardTitle}" />
                         <TextBlock Foreground="{StaticResource SecondaryText}" TextWrapping="Wrap" Margin="0,0,0,12"
-                                   Text="Pretends to be Titan, so TitanDeck can be tried without a desk or AvoKey: the WebAPI, the desk's selection (desk link) and sACN for live intensity. Close Titan first - they both use port 4430. Every call shows in the Titan log below." />
-                        <WrapPanel Margin="0,0,0,10" IsEnabled="{Binding FakeStopped}">
-                            <TextBlock Text="Fixtures" VerticalAlignment="Center" Margin="0,0,6,0" />
-                            <TextBox Text="{Binding FakeFixtures, UpdateSourceTrigger=PropertyChanged}" Width="48" Margin="0,0,16,6" />
-                            <TextBlock Text="Playbacks" VerticalAlignment="Center" Margin="0,0,6,0" />
-                            <TextBox Text="{Binding FakePlaybacks, UpdateSourceTrigger=PropertyChanged}" Width="48" Margin="0,0,16,6" />
-                            <TextBlock Text="Slow replies (ms)" VerticalAlignment="Center" Margin="0,0,6,0" />
-                            <TextBox Text="{Binding FakeLatency, UpdateSourceTrigger=PropertyChanged}" Width="56" Margin="0,0,16,6" />
-                            <CheckBox Content="Desk (UI WebAPI)" IsChecked="{Binding FakeDesk}" Foreground="{StaticResource Text}" VerticalAlignment="Center" Margin="0,0,16,6" />
-                            <CheckBox Content="sACN levels" IsChecked="{Binding FakeSacn}" Foreground="{StaticResource Text}" VerticalAlignment="Center" Margin="0,0,0,6" />
-                        </WrapPanel>
-                        <Button Content="{Binding FakeButton}" Command="{Binding FakeToggleCommand}" HorizontalAlignment="Left" Margin="0,0,0,10" />
-                        <TextBlock Text="{Binding FakeStatus}" TextWrapping="Wrap" Margin="0,0,0,6" />
-                        <TextBlock Text="{Binding FakeState}" Foreground="{StaticResource SecondaryText}" FontFamily="Consolas" FontSize="12"
-                                   TextWrapping="Wrap" Margin="0,0,0,12" Visibility="{Binding HasFakeState, Converter={StaticResource Visible}}" />
-                        <StackPanel Orientation="Horizontal" Visibility="{Binding HasFakeState, Converter={StaticResource Visible}}">
-                            <TextBlock Text="Select on the desk" VerticalAlignment="Center" Margin="0,0,8,0" />
-                            <TextBox Text="{Binding DeskSelection, UpdateSourceTrigger=PropertyChanged}" Width="120" Margin="0,0,10,0"
-                                     ToolTip="Fixture numbers, e.g. 3,4 or 1-10 - as if you'd clicked them in Layouts" />
-                            <Button Content="Select" Command="{Binding DeskSelectCommand}" Margin="0,0,10,0" />
-                            <Button Content="Clear" Command="{Binding DeskClearCommand}" Style="{StaticResource QuietButton}" />
-                        </StackPanel>
-                    </StackPanel>
-                </Border>
-
-                <!-- Follow selection via CITP (Test mode only, experimental) -->
-                <Border Style="{StaticResource CardStyle}" Visibility="{Binding IsTestMode, Converter={StaticResource Visible}}">
-                    <StackPanel>
-                        <TextBlock Text="Follow selection via CITP (experimental)" Style="{StaticResource CardTitle}" />
-                        <TextBlock Foreground="{StaticResource SecondaryText}" TextWrapping="Wrap" Margin="0,0,0,12"
-                                   Text="Titan 19's WebAPI can't see what's selected on the desk, but Titan shares its selection with a CITP visualiser like Capture. Switched on, the Host appears to Titan as a visualiser called TitanDeck Host and passes the selection to TitanDeck. It only ever announces itself, opens a show and asks for Titan's fixture list: it never sends a patch, a selection or DMX. Only Titan on this PC can link. Every CITP message shows in the Titan log. Try it on a copy of your show." />
+                                   Text="Titan 19's WebAPI can't see what's selected on the desk, but Titan shares its selection with a CITP visualiser like Capture. Switched on, the Host appears to Titan as a visualiser called TitanDeck Host and passes the selection to TitanDeck. It only ever announces itself, opens a show and asks for Titan's fixture list: it never sends a patch, a selection or DMX. Only Titan on this PC can link. Every CITP message shows in the Titan log. Works in Test and Show mode." />
                         <Button Content="{Binding CitpButton}" Command="{Binding CitpToggleCommand}" HorizontalAlignment="Left" Margin="0,0,0,10" />
                         <TextBlock Text="{Binding CitpText}" TextWrapping="Wrap" Margin="0,0,0,6" />
                         <TextBlock Text="{Binding CitpProblem}" Foreground="#FFFF9F0A" TextWrapping="Wrap" Margin="0,0,0,6"
@@ -272,7 +242,7 @@
                             <Button Grid.Column="3" Content="Clear" Command="{Binding ClearLogCommand}" Style="{StaticResource QuietButton}" />
                         </Grid>
                         <TextBlock Foreground="{StaticResource SecondaryText}" TextWrapping="Wrap" Margin="0,0,0,8"
-                                   Text="Every call TitanDeck makes to Fake Titan, and to the real desk through the desk link: who sent it, what Titan answered and how long it took. Red is something refused or TitanDeck shouldn't do." />
+                                   Text="Every call TitanDeck makes to Titan through the Host, and every CITP message: who sent it, what Titan answered and how long it took. Red is something refused or TitanDeck shouldn't do." />
                         <TextBlock Text="{Binding PollText}" Foreground="{StaticResource SecondaryText}" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,8" />
                         <ListBox x:Name="LogList" ItemsSource="{Binding LogRows}" Height="360" Background="#FF1C1C1E"
                                  BorderBrush="{StaticResource CardBorder}" Foreground="{StaticResource Text}"

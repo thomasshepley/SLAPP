@@ -14,7 +14,8 @@ with every change that goes to `main`.
 - **Intensity and Hold for 0% on the desk:** with Keypad types on the desk, the +/- keys and Hold for 0% now type "@ level Enter" on the desk too, worked out from the fixture's live level, so they act on the desk's programmer where the selection is (they'd been going to the WebAPI's separate one). Before the live level is known they work as before. All the selected fixtures go to the same level.
 - **Fixed: +10% jumping about 60%.** Titan's intensity wheel speeds up when turned fast, so a big nudge in one go overshot; it's now "turned" slowly enough to stay in step.
 - **Fade times on Titan 19, again:** TitanDeck now sets them the way Titan's own macros do (a number of seconds), checks Titan really took the new time when it can read it back, and never sends a guessed format that Titan could quietly take as 0.
-- **Clear on the desk:** TitanDeck Host 0.10.1 types Alt+C (Titan's Clear) holding Alt down first, as a hand would; sent all at once, Titan could miss the Alt.
+- **Clear on the desk:** TitanDeck Host 0.11.0 types Alt+C (Titan's Clear) holding Alt down first, as a hand would; sent all at once, Titan could miss the Alt.
+- **Desk selection over CITP works in Show mode:** with TitanDeck Host 0.11.0 it's a full feature, no longer Test-only. The loading screen's Fake Titan warning is gone with Fake Titan.
 
 ## 0.22.0 - 2026-10-26 - On-screen keyboard on the remote desktop
 

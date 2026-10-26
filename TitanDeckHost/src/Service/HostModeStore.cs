@@ -3,9 +3,9 @@ using System.Text.Json;
 namespace TitanDeckHost.Service;
 
 /// <summary>
-/// Test or Show. In Show mode the Host is the production tool only: Fake
-/// Titan is stopped and can't be started, and experimental calls to Titan
-/// (asking it to write a patch report) are off. Kept in Data\mode.json so it
+/// Test or Show. In Show mode the Host is the production tool only:
+/// experimental calls to Titan (asking it to write a patch report) are off.
+/// Following the selection over CITP works in both. Kept in Data\mode.json so it
 /// survives restarts. Test is the default.
 /// </summary>
 public sealed class HostModeStore

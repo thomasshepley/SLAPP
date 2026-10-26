@@ -169,8 +169,8 @@ struct HostPatchFixture: Codable, Equatable {
 }
 
 /// `GET /api/v1/citp/selection` (Host 0.9+): the desk's selection as Titan
-/// shares it with visualisers over CITP, when the Host's experimental CITP
-/// link is on and Titan has connected. `fixtures` are user numbers.
+/// shares it with visualisers over CITP, when the Host's CITP link is on
+/// (Test or Show mode) and Titan has connected. `fixtures` are user numbers.
 struct HostCitpSelection: Codable, Equatable {
     let enabled: Bool
     let linked: Bool

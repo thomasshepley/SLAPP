@@ -5,8 +5,8 @@ using TitanDeckHost.Core.Api;
 namespace TitanDeckHost.App;
 
 /// <summary>
-/// The "Follow selection via CITP" card (Test mode only): the experimental
-/// switch, who's announcing CITP on the network, and what Titan has selected.
+/// The "Follow selection via CITP" card (Test and Show): the switch, who's
+/// announcing CITP on the network, and what Titan has selected.
 /// </summary>
 public sealed partial class MainViewModel
 {
@@ -30,13 +30,12 @@ public sealed partial class MainViewModel
         {
             var answer = MessageBox.Show(
                 "TitanDeck Host will appear to Titan as a CITP visualiser (like Capture) so Titan shares its selection.\n\n"
-                + "It never sends Titan a patch, but Titan may still ask about syncing with a visualiser: say no to anything that offers to change the patch.\n\n"
-                + "Try it on a copy of your show first.",
+                + "It never sends Titan a patch, but Titan may still ask about syncing with a visualiser: say no to anything that offers to change the patch.",
                 "Follow selection via CITP?", MessageBoxButton.OKCancel, MessageBoxImage.Warning, MessageBoxResult.Cancel);
             if (answer != MessageBoxResult.OK) return;
         }
         var status = await _client.SetCitp(!CitpEnabled);
-        if (status is null) Message = "Couldn't change CITP: is the Host service running (and in Test mode)?";
+        if (status is null) Message = "Couldn't change CITP: is the Host service running?";
         ShowCitp(status);
     });
 

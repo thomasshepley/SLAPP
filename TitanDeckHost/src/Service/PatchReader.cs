@@ -7,8 +7,7 @@ namespace TitanDeckHost.Service;
 /// The show's patch, from the newest patch report Titan wrote (Disk &gt;
 /// Reports, Fixtures, saved to this PC: Documents\Titan\Reports), matched to
 /// Titan's personalities for where each fixture's intensity is. Only reads
-/// files: nothing here touches Titan's Patch menu. While Fake Titan runs, its
-/// own patch is used instead. A report picked in the Host window counts
+/// files: nothing here touches Titan's Patch menu. A report picked in the Host window counts
 /// until a newer one turns up in the folder.
 /// </summary>
 public sealed class PatchReader(TitanLog log, HostModeStore mode, ILogger<PatchReader> logger)
@@ -19,12 +18,11 @@ public sealed class PatchReader(TitanLog log, HostModeStore mode, ILogger<PatchR
 
     private readonly object gate = new();
     private readonly PersonalityLibrary library = new(PersonalityFolders());
-    private (string Source, DateTimeOffset Written, IReadOnlyList<PatchFixture> Fixtures)? fromFile, imported, fake;
+    private (string Source, DateTimeOffset Written, IReadOnlyList<PatchFixture> Fixtures)? fromFile, imported;
     private (string Path, DateTime Written)? lastFile;
     private DateTimeOffset lastScan = DateTimeOffset.MinValue;
     private DateTimeOffset? read;
     private string? problem;
-    private TitanPersonality? fakePersonality;
 
     /// <summary>Index the personalities and read the newest report in the background, so the first ask is quick.</summary>
     public void Warm() => Task.Run(() =>
@@ -73,23 +71,6 @@ public sealed class PatchReader(TitanLog log, HostModeStore mode, ILogger<PatchR
         }
     }
 
-    /// <summary>Fake Titan's patch and personality while it runs; null when it stops.</summary>
-    public void UseFake(string? reportCsv)
-    {
-        lock (gate)
-        {
-            if (fakePersonality is not null) library.Remove(fakePersonality);
-            fakePersonality = null;
-            fake = null;
-            if (reportCsv is null) return;
-            fakePersonality = TitanPersonality.Read(FakeTitan.PersonalityXml);
-            if (fakePersonality is not null) library.Add(fakePersonality);
-            fake = ("Fake Titan", DateTimeOffset.Now, library.Fill(TitanPatch.Parse(reportCsv, "fake.csv")));
-            read = DateTimeOffset.Now;
-            Logged("READ", "Fake Titan's patch", fake.Value.Fixtures);
-        }
-    }
-
     /// <summary>
     /// Experimental: asks Titan's WebAPI (the separate API user, never the
     /// desk's own UI) to write a report, then reads it. Titan's parameters for
@@ -112,7 +93,7 @@ public sealed class PatchReader(TitanLog log, HostModeStore mode, ILogger<PatchR
         string note;
         try
         {
-            using var response = await Titan.GetAsync($"http://127.0.0.1:{FakeTitanServer.ApiPort}{path}?{query}");
+            using var response = await Titan.GetAsync($"http://127.0.0.1:{TitanUiConfig.ApiPort}{path}?{query}");
             status = (int)response.StatusCode;
             var body = await response.Content.ReadAsStringAsync();
             note = body.Length == 0 ? "answered with nothing" : $"answered {(body.Length > 160 ? body[..160] + "..." : body)}";
@@ -177,8 +158,8 @@ public sealed class PatchReader(TitanLog log, HostModeStore mode, ILogger<PatchR
 
     private PatchDto DtoLocked()
     {
-        // Fake Titan while it runs; else the newer of the folder's report and one picked by hand.
-        var current = fake ?? (imported is { } i && (fromFile is not { } f || i.Written >= f.Written) ? imported : fromFile);
+        // The newer of the folder's report and one picked by hand.
+        var current = imported is { } i && (fromFile is not { } f || i.Written >= f.Written) ? imported : fromFile;
         var fixtures = current?.Fixtures.Select(f =>
             new PatchFixtureDto(f.UserNumber, f.Model, f.Mode, f.Line, f.Address, f.Channels, f.Intensity, f.Legend)).ToList() ?? [];
         var problemText = problem ?? (current is null

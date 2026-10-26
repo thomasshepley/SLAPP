@@ -32,7 +32,6 @@ builder.Services.AddSingleton<TitanLog>();
 builder.Services.AddSingleton<DeskLink>();
 builder.Services.AddSingleton<HostModeStore>();
 builder.Services.AddSingleton<PatchReader>();
-builder.Services.AddSingleton<FakeTitanServer>();
 builder.Services.AddSingleton<HostUpdater>();
 builder.Services.AddHostedService(services => services.GetRequiredService<HostUpdater>());
 builder.Services.AddSingleton<Fixer>();
@@ -147,7 +146,7 @@ network.MapPost("/rdp/quality", (RdpQualityRequest request) => SetQuality(reques
 
 network.MapGet("/outbox", () => Outbox(paths));
 
-// What the Host saw go to (Fake) Titan: for a log view on the iPad.
+// What the Host saw go to Titan: for a log view on the iPad.
 network.MapGet("/titanlog", (long? after, TitanLog log) => TitanLogResult(log, after));
 
 // Live sACN levels, for showing a fixture's intensity on the deck.
@@ -225,30 +224,22 @@ var local = app.MapGroup("/local").AddEndpointFilter(async (context, next) =>
 
 local.MapGet("/status", (WindowsProbe probe, DeskLink desk, HostModeStore mode) => Status(probe, desk, paths, mode));
 
-// Test or Show. Show stops Fake Titan and turns the experimental bits off.
+// Test or Show. Show hides the test tools (asking Titan for a patch report).
 local.MapGet("/mode", (HostModeStore mode) => new ModeDto(mode.Mode));
 
 // The network adapter TitanDeck uses (announced on, and shown as the address to type).
 local.MapGet("/network", (NetworkChoice network) => network.Status());
 local.MapPost("/network", (NetworkChoiceRequest request, NetworkChoice network) => network.Choose(request.Id));
-local.MapPost("/mode", async (ModeDto request, HostModeStore mode, FakeTitanServer fake, CitpService citp) =>
+local.MapPost("/mode", (ModeDto request, HostModeStore mode) =>
 {
     if (request.Mode is not ("test" or "show")) return Results.BadRequest(new { error = "Mode is test or show." });
     mode.Set(request.Mode == "show");
-    if (mode.IsShow)
-    {
-        await fake.Stop();
-        if (citp.Enabled) citp.SetEnabled(false);
-    }
     return Results.Ok(new ModeDto(mode.Mode));
 });
 
-// Follow the desk's selection over CITP: experimental, off by default, Test mode only.
+// Follow the desk's selection over CITP: off by default, works in Test and Show.
 local.MapGet("/citp", (CitpService citp) => citp.Status());
-local.MapPost("/citp", (CitpEnableRequest request, CitpService citp, HostModeStore mode) =>
-    request.Enabled && mode.IsShow
-        ? Results.BadRequest(new { error = "CITP is a test feature: switch to Test mode first." })
-        : Results.Ok(citp.SetEnabled(request.Enabled)));
+local.MapPost("/citp", (CitpEnableRequest request, CitpService citp) => citp.SetEnabled(request.Enabled));
 
 // The Host window waits here for keypad keys to type (long poll).
 local.MapGet("/desk/keys/wait", (DeskKeyQueue queue, CancellationToken cancel) => queue.Next(TimeSpan.FromSeconds(20), cancel));
@@ -274,12 +265,7 @@ local.MapPost("/rdp/quality", (RdpQualityRequest request) => SetQuality(request)
 
 local.MapGet("/dmx", (DmxUniverses store, SacnListener listener) => DmxSummary(store, listener));
 
-// Fake Titan, the Titan log and Host updates (the Host window).
-local.MapGet("/faketitan", (FakeTitanServer fake) => fake.Status());
-local.MapPost("/faketitan/start", (FakeTitanStartRequest request, FakeTitanServer fake) => fake.Start(request));
-local.MapPost("/faketitan/stop", (FakeTitanServer fake) => fake.Stop());
-local.MapPost("/faketitan/desk-select", (DeskSelectRequest request, FakeTitanServer fake) =>
-    Results.Ok(new { note = fake.DeskSelect(request.Fixtures) }));
+// The Titan log, the patch and Host updates (the Host window).
 local.MapGet("/titanlog", (long? after, TitanLog log) => TitanLogResult(log, after));
 local.MapGet("/patch", (PatchReader patch) => patch.Status());
 local.MapPost("/patch/reload", (PatchReader patch) => patch.Reload());
@@ -305,7 +291,6 @@ local.MapGet("/folders", () => new { toPC = paths.ToPC, toIPad = paths.ToIPad, d
 var flush = new Timer(_ => pairing.Flush(), null, TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(5));
 app.Lifetime.ApplicationStopping.Register(() =>
 {
-    app.Services.GetRequiredService<FakeTitanServer>().Stop().Wait(TimeSpan.FromSeconds(5));
     flush.Dispose();
     pairing.Flush();
 });

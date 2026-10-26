@@ -90,17 +90,6 @@ public sealed record DmxSummaryDto(IReadOnlyList<int> Universes, IReadOnlyList<i
 public sealed record UpdateStatusDto(string Current, string? Latest, bool Available, string? Notes, DateTimeOffset? Published,
     DateTimeOffset? Checked, string? Problem, double? Downloading, string? Ready, string? ReadySha256);
 
-/// <summary>Fake Titan's settings when started from the Host window.</summary>
-public sealed record FakeTitanStartRequest(int Fixtures, int Playbacks, bool Desk, bool Sacn, int LatencyMs);
-
-/// <summary>Fake Titan (`GET /local/faketitan`). State is its command lines,
-/// selections and levels; Ports the ones it has open.</summary>
-public sealed record FakeTitanStatusDto(bool Running, int Fixtures, int Playbacks, bool Desk, bool Sacn, int LatencyMs,
-    string? Problem, string? State, IReadOnlyList<int> Ports);
-
-/// <summary>"3,4", "1-10" or empty, as if selected in Layouts.</summary>
-public sealed record DeskSelectRequest(string Fixtures);
-
 /// <summary>The Titan log since an entry (`GET /local/titanlog?after=`).</summary>
 public sealed record TitanLogDto(IReadOnlyList<TitanDeckHost.Core.Titan.TitanLogEntry> Entries,
     IReadOnlyList<TitanDeckHost.Core.Titan.TitanPollSummary> Polls);
@@ -113,8 +102,8 @@ public sealed record TitanLogDto(IReadOnlyList<TitanDeckHost.Core.Titan.TitanLog
 public sealed record PatchFixtureDto(int User, string? Model, string? Mode, int Universe, int Address, int? Channels,
     IReadOnlyList<int>? Intensity, string? Legend);
 
-/// <summary>The patch from Titan's newest patch report (Disk &gt; Reports), or
-/// Fake Titan's while it runs. Folders are where the Host looks.</summary>
+/// <summary>The patch from Titan's newest patch report (Disk &gt; Reports).
+/// Folders are where the Host looks.</summary>
 public sealed record PatchDto(string? Source, DateTimeOffset? Written, DateTimeOffset? Read, IReadOnlyList<PatchFixtureDto> Fixtures,
     int Personalities, string? Problem, IReadOnlyList<string> Folders);
 
@@ -138,8 +127,8 @@ public sealed record PatchImportRequest(string Name, string Text);
 
 /// <summary>
 /// `GET /api/v1/citp/selection`: the desk's selection as Titan shares it with
-/// a CITP visualiser. Enabled = the experimental switch is on (Test mode
-/// only); linked = Titan is connected; fixtures are user numbers.
+/// a CITP visualiser. Enabled = the switch is on (Test or Show mode);
+/// linked = Titan is connected; fixtures are user numbers.
 /// </summary>
 public sealed record CitpSelectionDto(bool Enabled, bool Linked, string? Peer, IReadOnlyList<int> Fixtures, string? Problem);
 
@@ -154,5 +143,5 @@ public sealed record CitpStatusDto(bool Enabled, bool Allowed, bool Running, int
 /// ("1", "@", "enter", "clear"...; see <c>DeskKeys</c>).</summary>
 public sealed record DeskKeysRequest(IReadOnlyList<string> Keys);
 
-/// <summary>`POST /local/citp`: the experimental switch.</summary>
+/// <summary>`POST /local/citp`: the on/off switch.</summary>
 public sealed record CitpEnableRequest(bool Enabled);

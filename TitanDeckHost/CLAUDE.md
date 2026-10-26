@@ -15,7 +15,6 @@ TitanDeckHost/
 │                  with fixes), SafeFileName, API messages (Api/Messages.cs),
 │                  sACN (Sacn/: E1.31 packet parser + DmxUniverses merge store),
 │                  TitanUiConfig (Titan's UI WebAPI config, checklist line, proxy allowlist),
-│                  FakeTitan (pretend Titan: WebAPI user + desk user state machine),
 │                  TitanLog (every Titan call, polls counted), Update/HostUpdate (GitHub releases),
 │                  TitanPatch (patch report CSV/XML/HTML), TitanPersonality + PersonalityLibrary (.d4),
 │                  Citp/ (CITP packets, PINF/FSEL/CAEX codecs, CitpAllowlist, CitpSession)
@@ -24,10 +23,9 @@ TitanDeckHost/
 │                  WindowsProbe (reads the PC), Fixer (applies fixes), Advertiser (mDNS),
 │                  SacnListener (joins sACN multicast on every adapter, port shared),
 │                  DeskLink (finds/edits Titan.dll.config / .exe.config, /titan proxy on 0.0.0.0:4434),
-│                  FakeTitanServer (Kestrel on 4430 + 4433 only while started, sACN out),
 │                  HostUpdater (checks GitHub every 6 h, downloads + verifies the installer),
-│                  PatchReader (newest patch report + personalities, Fake Titan's while it runs),
-│                  CitpService (experimental CITP visualiser: UDP 4809 PLoc, TCP 4435)
+│                  PatchReader (newest patch report + personalities),
+│                  CitpService (CITP visualiser: UDP 4809 PLoc, TCP 4435; Test and Show)
 ├── src/App/       net8.0-windows WPF tray app + dashboard; talks only to 127.0.0.1:4432
 ├── tests/Core.Tests/  xunit
 └── installer/     Inno Setup script
@@ -97,7 +95,7 @@ TitanDeckHost/
 - **Pass-through** (port 4436, `DeskLink.PassThrough`): `/titan/...` to
   127.0.0.1:4430, logged as "TitanDeck - WebAPI" with Titan's error text. It's
   the same API the iPad could call directly, so nothing is refused; Patch calls
-  are flagged in the log. With Fake Titan running each call is logged twice.
+  are flagged in the log.
 - **Network for TitanDeck** (`NetworkChoice`, Data\network.json, `GET/POST /local/network`;
   pure choice logic in `Core/Net/NetworkAdapters`): with an adapter picked, the
   `Advertiser` restarts mDNS on that NIC only, with only its IPv4 in the A
@@ -106,11 +104,11 @@ TitanDeckHost/
   (Makaretu's MulticastService needs an IPv6 socket, so mDNS fails in IPv6-less
   Linux containers; fine on Windows.)
 - **Test / Show mode** (`HostModeStore`, Data\mode.json, `GET/POST /local/mode`,
-  also `mode` in `/status`): Show stops Fake Titan and refuses to start it,
-  and refuses `PatchReader.AskTitan`; the window hides those. New test-only
+  also `mode` in `/status`): Show refuses `PatchReader.AskTitan` and the
+  window hides it. CITP isn't a test tool: it carries on in both modes. New test-only
   tools must check `HostModeStore.IsShow` the same way.
-- **CITP** (`Core/Citp`, `CitpService`; experimental, Test mode only, off by
-  default, Data\citp.json; `GET/POST /local/citp`, paired `GET /api/v1/citp/selection`):
+- **CITP** (`Core/Citp`, `CitpService`; a full feature since Host 0.11.0,
+  works in Test and Show, off by default, Data\citp.json; `GET/POST /local/citp`, paired `GET /api/v1/citp/selection`):
   Titan 19's WebAPI can't see the desk's selection, so the Host joins Titan as
   a CITP visualiser ("TitanDeck Host") and hears CAEX FixtureSelection (or FSEL).
   **Titan auto-applies patch changes from a visualiser, so the Host must never
@@ -124,19 +122,17 @@ TitanDeckHost/
   ("Channel"); without one the ids are taken as user numbers and flagged as a
   guess. Only peers on this PC can link (TCP from other PCs is refused); PLoc
   goes out with TTL 1. The multicast listener only runs while it's switched on,
-  so it can't take 4809 from Titan by default. Show mode switches it off. Byte
+  so it can't take 4809 from Titan by default. Byte
   layouts: CITP spec (bitbucket.org/lars_wernlund/citp) and Capture's CAEX
   spec G; tests in `CitpTests`. Every message goes to the Titan log as `CITP`.
   Titan opens several TCP links and retries refused ones, so up to
   `CitpService.MaxLinks` (8) are kept; the selection comes from the link that
   heard one last (`CitpSession.SelectionAt`). Only the first link logs fully;
   keep the log rate-limited (Titan reconnects many times a second).
-- **Fake Titan** (`FakeTitan`) is the primary fake now; `TitanDeck/Tools/fake_titan.py`
-  stays for the Mac. Keep them answering the same calls: when an action is added
-  to `TitanEndpoints`, add it to both. It only listens while started from the
-  window, refuses to start if 4430/4433 are taken (Titan running), and stops
-  with the service. Patch on the desk port answers but is logged flagged.
-- **Titan log** (`TitanLog`): Fake Titan and the desk link both write to it.
+- **No Fake Titan.** It was removed in Host 0.11.0 (and `fake_titan.py` with
+  it) now testing is on a real Titan: don't bring it back. The installer only
+  deletes its old firewall rule.
+- **Titan log** (`TitanLog`): the desk link, pass-through and CITP write to it.
   Poll paths (`TitanLog.IsPoll`) are counted, and only listed again when their
   status changes. Window: `/local/titanlog`; iPad: `/api/v1/titanlog?after=`.
   Calls TitanDeck sends straight to the real WebAPI on 4430 don't pass through

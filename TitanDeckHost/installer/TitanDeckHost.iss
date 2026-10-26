@@ -64,9 +64,8 @@ Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=
 Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall add rule name=""TitanDeck - Desk link"" dir=in action=allow protocol=TCP localport=4434 profile=private,domain"; Flags: runhidden
 Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=""TitanDeck - Titan WebAPI through the Host"""; Flags: runhidden
 Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall add rule name=""TitanDeck - Titan WebAPI through the Host"" dir=in action=allow protocol=TCP localport=4436 profile=private,domain"; Flags: runhidden
-; Fake Titan (4430 WebAPI, 4433 desk): only for the Host's own service, so it opens nothing for anything else.
+; Fake Titan is gone (Host 0.11.0): take away the firewall rule older versions added.
 Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=""TitanDeck - Fake Titan"""; Flags: runhidden
-Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall add rule name=""TitanDeck - Fake Titan"" dir=in action=allow protocol=TCP localport=4430,4433 program=""{app}\TitanDeckHost.Service.exe"" profile=private,domain"; Flags: runhidden
 Filename: "{sys}\sc.exe"; Parameters: "start TitanDeckHost"; Flags: runhidden; StatusMsg: "Starting the service..."
 Filename: "{app}\TitanDeckHost.exe"; Description: "Open TitanDeck Host"; Flags: postinstall nowait skipifsilent
 ; Updating from the Host window (/UPDATE=1, silent): open it again, as the signed-in user.

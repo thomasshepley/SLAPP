@@ -1,9 +1,9 @@
 namespace TitanDeckHost.Core.Titan;
 
-/// <summary>One call to (Fake) Titan as the Host saw it.</summary>
-/// <param name="Who">Which Titan and which user: "Fake Titan - WebAPI", "Desk link - Titan UI".</param>
+/// <summary>One call to Titan as the Host saw it.</summary>
+/// <param name="Who">Which Titan and which user: "TitanDeck - WebAPI", "CITP".</param>
 /// <param name="From">Who sent it (the iPad's address).</param>
-/// <param name="State">Fake Titan only: command lines, selections and levels after the call.</param>
+/// <param name="State">What changed after the call, when known.</param>
 /// <param name="Flagged">Something TitanDeck should never do, or a refused call.</param>
 public sealed record TitanLogEntry(long Id, DateTimeOffset Time, string Who, string From, string Method, string Path,
     string Query, int Status, int Milliseconds, string? Note, string? State, bool Flagged);
