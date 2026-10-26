@@ -19,7 +19,8 @@ public sealed class DeskLink(TitanLog titanLog, ILogger<DeskLink> log)
     private readonly object gate = new();
     private (DateTimeOffset At, IReadOnlyList<(string Path, TitanUiConfig.State State)> Files)? cached;
 
-    /// <summary>Titan's .exe.config files under Avolites' install folders:
+    /// <summary>Titan's settings files under Avolites' install folders
+    /// (Titan.dll.config from Titan 19, which runs on .NET 8; Titan.exe.config before):
     /// only ones that already have webapi.enabled in them.</summary>
     public IReadOnlyList<(string Path, TitanUiConfig.State State)> Configs(bool fresh = false)
     {
@@ -33,8 +34,9 @@ public sealed class DeskLink(TitanLog titanLog, ILogger<DeskLink> log)
             IEnumerable<string> files;
             try
             {
-                files = Directory.EnumerateFiles(root, "*.exe.config",
-                    new EnumerationOptions { RecurseSubdirectories = true, MaxRecursionDepth = 4, IgnoreInaccessible = true });
+                files = Directory.EnumerateFiles(root, "*.config",
+                        new EnumerationOptions { RecurseSubdirectories = true, MaxRecursionDepth = 4, IgnoreInaccessible = true })
+                    .Where(TitanUiConfig.IsSettingsFileName);
             }
             catch (IOException) { continue; }
             catch (UnauthorizedAccessException) { continue; }

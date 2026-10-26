@@ -65,6 +65,14 @@ public class DeskLinkTests
         Assert.Equal("desklink", off.Id);
     }
 
+    [Theory]
+    [InlineData(@"C:\Program Files\Avolites\Titan\19.2.104.5\Titan.dll.config", true)]
+    [InlineData(@"C:\Program Files\Avolites\Titan\Titan.exe.config", true)]
+    [InlineData(@"C:\Program Files\Avolites\Titan\19.2.104.5\Titan.runtimeconfig.json", false)]
+    [InlineData(@"C:\Program Files\Avolites\Titan\web.config", false)]
+    public void FindsTitan19sSettingsFileToo(string path, bool isSettings) =>
+        Assert.Equal(isSettings, TitanUiConfig.IsSettingsFileName(path));
+
     [Fact]
     public void AWebApiAlreadyInTitansUiOn4430IsLeftAlone()
     {
