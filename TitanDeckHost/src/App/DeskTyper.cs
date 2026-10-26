@@ -17,6 +17,7 @@ internal static class DeskTyper
 {
     public static async Task Run(CancellationToken stop)
     {
+        ReleaseModifiers();
         using var http = new HttpClient
         {
             BaseAddress = new Uri($"http://127.0.0.1:{Protocol.LocalPort}/local/"),
@@ -51,6 +52,17 @@ internal static class DeskTyper
         Thread.Sleep(20);
         Send(Scan(key.Scancode, key.Extended, up: true));
         Thread.Sleep(15);
+    }
+
+    /// <summary>
+    /// Lets go of Alt, Ctrl and Shift (both sides) in case an older Host left
+    /// one down: 0.11 typed Alt+C for Clear, and afterwards none of the desk's
+    /// own buttons worked. A key-up for a key that isn't down does nothing.
+    /// </summary>
+    public static void ReleaseModifiers()
+    {
+        (ushort Scan, bool Extended)[] modifiers = [(0x38, false), (0x38, true), (0x1D, false), (0x1D, true), (0x2A, false), (0x36, false)];
+        foreach (var (scan, extended) in modifiers) Send(Scan(scan, extended, up: true));
     }
 
     private static void Send(Input input) => SendInput(1, [input], Marshal.SizeOf<Input>());
