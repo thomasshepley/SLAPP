@@ -199,7 +199,7 @@ public sealed class FakeTitan
                     return new(200, null, "report written (Fake Titan's patch is read straight away)");
                 case "Menu/ExitRootOrLatched":
                     return new(200, null, "exited menu");
-                case "Playbacks/Editor/ClearAll":
+                case "Programmer/Editor/ClearAll" or "Playbacks/Editor/ClearAll":
                     me.Selected = [];
                     foreach (var n in levels.Keys.ToList()) levels[n] = 0;
                     return new(200, null, "programmer cleared");

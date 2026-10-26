@@ -9,6 +9,7 @@ until it's show-ready (1.0): MINOR for features, PATCH for fixes. Keep
 ## 0.9.1 - 2026-10-26 - Quieter CITP
 
 - **Fixed: "refused: already linked" filling the Titan log** several times a second. Titan opens more than one CITP connection and keeps retrying any that are refused, so the Host now keeps up to 8 links from Titan on this PC and follows the selection from whichever heard it last. Extra links only log selections and problems, a link coming up or going is logged at most every 30 seconds, and anything over 8 is one line a minute.
+- The desk link passes TitanDeck's Clear through under its Titan 19 name (Programmer/Editor/ClearAll).
 - Fake Titan: the intensity nudge is Titan's wheel (4096 steps = full), the same as real Titan, and it understands Selection Clear.
 
 ## 0.9.0 - 2026-10-26 - Titan 19 WebAPI fix, Titan log for every call, CITP selection

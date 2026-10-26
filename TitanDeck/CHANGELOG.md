@@ -13,6 +13,7 @@ with every change that goes to `main`.
 - **A row of extra keys** above it: Esc, Tab, Ctrl, Alt, the arrows and Del. Ctrl and Alt latch: tap Ctrl, then C, for Ctrl-C.
 - Hide it with the button or the keyboard's own hide key. A Magic Keyboard still types key by key as before.
 - **Fixed: intensity nudges were tiny.** Titan's intensity nudge is its encoder wheel (4096 steps from 0 to full), not a percentage, so +10% was moving about 0.25%. Each key now sends the right number of wheel steps.
+- **Fixed: Clear on Titan 19.** Clearing the programmer used the old (pre-19) name for Titan's call, which Titan 19.2 refuses; it now uses the current one (Programmer Editor Clear All), which every Titan with the WebAPI has.
 - **Following the desk's selection over CITP:** the deck's own WebAPI user now clears its selection before selecting the desk's fixtures (selecting adds to what's there), and clears it when the desk selects nothing.
 - **Remote desktop with no Windows password:** a blank password is now sent as a blank password, rather than as "no password given", so it signs in once TitanDeck Host has allowed accounts with no password.
 

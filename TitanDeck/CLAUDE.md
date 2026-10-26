@@ -157,7 +157,7 @@ parameter is named `srcHandle`). Levels are `level_level=` (absolute, 0-1).
 | Macro | `Macros/Run?macroId=<id string>` |
 | Keypad digit / @ | `Command/AppendStringAndPreview?text=7` (or `@`) |
 | Keypad Enter | GET `/titan/get/2/Command/CommandLineText`, then `Command/RunCommand?command=<text>`, then `Command/StartNewCommand` |
-| Keypad Clear | `Command/StartNewCommand` if something's typed, else `Playbacks/Editor/ClearAll?presets=false&allProgrammers=false` |
+| Keypad Clear | `Command/StartNewCommand` if something's typed, else `Programmer/Editor/ClearAll?presets=false&allProgrammers=false` (Titan 19.2 has Programmer.Editor and the old Playbacks.Editor names; prefer Programmer.Editor where both exist) |
 | Keypad Exit | `Menu/ExitRootOrLatched` |
 | Intensity +/- | `Programmer/Editor/Fixtures/IncrementDimmer?value=5&timeDelta=1&shiftEnabled=false` (value assumed to be percent - unconfirmed) |
 | Version check | `GET /titan/get/System/SoftwareVersion` |

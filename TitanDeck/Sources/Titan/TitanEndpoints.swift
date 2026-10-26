@@ -180,7 +180,9 @@ enum TitanEndpoints {
 
     /// Clears the programmer (this one only) and the selection.
     static func clearProgrammerURL(host: String, port: Int = defaultPort) -> URL? {
-        script(host, port, "Playbacks/Editor/ClearAll", [("presets", "false"), ("allProgrammers", "false")])
+        // Programmer.Editor: Titan 19.2 only answers the old Playbacks.Editor name
+        // with pre19Compatibility on; the Programmer one is in both.
+        script(host, port, "Programmer/Editor/ClearAll", [("presets", "false"), ("allProgrammers", "false")])
     }
 
     /// Any number, without trailing zeros ("5", "-2.5").

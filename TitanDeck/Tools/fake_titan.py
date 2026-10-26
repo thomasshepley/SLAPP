@@ -194,7 +194,7 @@ class FakeTitan:
             return 200, None, "command line cleared"
         if function == "Menu/ExitRootOrLatched":
             return 200, None, "exited menu"
-        if function == "Playbacks/Editor/ClearAll":
+        if function in ("Programmer/Editor/ClearAll", "Playbacks/Editor/ClearAll"):
             self.selected = []
             for n in self.levels:
                 self.levels[n] = 0.0

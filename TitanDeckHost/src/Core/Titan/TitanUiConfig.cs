@@ -94,7 +94,7 @@ public static class TitanUiConfig
             "/titan/get/System/SoftwareVersion",
             "/titan/get/2/Command/", "/titan/script/2/Command/",
             "/titan/script/2/Menu/ExitRootOrLatched",
-            "/titan/script/2/Programmer/Editor/Fixtures/", "/titan/script/2/Playbacks/",
+            "/titan/script/2/Programmer/Editor/Fixtures/", "/titan/script/2/Programmer/Editor/ClearAll", "/titan/script/2/Playbacks/",
             "/titan/script/2/Palette/ApplyPalette", "/titan/script/2/Workspace/Apply", "/titan/script/2/Macros/Run",
             "/titan/script/2/Selection/Context/", "/titan/get/2/Programmer/Editor/Selection/",
             "/titan/get/2/Playbacks/Editor/Times/", "/titan/set/2/Playbacks/Editor/Times/",

@@ -93,7 +93,7 @@ final class TitanEndpointsTests: XCTestCase {
         XCTAssertEqual(TitanEndpoints.startNewCommandURL(host: host)?.absoluteString,
                        "http://10.0.0.1:4430/titan/script/2/Command/StartNewCommand")
         XCTAssertEqual(TitanEndpoints.clearProgrammerURL(host: host)?.absoluteString,
-                       "http://10.0.0.1:4430/titan/script/2/Playbacks/Editor/ClearAll?presets=false&allProgrammers=false")
+                       "http://10.0.0.1:4430/titan/script/2/Programmer/Editor/ClearAll?presets=false&allProgrammers=false")
     }
 
     func testLatchingGoReleasesByTitanId() throws {

@@ -102,6 +102,8 @@ public class DeskLinkTests
     [InlineData("/titan/script/2/Command/AppendStringAndPreview", true)]
     [InlineData("/titan/get/2/Command/CommandLineText", true)]
     [InlineData("/titan/script/2/Programmer/Editor/Fixtures/FlashOut", true)]
+    [InlineData("/titan/script/2/Programmer/Editor/ClearAll", true)]
+    [InlineData("/titan/script/2/Programmer/Editor/ClearAllX", false)]
     [InlineData("/titan/script/2/Playbacks/FirePlaybackAtLevel", true)]
     [InlineData("/titan/handles/Fixtures", true)]
     [InlineData("/titan/get/System/SoftwareVersion", true)]
