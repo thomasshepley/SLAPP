@@ -40,7 +40,8 @@ TitanDeck/
 │   │               edits, keeps page links valid), ActionDraft (form model), ProfileStore (JSON)
 │   ├── Titan/      TitanAction, TitanEndpoints (URL builders), TitanClient (actor)
 │   ├── Remote/     RDPSession (Swift side), RDPView (canvas + touch mapping + hardware keyboard), RemoteView,
-│   │               RDPSettings, RDPGeometry, RDPKeyboard (HID usage -> set-1 scan code, 0x100 = extended),
+│   │               RDPSettings, RDPGeometry, RDPKeyboard (HID usage -> set-1 scan code, 0x100 = extended;
+│   │               RDPTyping: on-screen keyboard text -> keys or Unicode, `titan_rdp_unicode`),
 │   │               CertificateTrustStore (trust on first use)
 │   │   └── Bridge/ titan_rdp.c/.h - the only code that touches FreeRDP's C API
 │   ├── Companion/  The lighting companion, rebuilt natively (M12+):
@@ -156,7 +157,7 @@ parameter is named `srcHandle`). Levels are `level_level=` (absolute, 0-1).
 | Macro | `Macros/Run?macroId=<id string>` |
 | Keypad digit / @ | `Command/AppendStringAndPreview?text=7` (or `@`) |
 | Keypad Enter | GET `/titan/get/2/Command/CommandLineText`, then `Command/RunCommand?command=<text>`, then `Command/StartNewCommand` |
-| Keypad Clear | `Command/StartNewCommand` if something's typed, else `Playbacks/Editor/ClearAll?presets=false&allProgrammers=false` |
+| Keypad Clear | `Command/StartNewCommand` if something's typed, else `Programmer/Editor/ClearAll?presets=false&allProgrammers=false` (Titan 19.2 has Programmer.Editor and the old Playbacks.Editor names; prefer Programmer.Editor where both exist) |
 | Keypad Exit | `Menu/ExitRootOrLatched` |
 | Intensity +/- | `Programmer/Editor/Fixtures/IncrementDimmer?value=5&timeDelta=1&shiftEnabled=false` (value assumed to be percent - unconfirmed) |
 | Version check | `GET /titan/get/System/SoftwareVersion` |
@@ -167,7 +168,9 @@ parameter is named `srcHandle`). Levels are `level_level=` (absolute, 0-1).
 | Flash to 0 | `Programmer/Editor/Fixtures/SetDimmerLevel?level=0` (no time, so a faded flash is 20 `IncrementDimmer` steps of -5); back with `ClearSelectedControls?release=true&releaseTime=S` |
 | Desk selection (desk link) | `Selection/Context/Global/GetAllSelectedFixtureIds` on Titan's UI WebAPI (TitanDeck port 4434 via the Host, Titan 4433); returns titan ids, mapped with `/titan/handles/Fixtures` |
 | Latching GO (Playbacks page) | live: `Playbacks/ReleasePlayback?handle_titanId=N&fadeTime=0&useMasterReleaseTime=true`, else `FirePlaybackAtLevel?handle_titanId=N` |
-| Desk selection (Titan 19, CITP) | Host `GET /api/v1/citp/selection`; then `Selection/Context/Global/SelectFixturesFromHandles` on 4430 so the deck's user has the same selection |
+| Desk selection (Titan 19, CITP) | Host `GET /api/v1/citp/selection`; then `Selection/Context/Global/Clear` + `SelectFixturesFromHandles` on 4430 so the deck's user has the same selection |
+| Cue fade time | select cue 1 (`Playbacks/Editor/CueSelection/SelectCueByNumber`), `GET /titan/get/2/Playbacks/Editor/Times/CueFadeIn/OutTime`, then `POST /titan/set/...` with JSON (`TitanTimeSpan`: Titan's own shape first, then `"00:00:00.3000000"`, `{"Seconds":0.3}`, a bare number). Titan 19 refuses a bare number (AcwTimeSpan) |
+| Intensity nudge | `Programmer/Editor/Fixtures/IncrementDimmer?value=` is wheel steps, 4096 = full (`dimmerStepsPerPercent` 40.96), `timeDelta=1` (no acceleration) |
 | Flash, no fade | `Programmer/Editor/Fixtures/FlashOut`, then `ClearFlash` |
 | Patch address (experimental, off) | 4430 only: `Selection/Context/Global/SelectFixturesFromHandles?handleList_userNumberList=N` (when linked), `Patch/Repatch/SetDmxAddressesFromSelectedFixture`, `GET /titan/get/2/Patch/CurrentDmxAssignment` (format unknown) |
 | One page of playbacks | `GET /titan/handles/Playbacks/<pageIndex>` (0-based); without the index, every page |
@@ -196,6 +199,13 @@ support posts):
   `WebAPI\<version>\WebAPIService.dll.config`; otherwise HTTP 500 (playbacks
   still fire). TitanDeck Host 0.9 checks and fixes it. `TitanClient.errorText`
   keeps Titan's error body for Recent calls.
+- **Keypad types on the desk** (`DeskKeys`, `AppState.typeOnDesk`, on by default,
+  `deck.keypadTypesOnDesk`): keypad actions become Titan's PC keyboard shortcuts
+  (number keys, number-pad * = @, / = Thro, Enter, Esc = Exit, Alt+C = Clear),
+  typed by the Host window (`POST /api/v1/desk/keys`) or over RDP, so they reach
+  the desk's own command line. Typing is serial (one Task chain). The WebAPI user
+  mirrors the keypad selection so intensity keys still work. Keep the key names
+  in step with `TitanDeckHost/src/Core/Titan/DeskKeys.cs`.
 - **Through TitanDeck Host** (`AppState.titanViaHost`, `titan.viaHost`): the
   shared `TitanClient` uses port 4436 (`TitanEndpoints.viaHostPort`), the
   Host's logged pass-through to 127.0.0.1:4430. App Intents and the Watch still

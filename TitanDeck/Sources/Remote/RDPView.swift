@@ -8,10 +8,12 @@ import UIKit
 /// faders and buttons behave like a touchscreen), two-finger tap = right click,
 /// two-finger drag = scroll wheel, Pencil hover = move the pointer,
 /// three-finger long press = open Settings. A hardware keyboard (Magic
-/// Keyboard) types on the PC while the remote desktop is showing.
+/// Keyboard) types on the PC while the remote desktop is showing, and so does
+/// the iPad's on-screen keyboard while `softKeyboardShown` is on.
 struct RDPView: UIViewRepresentable {
     @ObservedObject var session: RDPSession
     var commandKey: RDPKeyboard.CommandKey = .control
+    @Binding var softKeyboardShown: Bool
     var onOpenSettings: () -> Void
 
     func makeUIView(context: Context) -> RDPCanvasView {
@@ -19,6 +21,10 @@ struct RDPView: UIViewRepresentable {
         view.session = session
         view.commandKey = commandKey
         view.onOpenSettings = onOpenSettings
+        view.onSoftKeyboardHidden = { [binding = $softKeyboardShown] in
+            // Hidden with the keyboard's own key: put the button back.
+            DispatchQueue.main.async { if binding.wrappedValue { binding.wrappedValue = false } }
+        }
         session.frameHandler = { [weak view] image in view?.show(image) }
         return view
     }
@@ -27,6 +33,7 @@ struct RDPView: UIViewRepresentable {
         view.desktopSize = session.desktopSize
         view.commandKey = commandKey
         view.onOpenSettings = onOpenSettings
+        view.setSoftKeyboard(shown: softKeyboardShown)
     }
 
     static func dismantleUIView(_ view: RDPCanvasView, coordinator: ()) {
@@ -40,6 +47,14 @@ final class RDPCanvasView: UIView {
     var onOpenSettings: (() -> Void)?
     var desktopSize: CGSize = .zero
     var commandKey: RDPKeyboard.CommandKey = .control
+    var onSoftKeyboardHidden: (() -> Void)?
+    /// First responder while the on-screen keyboard is up (it's what makes iPadOS show it).
+    private lazy var typingView: RDPTypingView = {
+        let typing = RDPTypingView(frame: .zero)
+        typing.canvas = self
+        addSubview(typing)
+        return typing
+    }()
 
     /// How long a single finger waits for a second finger before it counts as a
     /// left-button press. Long enough to tell a two-finger gesture apart, short
@@ -115,12 +130,46 @@ final class RDPCanvasView: UIView {
         if window != nil { becomeFirstResponder() } else { releaseAllKeys() }
     }
 
+    /// Shows or hides the iPad's on-screen keyboard.
+    func setSoftKeyboard(shown: Bool) {
+        guard window != nil else { return }
+        if shown, !typingView.isFirstResponder {
+            typingView.becomeFirstResponder()
+        } else if !shown, typingView.isFirstResponder {
+            becomeFirstResponder()
+        }
+    }
+
+    fileprivate func softKeyboardDidHide() {
+        onSoftKeyboardHidden?()
+    }
+
+    /// The on-screen keyboard's typing (and its row of extra keys).
+    fileprivate func send(_ strokes: [RDPKeyStroke]) {
+        for stroke in strokes { session?.send(stroke) }
+    }
+
     override func resignFirstResponder() -> Bool {
         releaseAllKeys()
         return super.resignFirstResponder()
     }
 
     override func pressesBegan(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
+        let unhandled = keysDown(presses)
+        if !unhandled.isEmpty { super.pressesBegan(unhandled, with: event) }
+    }
+
+    override func pressesEnded(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
+        let unhandled = keysUp(presses)
+        if !unhandled.isEmpty { super.pressesEnded(unhandled, with: event) }
+    }
+
+    override func pressesCancelled(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
+        pressesEnded(presses, with: event)
+    }
+
+    /// Hardware keys going down, sent to the PC; returns the ones it doesn't take.
+    fileprivate func keysDown(_ presses: Set<UIPress>) -> Set<UIPress> {
         var unhandled = Set<UIPress>()
         for press in presses {
             guard let usage = press.key.map({ $0.keyCode.rawValue }),
@@ -132,10 +181,10 @@ final class RDPCanvasView: UIView {
             session?.key(scancode: scancode, down: true)
             if !RDPKeyboard.isModifier(hidUsage: usage) { startRepeat(scancode) }
         }
-        if !unhandled.isEmpty { super.pressesBegan(unhandled, with: event) }
+        return unhandled
     }
 
-    override func pressesEnded(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
+    fileprivate func keysUp(_ presses: Set<UIPress>) -> Set<UIPress> {
         var unhandled = Set<UIPress>()
         for press in presses {
             guard let usage = press.key.map({ $0.keyCode.rawValue }),
@@ -146,11 +195,7 @@ final class RDPCanvasView: UIView {
             if repeating == scancode { stopRepeat() }
             session?.key(scancode: scancode, down: false)
         }
-        if !unhandled.isEmpty { super.pressesEnded(unhandled, with: event) }
-    }
-
-    override func pressesCancelled(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
-        pressesEnded(presses, with: event)
+        return unhandled
     }
 
     /// Lets go of every key still down on the PC.
@@ -188,7 +233,7 @@ final class RDPCanvasView: UIView {
     // MARK: - One finger: left button
 
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
-        if !isFirstResponder { becomeFirstResponder() }   // back from a menu or sheet
+        if !isFirstResponder, !typingView.isFirstResponder { becomeFirstResponder() }   // back from a menu or sheet
         let active = event?.allTouches?.filter { $0.phase != .ended && $0.phase != .cancelled } ?? touches
         guard active.count == 1, let touch = touches.first, trackedTouch == nil else {
             // A second finger arrived: this is a gesture, not a click.
@@ -291,5 +336,131 @@ final class RDPCanvasView: UIView {
         guard recognizer.state == .changed || recognizer.state == .began,
               let p = desktopPoint(recognizer.location(in: self)) else { return }
         session?.mouseMove(x: p.x, y: p.y)
+    }
+}
+
+/// Invisible, and first responder while the on-screen keyboard is up: iPadOS
+/// only shows its keyboard for a view that takes text. What's typed goes to the
+/// PC as keystrokes (`RDPTyping`); a hardware keyboard still goes key by key
+/// through the canvas, so nothing is typed twice.
+private final class RDPTypingView: UIView, UIKeyInput {
+    weak var canvas: RDPCanvasView?
+    private var latched: [RDPExtraKey] = []
+    private var latchButtons: [RDPExtraKey: UIButton] = [:]
+
+    // Plain typing: no autocorrect, capitals or smart punctuation changing what's sent.
+    var autocorrectionType: UITextAutocorrectionType = .no
+    var autocapitalizationType: UITextAutocapitalizationType = .none
+    var spellCheckingType: UITextSpellCheckingType = .no
+    var smartQuotesType: UITextSmartQuotesType = .no
+    var smartDashesType: UITextSmartDashesType = .no
+    var smartInsertDeleteType: UITextSmartInsertDeleteType = .no
+    var inlinePredictionType: UITextInlinePredictionType = .no
+    var keyboardAppearance: UIKeyboardAppearance = .dark
+
+    override var canBecomeFirstResponder: Bool { true }
+
+    override func resignFirstResponder() -> Bool {
+        let resigned = super.resignFirstResponder()
+        if resigned {
+            clearLatches()
+            canvas?.softKeyboardDidHide()
+        }
+        return resigned
+    }
+
+    // MARK: UIKeyInput
+
+    /// Always: so Backspace always sends, even with nothing "typed" here.
+    var hasText: Bool { true }
+
+    func insertText(_ text: String) {
+        canvas?.send(RDPTyping.strokes(for: text, holding: latched.map(\.scancode)))
+        clearLatches()
+    }
+
+    func deleteBackward() {
+        canvas?.send(RDPTyping.tap(RDPTyping.backspace, holding: latched.map(\.scancode)))
+        clearLatches()
+    }
+
+    // A hardware keyboard: key by key, like the canvas (not calling super keeps
+    // iPadOS from also inserting it as text).
+    override func pressesBegan(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
+        let unhandled = canvas?.keysDown(presses) ?? presses
+        if !unhandled.isEmpty { super.pressesBegan(unhandled, with: event) }
+    }
+
+    override func pressesEnded(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
+        let unhandled = canvas?.keysUp(presses) ?? presses
+        if !unhandled.isEmpty { super.pressesEnded(unhandled, with: event) }
+    }
+
+    override func pressesCancelled(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
+        pressesEnded(presses, with: event)
+    }
+
+    // MARK: Extra keys
+
+    override var inputAccessoryView: UIView? { extraKeys }
+
+    private lazy var extraKeys: UIView = {
+        let bar = UIInputView(frame: CGRect(x: 0, y: 0, width: 0, height: 52), inputViewStyle: .keyboard)
+        bar.allowsSelfSizing = true
+        let row = UIStackView()
+        row.axis = .horizontal
+        row.spacing = 8
+        row.distribution = .fillEqually
+        row.translatesAutoresizingMaskIntoConstraints = false
+        for key in RDPExtraKey.allCases {
+            let button = UIButton(configuration: Self.configuration(for: key, lit: false),
+                                  primaryAction: UIAction { [weak self] _ in self?.tapped(key) })
+            button.accessibilityLabel = key.title
+            if key.latches { latchButtons[key] = button }
+            row.addArrangedSubview(button)
+        }
+        bar.addSubview(row)
+        NSLayoutConstraint.activate([
+            row.leadingAnchor.constraint(equalTo: bar.layoutMarginsGuide.leadingAnchor),
+            row.trailingAnchor.constraint(equalTo: bar.layoutMarginsGuide.trailingAnchor),
+            row.topAnchor.constraint(equalTo: bar.topAnchor, constant: 6),
+            row.bottomAnchor.constraint(equalTo: bar.bottomAnchor, constant: -6),
+            row.heightAnchor.constraint(equalToConstant: 40),
+        ])
+        return bar
+    }()
+
+    private static func configuration(for key: RDPExtraKey, lit: Bool) -> UIButton.Configuration {
+        var configuration = lit ? UIButton.Configuration.prominentGlass() : .glass()
+        configuration.title = key.title
+        configuration.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer {
+            var attributes = $0
+            attributes.font = .systemFont(ofSize: 15, weight: .semibold)
+            return attributes
+        }
+        return configuration
+    }
+
+    private func tapped(_ key: RDPExtraKey) {
+        if key.latches {
+            if let index = latched.firstIndex(of: key) { latched.remove(at: index) } else { latched.append(key) }
+            showLatches()
+            return
+        }
+        canvas?.send(RDPTyping.tap(key.scancode, holding: latched.map(\.scancode)))
+        clearLatches()
+    }
+
+    private func clearLatches() {
+        guard !latched.isEmpty else { return }
+        latched = []
+        showLatches()
+    }
+
+    /// A latched Ctrl or Alt shows lit until the next key.
+    private func showLatches() {
+        for (key, button) in latchButtons {
+            button.configuration = Self.configuration(for: key, lit: latched.contains(key))
+        }
     }
 }

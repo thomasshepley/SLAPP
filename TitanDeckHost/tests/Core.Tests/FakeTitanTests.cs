@@ -42,8 +42,8 @@ public class FakeTitanTests
         Assert.Empty(titan.Selected(FakeUser.Api));
         Script(titan, "Command/AppendStringAndPreview", "text=7");
         Assert.Equal("", titan.Handle("/titan/get/2/Command/CommandLineText", "", FakeUser.Desk).Body!.GetValue<string>());
-        Script(titan, "Programmer/Editor/Fixtures/IncrementDimmer", "value=10&timeDelta=1&shiftEnabled=false", FakeUser.Desk);
-        Assert.Equal(10, titan.Level(3));   // one show
+        Script(titan, "Programmer/Editor/Fixtures/IncrementDimmer", "value=409.6&timeDelta=1&shiftEnabled=false", FakeUser.Desk);
+        Assert.Equal(10, titan.Level(3), 3);   // 409.6 wheel steps = 10%   // one show
         var ids = Script(titan, "Selection/Context/Global/GetAllSelectedFixtureIds", "", FakeUser.Desk).Body!.AsArray();
         Assert.Equal([5003], ids.Select(n => n!.GetValue<int>()));
         Assert.Empty(Script(titan, "Selection/Context/Global/GetAllSelectedFixtureIds").Body!.AsArray());
@@ -92,9 +92,10 @@ public class FakeTitanTests
         var titan = new FakeTitan();
         Assert.Equal(409, titan.Set("/titan/set/2/Playbacks/Editor/Times/CueFadeInTime", "5").Status);
         Assert.Equal(200, Script(titan, "Playbacks/Editor/CueSelection/SelectCueByNumber", "handle_titanId=1012&cueNumber=1").Status);
-        Assert.Equal(200, titan.Set("/titan/set/2/Playbacks/Editor/Times/CueFadeOutTime", "2.5").Status);
+        Assert.Equal(500, titan.Set("/titan/set/2/Playbacks/Editor/Times/CueFadeOutTime", "2.5").Status);   // Titan 19 refuses a bare number
+        Assert.Equal(200, titan.Set("/titan/set/2/Playbacks/Editor/Times/CueFadeOutTime", "\"00:00:02.5000000\"").Status);
         Assert.Equal(2.5, titan.CueTime(12, "CueFadeOutTime"));
-        Assert.Equal(200, titan.Set("/titan/set/2/Playbacks/Editor/Times/CueFadeInTime", "{\"value\":\"0.25\"}").Status);
+        Assert.Equal(200, titan.Set("/titan/set/2/Playbacks/Editor/Times/CueFadeInTime", "{\"Seconds\":0.25}").Status);
         Assert.Equal(0.25, titan.CueTime(12, "CueFadeInTime"));
         Assert.Equal(400, titan.Set("/titan/set/2/Playbacks/Editor/Times/CueFadeInTime", "soon").Status);
         Assert.Equal(404, titan.Set("/titan/set/2/Show/Name", "x").Status);

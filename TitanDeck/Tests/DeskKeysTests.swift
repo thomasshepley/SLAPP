@@ -1,0 +1,30 @@
+import XCTest
+@testable import TitanDeck
+
+final class DeskKeysTests: XCTestCase {
+    func testKeypadKeysHaveTheHostsNames() {
+        XCTAssertEqual(DeskKeys.names(for: .keypadDigit(7)), ["7"])
+        XCTAssertEqual(DeskKeys.names(for: .keypadAt), ["@"])
+        XCTAssertEqual(DeskKeys.names(for: .keypadEnter), ["enter"])
+        XCTAssertEqual(DeskKeys.names(for: .keypadClear), ["clear"])
+        XCTAssertEqual(DeskKeys.names(for: .keypadExit), ["exit"])
+        XCTAssertNil(DeskKeys.names(for: .adjustIntensity(percent: 10)), "not a keypad key: still the WebAPI")
+        XCTAssertNil(DeskKeys.names(for: .playbackGo(userNumber: 1)))
+    }
+
+    func testTitansKeyboardShortcutsOverTheRemoteDesktop() {
+        XCTAssertEqual(DeskKeys.strokes(for: "@"), [.key(0x37, down: true), .key(0x37, down: false)], "number pad *")
+        XCTAssertEqual(DeskKeys.strokes(for: "clear"), [.key(0x38, down: true), .key(0x2E, down: true),
+                                                        .key(0x2E, down: false), .key(0x38, down: false)], "Alt+C")
+        XCTAssertEqual(DeskKeys.strokes(for: "exit"), [.key(0x01, down: true), .key(0x01, down: false)], "Esc")
+        XCTAssertEqual(DeskKeys.strokes(for: "thro").first, .key(0x135, down: true), "number pad /, extended")
+        XCTAssertTrue(DeskKeys.strokes(for: "a").isEmpty, "only keypad keys")
+    }
+
+    func testEveryKeyTheDeckTypesIsInTheTable() {
+        for digit in 0...9 { XCTAssertNotNil(DeskKeys.table[DeskKeys.names(for: .keypadDigit(digit))![0]]) }
+        for action in [TitanAction.keypadAt, .keypadEnter, .keypadClear, .keypadExit] {
+            XCTAssertNotNil(DeskKeys.table[DeskKeys.names(for: action)![0]])
+        }
+    }
+}

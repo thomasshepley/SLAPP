@@ -194,6 +194,18 @@ final class RDPSession: ObservableObject {
         titan_rdp_key(handle, scancode, down ? 1 : 0)
     }
 
+    /// One UTF-16 unit as a Unicode key event (layout-independent typing).
+    func unicode(_ code: UInt16, down: Bool) {
+        titan_rdp_unicode(handle, code, down ? 1 : 0)
+    }
+
+    func send(_ stroke: RDPKeyStroke) {
+        switch stroke {
+        case .key(let scancode, let down): key(scancode: scancode, down: down)
+        case .unicode(let code, let down): unicode(code, down: down)
+        }
+    }
+
     // MARK: - Callbacks (main actor)
 
     fileprivate func handleState(_ raw: TitanRDPState, message: String?) {

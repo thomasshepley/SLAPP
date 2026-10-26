@@ -194,7 +194,7 @@ class FakeTitan:
             return 200, None, "command line cleared"
         if function == "Menu/ExitRootOrLatched":
             return 200, None, "exited menu"
-        if function == "Playbacks/Editor/ClearAll":
+        if function in ("Programmer/Editor/ClearAll", "Playbacks/Editor/ClearAll"):
             self.selected = []
             for n in self.levels:
                 self.levels[n] = 0.0
@@ -215,6 +215,9 @@ class FakeTitan:
 
         if re.fullmatch(r"Selection/Context/(Global|Programmer)/Get(All)?SelectedFixtureIds", function):
             return 200, [5000 + n for n in self.selected], None
+        if function == "Selection/Context/Global/Clear":
+            self.selected = []
+            return 200, None, f"selection cleared ({user} user)"
         if function == "Selection/Context/Global/SelectFixturesFromHandles":
             numbers = [int(x) for x in q.get("handleList_userNumberList", "").split(",") if x.isdigit()]
             self.selected = [n for n in numbers if n in self.levels]
@@ -262,8 +265,8 @@ class FakeTitan:
 
     def set_property(self, path, body):
         """POST /titan/set/2/Playbacks/Editor/Times/CueFadeInTime (or Out), body
-        the seconds. Real Titan's body format isn't documented; this takes a
-        bare number, or JSON with one."""
+        the seconds. Like Titan 19 (an AcwTimeSpan): a bare number is refused,
+        a TimeSpan string ("00:00:02.5000000") or {"Seconds": 2.5} is taken."""
         name = path.rsplit("/", 1)[-1]
         if not path.startswith("/titan/set/2/Playbacks/Editor/Times/") or \
                 name not in ("CueFadeInTime", "CueFadeOutTime"):
@@ -273,7 +276,15 @@ class FakeTitan:
         text = body.decode(errors="replace").strip()
         try:
             value = json.loads(text)
-            seconds = float(value.get("value", value) if isinstance(value, dict) else value)
+            if isinstance(value, (int, float)):
+                return 500, None, "Error: The JSON value could not be converted to Avolites.Acw.Titan.AcwTimeSpan."
+            if isinstance(value, dict):
+                value = value.get("Seconds", value.get("seconds", value.get("value")))
+            if isinstance(value, str) and ":" in value:
+                h, m, s = value.split(":")
+                seconds = int(h) * 3600 + int(m) * 60 + float(s)
+            else:
+                seconds = float(value)
         except (ValueError, TypeError, AttributeError):
             return 400, None, f"body '{text}' isn't a number of seconds"
         self.cue_times.setdefault(self.editing, {})[name] = seconds
@@ -302,7 +313,8 @@ class FakeTitan:
 
     def increment_dimmer(self, q):
         try:
-            value = float(q.get("value", ""))
+            # Titan's wheel: 4096 steps = full (TitanEndpoints.dimmerStepsPerPercent).
+            value = float(q.get("value", "")) / 40.96
         except ValueError:
             return 400, None, f"value '{q.get('value')}' isn't a number"
         if not self.selected:
@@ -311,9 +323,7 @@ class FakeTitan:
             if value < 0:
                 self.held.setdefault(n, self.levels[n])
             self.levels[n] = max(0.0, min(100.0, self.levels[n] + value))
-        # The app assumes percent. If real Titan wants 0-1, the same request
-        # would be 100x bigger, which is what the test plan asks you to watch for.
-        return 200, None, f"{value:+g}% on fixture(s) {self.selected} (assuming percent)"
+        return 200, None, f"{value:+g}% on fixture(s) {self.selected} ({q.get('value')} wheel steps)"
 
     def playback(self, function, q):
         key = "srcHandle_userNumber" if function.endswith("SetPlaybackLevel") else "handle_userNumber"

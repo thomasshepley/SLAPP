@@ -7,6 +7,18 @@ the GitHub Actions run that built it. The top entry is shown in the app
 so add an entry - and bump `MARKETING_VERSION` in `project.yml` to match -
 with every change that goes to `main`.
 
+## 0.22.0 - 2026-10-26 - On-screen keyboard on the remote desktop
+
+- **Keyboard button** (top right of the remote desktop, next to Menu): shows and hides the iPad's on-screen keyboard, and whatever you type goes to the Titan PC. Letters, numbers, space, Return, Tab and Backspace go as real keys; everything else (£, @, é...) types the right character whatever the PC's keyboard layout.
+- **A row of extra keys** above it: Esc, Tab, Ctrl, Alt, the arrows and Del. Ctrl and Alt latch: tap Ctrl, then C, for Ctrl-C.
+- Hide it with the button or the keyboard's own hide key. A Magic Keyboard still types key by key as before.
+- **Fixed: intensity nudges were tiny.** Titan's intensity nudge is its encoder wheel (4096 steps from 0 to full), not a percentage, so +10% was moving about 0.25%. Each key now sends the right number of wheel steps.
+- **The keypad types on the desk:** Settings > Desk link > Keypad types on the desk (on). The deck's keypad (numbers, @, Enter, Clear, Exit) is typed on the Titan PC as if on its keyboard, so it lands on the desk's own command line and what you select shows on the desk, not just in the WebAPI's separate programmer. It goes through TitanDeck Host 0.10 (its window open on the PC), or the remote desktop if that's connected; otherwise the keypad works as before. The deck's own WebAPI user selects the same fixtures, so the intensity, flash and colour keys still act on them, and Clear clears both.
+- **Fixed: fade times on Titan 19.** Setting a cue's fade in or out from the deck failed with "could not be converted to AcwTimeSpan": Titan 19 wants a time in its own JSON format, not a plain number. TitanDeck now reads the cue's fade time first and writes the new one in the same format (and tries the likely formats if Titan doesn't say). If it still fails, the error in Settings > Recent calls shows how Titan reads the time, so it can be matched exactly.
+- **Fixed: Clear on Titan 19.** Clearing the programmer used the old (pre-19) name for Titan's call, which Titan 19.2 refuses; it now uses the current one (Programmer Editor Clear All), which every Titan with the WebAPI has.
+- **Following the desk's selection over CITP:** the deck's own WebAPI user now clears its selection before selecting the desk's fixtures (selecting adds to what's there), and clears it when the desk selects nothing.
+- **Remote desktop with no Windows password:** a blank password is now sent as a blank password, rather than as "no password given", so it signs in once TitanDeck Host has allowed accounts with no password.
+
 ## 0.21.0 - 2026-10-26 - Titan 19 fixes, desk selection over CITP
 
 - **Titan 19's HTTP 500 errors:** Titan 19.2's WebAPI only takes its new calls unless its "pre19Compatibility" switch is on, so the keypad, Clear, Exit, fade times and Layouts failed while playbacks still fired. TitanDeck Host 0.9 flags it and turns it on with one click on the PC.

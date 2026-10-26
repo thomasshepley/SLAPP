@@ -41,6 +41,7 @@ builder.Services.AddHostedService<Advertiser>();
 builder.Services.AddSingleton<DmxUniverses>();
 builder.Services.AddSingleton<SacnListener>();
 builder.Services.AddHostedService(services => services.GetRequiredService<SacnListener>());
+builder.Services.AddSingleton<DeskKeyQueue>();
 builder.Services.AddSingleton<CitpService>();
 builder.Services.AddHostedService(services => services.GetRequiredService<CitpService>());
 
@@ -155,6 +156,22 @@ network.MapGet("/dmx", (DmxUniverses store, SacnListener listener) => DmxSummary
 // The show's patch from Titan's patch report, for finding a fixture's intensity channel.
 network.MapGet("/patch", (PatchReader patch) => patch.Status());
 
+// The deck's keypad typed on the PC, so it lands on the desk's own command line
+// (Titan 19's WebAPI is a separate user). Keypad keys only; the Host window types them.
+network.MapPost("/desk/keys", (DeskKeysRequest request, DeskKeyQueue queue, TitanLog log, HttpContext http) =>
+{
+    if (DeskKeys.Problem(request.Keys) is { } problem) return Results.BadRequest(new { error = problem });
+    if (!queue.WindowListening)
+        return Results.Json(new { error = "TitanDeck Host's window isn't running on the PC, so it can't type on the desk. Open TitanDeck Host there." },
+            statusCode: StatusCodes.Status409Conflict);
+    if (!WindowsProbe.IsTitanRunning())
+        return Results.Json(new { error = "Titan isn't running, so the keypad isn't typed on the PC." }, statusCode: StatusCodes.Status409Conflict);
+    queue.Enqueue(request.Keys);
+    log.Add("Desk keys", http.Connection.RemoteIpAddress?.ToString() ?? "", "TYPE", string.Join(" ", request.Keys), "", 200, 0,
+        "typed on the PC for Titan", null, false, DateTimeOffset.Now);
+    return Results.Ok(new { typed = request.Keys.Count });
+});
+
 // The desk's selection over CITP (experimental, Test mode only).
 network.MapGet("/citp/selection", (CitpService citp) => citp.Selection());
 
@@ -232,6 +249,9 @@ local.MapPost("/citp", (CitpEnableRequest request, CitpService citp, HostModeSto
     request.Enabled && mode.IsShow
         ? Results.BadRequest(new { error = "CITP is a test feature: switch to Test mode first." })
         : Results.Ok(citp.SetEnabled(request.Enabled)));
+
+// The Host window waits here for keypad keys to type (long poll).
+local.MapGet("/desk/keys/wait", (DeskKeyQueue queue, CancellationToken cancel) => queue.Next(TimeSpan.FromSeconds(20), cancel));
 
 local.MapGet("/pairing", () => PairingInfo(pairing));
 

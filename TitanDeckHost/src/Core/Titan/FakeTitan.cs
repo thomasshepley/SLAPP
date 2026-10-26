@@ -199,7 +199,7 @@ public sealed class FakeTitan
                     return new(200, null, "report written (Fake Titan's patch is read straight away)");
                 case "Menu/ExitRootOrLatched":
                     return new(200, null, "exited menu");
-                case "Playbacks/Editor/ClearAll":
+                case "Programmer/Editor/ClearAll" or "Playbacks/Editor/ClearAll":
                     me.Selected = [];
                     foreach (var n in levels.Keys.ToList()) levels[n] = 0;
                     return new(200, null, "programmer cleared");
@@ -219,6 +219,9 @@ public sealed class FakeTitan
                         return new(404, null, $"no playback with titanId {Get(q, "handle_titanId")}");
                     editing = cuePlayback;
                     return new(200, null, $"editing playback {cuePlayback}, cue {Get(q, "cueNumber", "1")}");
+                case "Selection/Context/Global/Clear":
+                    me.Selected = [];
+                    return new(200, null, $"selection cleared ({Who(user)} user)");
                 case "Selection/Context/Global/SelectFixturesFromHandles":
                     me.Selected = Numbers(Get(q, "handleList_userNumberList")).Where(levels.ContainsKey).ToList();
                     return new(200, null, $"selected {List(me.Selected)} ({Who(user)} user)");
@@ -263,8 +266,10 @@ public sealed class FakeTitan
         }
     }
 
-    /// <summary>POST /titan/set/2/...: only the cue fade times. Real Titan's
-    /// body format isn't documented; this takes a bare number, or JSON with one.</summary>
+    /// <summary>POST /titan/set/2/...: only the cue fade times. Like Titan 19,
+    /// which wants an AcwTimeSpan: a bare number is refused (500, Titan's own
+    /// message); a TimeSpan string ("00:00:02.5000000") or an object with the
+    /// seconds ({"Seconds": 2.5}, {"value": 2.5}) is taken.</summary>
     public FakeReply Set(string path, string body)
     {
         var name = path[(path.LastIndexOf('/') + 1)..];
@@ -279,12 +284,14 @@ public sealed class FakeTitan
             try
             {
                 var node = JsonNode.Parse(text);
-                var value = node is JsonObject o && o["value"] is { } v ? v : node;
+                if (node!.GetValueKind() == JsonValueKind.Number)
+                    return new(500, null, "Error: The JSON value could not be converted to Avolites.Acw.Titan.AcwTimeSpan.");
+                var value = node is JsonObject o ? o["Seconds"] ?? o["seconds"] ?? o["value"] : node;
                 seconds = value!.GetValueKind() == JsonValueKind.String
-                    ? double.Parse(value.GetValue<string>(), CultureInfo.InvariantCulture)
+                    ? TimeSpan.Parse(value.GetValue<string>(), CultureInfo.InvariantCulture).TotalSeconds
                     : value.GetValue<double>();
             }
-            catch (Exception error) when (error is JsonException or FormatException or InvalidOperationException or NullReferenceException)
+            catch (Exception error) when (error is JsonException or FormatException or InvalidOperationException or NullReferenceException or OverflowException)
             {
                 return new(400, null, $"body '{text}' isn't a number of seconds");
             }
@@ -332,16 +339,16 @@ public sealed class FakeTitan
 
     private FakeReply IncrementDimmer(User me, Dictionary<string, string> q)
     {
-        if (!TryNumber(Get(q, "value"), out var value)) return new(400, null, $"value '{Get(q, "value")}' isn't a number");
+        if (!TryNumber(Get(q, "value"), out var steps)) return new(400, null, $"value '{Get(q, "value")}' isn't a number");
+        // Titan's wheel: 4096 steps = full, so 40.96 steps a percent (as TitanDeck sends).
+        var value = steps / 40.96;
         if (me.Selected.Count == 0) return new(200, null, $"{Signed(value)} but nothing is selected");
         foreach (var n in me.Selected)
         {
             if (value < 0) held.TryAdd(n, levels[n]);
             levels[n] = Math.Clamp(levels[n] + value, 0, 100);
         }
-        // The app assumes percent. If real Titan wants 0-1, the same request
-        // would be 100x bigger, which is what the test plan asks you to watch for.
-        return new(200, null, $"{Signed(value)}% on fixture(s) {List(me.Selected)} (assuming percent)");
+        return new(200, null, $"{Signed(Math.Round(value, 1))}% on fixture(s) {List(me.Selected)} ({steps:0.##} wheel steps)");
     }
 
     private FakeReply SetDimmer(User me, Dictionary<string, string> q)

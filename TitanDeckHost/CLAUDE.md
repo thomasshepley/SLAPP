@@ -87,6 +87,13 @@ TitanDeckHost/
   `WebAPIService.dll.config` alongside Titan's own settings files;
   `FixAction.EnableWebApiCompatibility` (PC only) backs it up, turns it on and
   restarts the Windows service whose ImagePath contains WebAPIService, if any.
+- **Desk keys** (`Core/Titan/DeskKeys`, `DeskKeyQueue`, paired `POST /api/v1/desk/keys`,
+  window long-polls `GET /local/desk/keys/wait`, `App/DeskTyper` SendInput with
+  scan codes): the deck's keypad typed on the PC for Titan, which captures the
+  keyboard. Only `DeskKeys.All` keys can be typed (never letters); refused when
+  the window isn't polling or Titan isn't running; keys older than 2 s dropped.
+  If Titan ever runs elevated, SendInput from the (non-elevated) window can't
+  reach it (UIPI): the iPad falls back to typing over RDP.
 - **Pass-through** (port 4436, `DeskLink.PassThrough`): `/titan/...` to
   127.0.0.1:4430, logged as "TitanDeck - WebAPI" with Titan's error text. It's
   the same API the iPad could call directly, so nothing is refused; Patch calls
@@ -120,6 +127,10 @@ TitanDeckHost/
   so it can't take 4809 from Titan by default. Show mode switches it off. Byte
   layouts: CITP spec (bitbucket.org/lars_wernlund/citp) and Capture's CAEX
   spec G; tests in `CitpTests`. Every message goes to the Titan log as `CITP`.
+  Titan opens several TCP links and retries refused ones, so up to
+  `CitpService.MaxLinks` (8) are kept; the selection comes from the link that
+  heard one last (`CitpSession.SelectionAt`). Only the first link logs fully;
+  keep the log rate-limited (Titan reconnects many times a second).
 - **Fake Titan** (`FakeTitan`) is the primary fake now; `TitanDeck/Tools/fake_titan.py`
   stays for the Mac. Keep them answering the same calls: when an action is added
   to `TitanEndpoints`, add it to both. It only listens while started from the

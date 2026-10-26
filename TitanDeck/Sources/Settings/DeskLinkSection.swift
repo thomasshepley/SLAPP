@@ -9,9 +9,13 @@ struct DeskLinkSection: View {
     @ObservedObject var intensity: IntensityReader
     @ObservedObject var host: HostStore
     @AppStorage(SettingsKeys.showMode) private var showMode = false
+    @AppStorage(SettingsKeys.keypadTypesOnDesk) private var keypadTypesOnDesk = true
 
     var body: some View {
         Section {
+            Toggle(isOn: $keypadTypesOnDesk) {
+                Label("Keypad types on the desk", systemImage: "keyboard")
+            }
             Toggle(isOn: $desk.isEnabled) {
                 Label("Follow the desk's selection", systemImage: "scope")
             }
@@ -31,7 +35,7 @@ struct DeskLinkSection: View {
         } header: {
             Text(showMode ? "Desk link" : "Desk link (experimental)")
         } footer: {
-            Text("Select fixtures in Layouts or on the desk and the deck brings up its intensity keys, with Currently Selected on the Remote screen. While it's linked, the deck's keys act on the desk's own programmer. Set up once on the Titan PC: TitanDeck Host > Desk selection for TitanDeck > Turn on, then restart Titan. Uses Titan's experimental UI WebAPI (Titan port 4433, passed on by the Host on 4434). If it stops answering, the deck goes back to its own WebAPI user by itself.")
+            Text("Keypad types on the desk: the deck's keypad (numbers, @, Enter, Clear, Exit) is typed on the Titan PC as if on its keyboard, so it lands on the desk's own command line and what you select shows on the desk. Needs TitanDeck Host 0.10 open on the PC, or the remote desktop connected; otherwise the keypad uses the WebAPI's own command line as before.\n\nSelect fixtures in Layouts or on the desk and the deck brings up its intensity keys, with Currently Selected on the Remote screen. While it's linked, the deck's keys act on the desk's own programmer. Set up once on the Titan PC: TitanDeck Host > Desk selection for TitanDeck > Turn on, then restart Titan. Uses Titan's experimental UI WebAPI (Titan port 4433, passed on by the Host on 4434). If it stops answering, the deck goes back to its own WebAPI user by itself.")
         }
 
         Section {

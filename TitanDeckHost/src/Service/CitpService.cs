@@ -27,6 +27,7 @@ public sealed class CitpService(HostPaths paths, HostModeStore mode, TitanLog ti
     public const string Who = "CITP";
     public const string OurName = "TitanDeck Host";
     public const int PreferredPort = 4435;
+    public const int MaxLinks = 8;
     private static readonly TimeSpan AnnounceEvery = TimeSpan.FromSeconds(1);
     private static readonly TimeSpan ConnectOutAfter = TimeSpan.FromSeconds(5);
     /// <summary>Between tries at connecting to Titan, so a Titan that says no doesn't fill the log.</summary>
@@ -40,8 +41,13 @@ public sealed class CitpService(HostPaths paths, HostModeStore mode, TitanLog ti
     private readonly object _gate = new();
     private bool? _enabled;
     private CancellationTokenSource? _running;
-    private CitpSession? _session;
-    private string? _sessionPeer;
+    /// <summary>Titan's links, by number. Titan opens several (and keeps retrying
+    /// any that are refused), so up to <see cref="MaxLinks"/> are kept.</summary>
+    private readonly Dictionary<int, (CitpSession? Session, string Peer)> _links = [];
+    private int _nextLink;
+    private DateTimeOffset _lastRefusalLogged = DateTimeOffset.MinValue;
+    private int _refusedSinceLogged;
+    private DateTimeOffset _lastLinkLogged = DateTimeOffset.MinValue;
     private int? _listeningPort;
     private string? _problem;
 
@@ -77,8 +83,8 @@ public sealed class CitpService(HostPaths paths, HostModeStore mode, TitanLog ti
     {
         lock (_gate)
         {
-            var snapshot = _session?.Snapshot();
-            return new CitpSelectionDto(Active, snapshot is not null, snapshot?.PeerName ?? _sessionPeer,
+            var snapshot = Latest();
+            return new CitpSelectionDto(Active, snapshot is not null, snapshot?.PeerName,
                 snapshot?.Selection ?? [], snapshot?.Problem ?? _problem);
         }
     }
@@ -92,8 +98,10 @@ public sealed class CitpService(HostPaths paths, HostModeStore mode, TitanLog ti
             .ToList();
         lock (_gate)
         {
-            var snapshot = _session?.Snapshot();
-            var connected = snapshot is null ? null : $"{snapshot.PeerName ?? "Titan"} ({_sessionPeer})";
+            var snapshot = Latest();
+            var links = _links.Values.Count(l => l.Session is not null);
+            var connected = snapshot is null ? null
+                : $"{snapshot.PeerName ?? "Titan"}{(links > 1 ? $" ({links} links)" : "")}";
             return new CitpStatusDto(Enabled, !mode.IsShow, _running is not null, _listeningPort, peers, connected,
                 snapshot?.PeerShow, snapshot?.FixtureCount ?? 0, snapshot?.Selection ?? [], snapshot?.Problem ?? _problem);
         }
@@ -272,13 +280,13 @@ public sealed class CitpService(HostPaths paths, HostModeStore mode, TitanLog ti
                 client.Dispose();
                 continue;
             }
-            if (!TryClaim(remote))
+            if (TryClaim(remote) is not { } link)
             {
-                Log(false, remote.ToString(), "TCP connection", "refused: already linked", true);
+                LogRefusal(remote);
                 client.Dispose();
                 continue;
             }
-            _ = Link(client, remote, outgoing: false, token);
+            _ = Link(client, remote, link, outgoing: false, token);
         }
     }
 
@@ -293,7 +301,7 @@ public sealed class CitpService(HostPaths paths, HostModeStore mode, TitanLog ti
             var local = LocalAddresses();
             var titan = _peers.Values.FirstOrDefault(p => local.Contains(p.Address) && p.Location.ListeningTcpPort > 0
                 && p.Location.Type.Equals("LightingConsole", StringComparison.OrdinalIgnoreCase));
-            if (titan is null || !TryClaim(titan.Address)) continue;
+            if (titan is null || HasLinks() || TryClaim(titan.Address) is not { } link) continue;
             lastTry = DateTimeOffset.UtcNow;
             var client = new TcpClient();
             try
@@ -306,46 +314,80 @@ public sealed class CitpService(HostPaths paths, HostModeStore mode, TitanLog ti
             {
                 Log(true, titan.Address.ToString(), $"TCP connect to {titan.Location.ListeningTcpPort}", "couldn't connect: " + error.Message, true);
                 client.Dispose();
-                Release();
+                Release(link);
                 continue;
             }
-            await Link(client, titan.Address, outgoing: true, token);
+            await Link(client, titan.Address, link, outgoing: true, token);
         }
     }
 
-    private bool TryClaim(IPAddress peer)
+    /// <summary>A number for a new link, or null when there are already <see cref="MaxLinks"/>.</summary>
+    private int? TryClaim(IPAddress peer)
     {
         lock (_gate)
         {
-            if (_sessionPeer is not null) return false;
-            _sessionPeer = peer.ToString();
-            return true;
+            if (_links.Count >= MaxLinks) return null;
+            var link = ++_nextLink;
+            _links[link] = (null, peer.ToString());
+            return link;
         }
     }
 
-    private void Release()
+    private void Release(int link)
+    {
+        lock (_gate) _links.Remove(link);
+    }
+
+    private bool HasLinks()
+    {
+        lock (_gate) return _links.Count > 0;
+    }
+
+    /// <summary>The link that heard a selection last (they all hear the same desk). Call inside the gate.</summary>
+    private CitpSessionSnapshot? Latest() =>
+        _links.Values.Select(l => l.Session?.Snapshot()).OfType<CitpSessionSnapshot>()
+            .OrderByDescending(s => s.SelectionAt ?? DateTimeOffset.MinValue).FirstOrDefault();
+
+    /// <summary>Over the limit: at most one line a minute, with a count, so retries can't bury the log.</summary>
+    private void LogRefusal(IPAddress remote)
     {
         lock (_gate)
         {
-            _session = null;
-            _sessionPeer = null;
+            _refusedSinceLogged++;
+            if (DateTimeOffset.UtcNow - _lastRefusalLogged < TimeSpan.FromMinutes(1)) return;
+            _lastRefusalLogged = DateTimeOffset.UtcNow;
         }
+        Log(false, remote.ToString(), "TCP connection",
+            $"refused {_refusedSinceLogged} more link{(_refusedSinceLogged == 1 ? "" : "s")} (already {MaxLinks})", false);
+        lock (_gate) _refusedSinceLogged = 0;
     }
 
-    private async Task Link(TcpClient client, IPAddress remote, bool outgoing, CancellationToken token)
+    private async Task Link(TcpClient client, IPAddress remote, int link, bool outgoing, CancellationToken token)
     {
         var from = remote.ToString();
+        // Only the first link logs everything, and link-up lines at most every 30 s
+        // (Titan reconnects often); the rest log selections and problems only.
+        bool quiet;
+        lock (_gate)
+        {
+            quiet = _links.Keys.Any(other => other < link) || DateTimeOffset.UtcNow - _lastLinkLogged < TimeSpan.FromSeconds(30);
+            if (!quiet) _lastLinkLogged = DateTimeOffset.UtcNow;
+        }
         using (client)
         {
             var stream = client.GetStream();
-            var session = new CitpSession(OurName, packet => stream.Write(packet.ToBytes()),
-                line => Log(line.Outgoing, from, line.What, line.Note, line.Flagged));
-            Log(outgoing, from, "TCP connection", outgoing ? $"linked (TitanDeck Host connected to Titan's port {((IPEndPoint)client.Client.RemoteEndPoint!).Port})" : "linked (Titan connected)", false);
+            var session = new CitpSession(OurName, packet => stream.Write(packet.ToBytes()), line =>
+            {
+                if (!quiet || line.Flagged || line.What.Contains("Selection") || line.What.StartsWith("FSEL"))
+                    Log(line.Outgoing, from, line.What, line.Note, line.Flagged);
+            });
+            if (!quiet)
+                Log(outgoing, from, "TCP connection", outgoing ? $"linked (TitanDeck Host connected to Titan's port {((IPEndPoint)client.Client.RemoteEndPoint!).Port})" : "linked (Titan connected)", false);
             try
             {
                 lock (_gate)
                 {
-                    _session = session;
+                    _links[link] = (session, from);
                     session.Start();
                 }
                 var framer = new CitpFramer();
@@ -358,7 +400,7 @@ public sealed class CitpService(HostPaths paths, HostModeStore mode, TitanLog ti
                     lock (_gate)
                         foreach (var packet in packets) session.Receive(packet, DateTimeOffset.UtcNow);
                 }
-                Log(false, from, "TCP connection", "Titan closed the link", false);
+                if (!quiet) Log(false, from, "TCP connection", "Titan closed the link", false);
             }
             catch (OperationCanceledException)
             {
@@ -373,11 +415,11 @@ public sealed class CitpService(HostPaths paths, HostModeStore mode, TitanLog ti
             }
             catch (Exception error) when (error is IOException or SocketException or InvalidDataException or ObjectDisposedException)
             {
-                Log(false, from, "TCP connection", "link lost: " + error.Message, true);
+                if (!quiet) Log(false, from, "TCP connection", "link lost: " + error.Message, true);
             }
             finally
             {
-                Release();
+                Release(link);
             }
         }
     }

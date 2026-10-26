@@ -7,12 +7,15 @@ import SwiftUI
 struct RemoteView: View {
     @EnvironmentObject private var appState: AppState
     @ObservedObject var session: RDPSession
+    /// The iPad's on-screen keyboard, typing on the PC.
+    @State private var softKeyboardShown = false
 
     var body: some View {
         GeometryReader { geometry in
             ZStack {
                 Color.black
-                RDPView(session: session, commandKey: appState.rdpSettings.commandKey) { appState.mode = .settings }
+                RDPView(session: session, commandKey: appState.rdpSettings.commandKey,
+                        softKeyboardShown: $softKeyboardShown) { appState.mode = .settings }
                     .opacity(session.state == .connected ? 1 : 0.35)
                 if session.reconnectAttempt > 0 {
                     // Keep the last frame visible (dimmed) while reconnecting.
@@ -42,6 +45,7 @@ struct RemoteView: View {
             .overlay(alignment: .topTrailing) {
                 HStack(spacing: 10) {
                     if session.state == .connected {
+                        keyboardButton
                         menuButton
                     }
                     ConnectionPill(heartbeat: appState.heartbeat, session: session,
@@ -59,6 +63,9 @@ struct RemoteView: View {
             }
             .onChange(of: geometry.size) { _, newSize in
                 appState.remoteViewSize = newSize
+            }
+            .onChange(of: session.state) { _, state in
+                if state != .connected { softKeyboardShown = false }
             }
         }
         .toolbar(session.state == .connected ? .hidden : .visible, for: .tabBar)
@@ -114,6 +121,23 @@ struct RemoteView: View {
         .padding(28)
         .frame(maxWidth: .infinity)
         .glassEffect(.regular, in: .rect(cornerRadius: 28))
+    }
+
+    /// Shows and hides the iPad's on-screen keyboard; it types on the PC.
+    private var keyboardButton: some View {
+        Button {
+            softKeyboardShown.toggle()
+        } label: {
+            Image(systemName: softKeyboardShown ? "keyboard.chevron.compact.down" : "keyboard")
+                .font(.caption.weight(.semibold))
+                .frame(width: 18, height: 18)
+                .padding(8)
+                .contentTransition(.symbolEffect(.replace))
+        }
+        .buttonStyle(.plain)
+        .glassEffect(softKeyboardShown ? .regular.tint(.accentColor).interactive() : .regular.interactive(), in: .circle)
+        .accessibilityLabel(softKeyboardShown ? "Hide keyboard" : "Show keyboard")
+        .accessibilityHint("The on-screen keyboard types on the PC")
     }
 
     /// The way out of the full-screen desktop (the tab bar is hidden while it's

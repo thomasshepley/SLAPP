@@ -24,7 +24,8 @@
 
 typedef enum {
     TITAN_EVENT_MOUSE,
-    TITAN_EVENT_KEY
+    TITAN_EVENT_KEY,
+    TITAN_EVENT_UNICODE
 } TitanEventKind;
 
 typedef struct {
@@ -129,6 +130,10 @@ static void titan_drain_queue(TitanRDP *rdp, rdpInput *input) {
         case TITAN_EVENT_KEY:
             (void)freerdp_input_send_keyboard_event_ex(input, event->down ? TRUE : FALSE, FALSE,
                                                        event->scancode);
+            break;
+        case TITAN_EVENT_UNICODE:
+            (void)freerdp_input_send_unicode_keyboard_event(input, event->down ? 0 : KBD_FLAGS_RELEASE,
+                                                            (UINT16)event->scancode);
             break;
         }
     }
@@ -466,7 +471,10 @@ int titan_rdp_connect(TitanRDP *rdp, const char *host, uint16_t port, const char
         freerdp_settings_set_uint32(settings, FreeRDP_ServerPort, port ? port : 3389) &&
         titan_set_string(settings, FreeRDP_Username, username) &&
         titan_set_string(settings, FreeRDP_Domain, domain) &&
-        titan_set_string(settings, FreeRDP_Password, password) &&
+        // Always set, even empty: a Windows account with no password (Host's
+        // "Accounts with no password" allowed). Left unset, FreeRDP treats the
+        // password as missing and tries to ask for one, which an app can't answer.
+        freerdp_settings_set_string(settings, FreeRDP_Password, password ? password : "") &&
         freerdp_settings_set_bool(settings, FreeRDP_AutoLogonEnabled, has_password) &&
         freerdp_settings_set_uint32(settings, FreeRDP_DesktopWidth, titan_clamp_dimension(width)) &&
         freerdp_settings_set_uint32(settings, FreeRDP_DesktopHeight,
@@ -579,5 +587,10 @@ void titan_rdp_mouse_wheel(TitanRDP *rdp, int32_t delta, uint16_t x, uint16_t y)
 
 void titan_rdp_key(TitanRDP *rdp, uint32_t scancode, int down) {
     TitanEvent event = { .kind = TITAN_EVENT_KEY, .scancode = scancode, .down = down };
+    titan_enqueue(rdp, event);
+}
+
+void titan_rdp_unicode(TitanRDP *rdp, uint16_t code, int down) {
+    TitanEvent event = { .kind = TITAN_EVENT_UNICODE, .scancode = code, .down = down };
     titan_enqueue(rdp, event);
 }

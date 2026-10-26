@@ -107,3 +107,101 @@ struct HeldKeys {
         return Array(scancodes.values)
     }
 }
+
+/// One keystroke for the PC: a scan code going down or up, or one UTF-16
+/// unit as a Unicode key event.
+enum RDPKeyStroke: Equatable {
+    case key(UInt32, down: Bool)
+    case unicode(UInt16, down: Bool)
+}
+
+/// The on-screen keyboard, as keystrokes. Letters, digits, space, Return and
+/// Tab go as real keys (they're in the same place on UK and US keyboards, and
+/// Titan's shortcuts need real keys); everything else (punctuation, £, é...)
+/// goes as Unicode, so it types the right character whatever the PC's
+/// keyboard layout. Pure, so it's tested.
+enum RDPTyping {
+    static let shift: UInt32 = 0x2A
+    static let ctrl: UInt32 = 0x1D
+    static let alt: UInt32 = 0x38
+    static let backspace: UInt32 = 0x0E
+
+    /// The key and whether it needs Shift, for the characters typed as real keys.
+    static func plainKey(_ character: Character) -> (scancode: UInt32, shift: Bool)? {
+        let usage: Int
+        var shifted = false
+        switch character {
+        case "\n", "\r", "\r\n": usage = 0x28
+        case "\t": usage = 0x2B
+        case " ": usage = 0x2C
+        case "0": usage = 0x27
+        default:
+            guard let ascii = character.asciiValue else { return nil }
+            switch ascii {
+            case UInt8(ascii: "a")...UInt8(ascii: "z"): usage = 0x04 + Int(ascii - UInt8(ascii: "a"))
+            case UInt8(ascii: "A")...UInt8(ascii: "Z"):
+                usage = 0x04 + Int(ascii - UInt8(ascii: "A"))
+                shifted = true
+            case UInt8(ascii: "1")...UInt8(ascii: "9"): usage = 0x1E + Int(ascii - UInt8(ascii: "1"))
+            default: return nil
+            }
+        }
+        return RDPKeyboard.scancode(hidUsage: usage).map { ($0, shifted) }
+    }
+
+    /// Press and release one key, with Shift and any latched modifiers (Ctrl,
+    /// Alt) held round it.
+    static func tap(_ scancode: UInt32, shift: Bool = false, holding modifiers: [UInt32] = []) -> [RDPKeyStroke] {
+        let held = modifiers + (shift ? [Self.shift] : [])
+        return held.map { .key($0, down: true) }
+            + [.key(scancode, down: true), .key(scancode, down: false)]
+            + held.reversed().map { .key($0, down: false) }
+    }
+
+    /// What the on-screen keyboard typed. Latched modifiers only apply to
+    /// keys (Ctrl-C), not to Unicode characters.
+    static func strokes(for text: String, holding modifiers: [UInt32] = []) -> [RDPKeyStroke] {
+        text.flatMap { character -> [RDPKeyStroke] in
+            if let key = plainKey(character) {
+                return tap(key.scancode, shift: key.shift, holding: modifiers)
+            }
+            return character.utf16.flatMap { [RDPKeyStroke.unicode($0, down: true), .unicode($0, down: false)] }
+        }
+    }
+}
+
+/// The keys the iPad's on-screen keyboard hasn't got, in a row above it.
+enum RDPExtraKey: CaseIterable {
+    case esc, tab, ctrl, alt, left, up, down, right, delete
+
+    var title: String {
+        switch self {
+        case .esc: "Esc"
+        case .tab: "Tab"
+        case .ctrl: "Ctrl"
+        case .alt: "Alt"
+        case .left: "←"
+        case .up: "↑"
+        case .down: "↓"
+        case .right: "→"
+        case .delete: "Del"
+        }
+    }
+
+    var scancode: UInt32 {
+        switch self {
+        case .esc: 0x01
+        case .tab: 0x0F
+        case .ctrl: RDPTyping.ctrl
+        case .alt: RDPTyping.alt
+        case .left: 0x14B
+        case .up: 0x148
+        case .down: 0x150
+        case .right: 0x14D
+        case .delete: 0x153
+        }
+    }
+
+    /// Ctrl and Alt latch: tap one, then the key to go with it.
+    var latches: Bool { self == .ctrl || self == .alt }
+}

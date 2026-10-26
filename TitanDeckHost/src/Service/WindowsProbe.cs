@@ -110,6 +110,18 @@ public sealed class WindowsProbe
         return key.GetValueNames().Any(p => p.TrimEnd('\\').Equals(wanted, StringComparison.OrdinalIgnoreCase));
     }
 
+    private static (DateTimeOffset At, bool Running) _titanSeen;
+
+    /// <summary>Titan is running (checked at most every 2 s: it walks every process).</summary>
+    public static bool IsTitanRunning()
+    {
+        var seen = _titanSeen;
+        if (DateTimeOffset.UtcNow - seen.At < TimeSpan.FromSeconds(2)) return seen.Running;
+        var running = TitanRunning();
+        _titanSeen = (DateTimeOffset.UtcNow, running);
+        return running;
+    }
+
     private static bool TitanRunning()
     {
         var self = Process.GetCurrentProcess().ProcessName;

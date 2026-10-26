@@ -150,5 +150,9 @@ public sealed record CitpPeerDto(string Address, string Type, string Name, strin
 public sealed record CitpStatusDto(bool Enabled, bool Allowed, bool Running, int? ListeningPort, IReadOnlyList<CitpPeerDto> Peers,
     string? Connected, string? PeerShow, int Fixtures, IReadOnlyList<int> Selection, string? Problem);
 
+/// <summary>`POST /api/v1/desk/keys`: keypad keys to type on the PC for Titan
+/// ("1", "@", "enter", "clear"...; see <c>DeskKeys</c>).</summary>
+public sealed record DeskKeysRequest(IReadOnlyList<string> Keys);
+
 /// <summary>`POST /local/citp`: the experimental switch.</summary>
 public sealed record CitpEnableRequest(bool Enabled);

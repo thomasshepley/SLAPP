@@ -14,6 +14,7 @@ public partial class App : Application
     private Forms.NotifyIcon? _tray;
     private MainWindow? _window;
     private readonly HostClient _client = new();
+    private readonly CancellationTokenSource _typing = new();
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -39,6 +40,9 @@ public partial class App : Application
         _tray.ContextMenuStrip.Items.Add(new Forms.ToolStripSeparator());
         _tray.ContextMenuStrip.Items.Add("Close window and icon", null, (_, _) => Quit());
         _tray.DoubleClick += (_, _) => ShowWindow();
+
+        // Types the deck's keypad on this PC for Titan (see DeskTyper).
+        _ = DeskTyper.Run(_typing.Token);
 
         if (!e.Args.Contains("--tray")) ShowWindow();
     }
@@ -66,6 +70,7 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        _typing.Cancel();
         _tray?.Dispose();
         _singleInstance?.Dispose();
         base.OnExit(e);

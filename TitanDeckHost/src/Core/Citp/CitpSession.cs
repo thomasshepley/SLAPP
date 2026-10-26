@@ -58,9 +58,11 @@ public sealed class CitpSession
     /// <summary>Set when the selection had to be guessed, or couldn't be matched.</summary>
     public string? Problem { get; private set; }
     public DateTimeOffset? LastHeard { get; private set; }
+    /// <summary>When Titan last sent a selection (to pick the newest of several links).</summary>
+    public DateTimeOffset? SelectionAt { get; private set; }
 
     public CitpSessionSnapshot Snapshot() =>
-        new(PeerName, PeerShow, PeerInShow, HaveFixtureList, FixtureCount, _selection.ToList(), Problem, LastHeard);
+        new(PeerName, PeerShow, PeerInShow, HaveFixtureList, FixtureCount, _selection.ToList(), Problem, LastHeard, SelectionAt);
 
     /// <summary>A TCP connection is up: name ourselves (always first) and open our show.</summary>
     public void Start()
@@ -207,6 +209,7 @@ public sealed class CitpSession
         var selection = userNumbers ?? Resolve(ids!);
         var changed = !selection.SequenceEqual(_selection);
         _selection = selection;
+        SelectionAt = LastHeard;
         var shown = selection.Count == 0 ? "nothing selected" : "fixtures " + string.Join(", ", selection.Take(40)) + (selection.Count > 40 ? "..." : "");
         var raw = ids is null || !HaveFixtureList ? "" : $" (Titan ids {string.Join(", ", ids.Take(12))}{(ids.Count > 12 ? "..." : "")})";
         Log(false, what, shown + raw + (changed ? "" : ", unchanged"));
@@ -268,7 +271,7 @@ public sealed class CitpSession
 }
 
 public sealed record CitpSessionSnapshot(string? PeerName, string? PeerShow, bool PeerInShow, bool HaveFixtureList,
-    int FixtureCount, IReadOnlyList<int> Selection, string? Problem, DateTimeOffset? LastHeard);
+    int FixtureCount, IReadOnlyList<int> Selection, string? Problem, DateTimeOffset? LastHeard, DateTimeOffset? SelectionAt);
 
 /// <summary>Cuts a TCP byte stream into CITP packets (each says its own size).</summary>
 public sealed class CitpFramer
