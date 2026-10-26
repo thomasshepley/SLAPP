@@ -76,6 +76,9 @@ public sealed class HostClient
     public Task<NetworkDto?> Network() => Get<NetworkDto>("network");
     public Task<NetworkDto?> ChooseNetwork(string? id) => Post<NetworkDto>("network", new NetworkChoiceRequest(id));
 
+    public Task<CitpStatusDto?> Citp() => Get<CitpStatusDto>("citp");
+    public Task<CitpStatusDto?> SetCitp(bool enabled) => Post<CitpStatusDto>("citp", new CitpEnableRequest(enabled));
+
     public Task<ModeDto?> Mode() => Get<ModeDto>("mode");
     public Task<ModeDto?> SetMode(string mode) => Post<ModeDto>("mode", new ModeDto(mode));
 

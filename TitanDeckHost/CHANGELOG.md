@@ -6,6 +6,14 @@ until it's show-ready (1.0): MINOR for features, PATCH for fixes. Keep
 (ChangelogTests checks). Each version is published as a GitHub release
 `host-v<version>` with the installer attached.
 
+## 0.9.0 - 2026-10-26 - Follow selection via CITP (experimental)
+
+- **Follow selection via CITP:** a new card (Test mode only, off until you switch it on). Titan 19's WebAPI can't see the desk's selection, but Titan shares it with CITP visualisers like Capture. Switched on, the Host appears to Titan as a visualiser called TitanDeck Host, opens a "show" with it, asks for Titan's fixture list (to turn Titan's fixture ids into user numbers) and passes the selection on to TitanDeck 0.21.
+- **It can't patch Titan:** the Host only ever sends who it is, that its show is open or closed, a request for Titan's fixture list, and "no" to anything Titan asks of it. It never sends a fixture list, patch change, selection, identify or DMX, and every packet is checked against that list before it goes. If Titan offers to sync or change the patch with TitanDeck Host, say no.
+- **Only Titan on this PC can link.** Another desk on the show network that tries to connect is refused (and logged).
+- Every CITP message, both ways, shows in the Titan log, and the card lists everything announcing CITP on the network.
+- Switching to Show mode turns it off.
+
 ## 0.8.2 - 2026-10-26 - Not the WebAPI service's settings
 
 - **Fixed:** Titan 19's WebAPI is a separate service with its own settings file (WebAPI\<version>\WebAPIService.dll.config), which has webapi.enabled on at 4430. 0.8.1 took that for a WebAPI inside Titan and said there was nothing to change, but that service is its own user and never sees the desk's selection. The desk-selection check now only reads Titan's own settings file.

@@ -247,6 +247,14 @@ actor TitanClient {
         return ids
     }
 
+    /// Selects these fixtures (by user number) in this WebAPI user's own
+    /// selection, so the deck's keys act on them. Nothing for an empty list.
+    @discardableResult
+    func selectFixtures(userNumbers: [Int]) async -> Bool {
+        guard !userNumbers.isEmpty else { return false }
+        return await get(TitanEndpoints.selectFixturesURL(userNumbers: userNumbers, host: host, port: port)).ok
+    }
+
     /// titanId -> fixture user number, or nil if Titan didn't answer.
     func fixtureUserNumbers() async -> [Int: Int]? {
         await handles(group: "Fixtures").map(TitanSelectionParser.userNumbers)

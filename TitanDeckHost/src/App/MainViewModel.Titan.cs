@@ -17,7 +17,9 @@ public sealed class LogRow
     public string Time => Entry.Time.ToLocalTime().ToString("HH:mm:ss.fff");
     public string Who => Entry.Who;
     public string Call => $"{Entry.Method} {Entry.Path}{(Entry.Query.Length > 0 ? "?" + Entry.Query : "")}";
-    public string Result => $"{Entry.Status}  ·  {Entry.Milliseconds} ms{(Entry.From.Length > 0 ? "  ·  from " + Entry.From : "")}";
+    public string Result => Entry.Who == "CITP"
+        ? (Entry.From.Length > 0 ? (Entry.Method == "OUT" ? "to " : "from ") + Entry.From : "")
+        : $"{Entry.Status}  ·  {Entry.Milliseconds} ms{(Entry.From.Length > 0 ? "  ·  from " + Entry.From : "")}";
     public string? Note => Entry.Note;
     public bool HasNote => !string.IsNullOrEmpty(Entry.Note);
     public string? State => Entry.State;
@@ -223,7 +225,7 @@ public sealed partial class MainViewModel
         return Task.CompletedTask;
     });
 
-    /// <summary>Every second: new log lines, Fake Titan's state, a download's progress.</summary>
+    /// <summary>Every second: new log lines, Fake Titan's state, CITP's selection, a download's progress.</summary>
     public async Task RefreshLive()
     {
         if (await _client.TitanLog(_lastLogId) is { } log)
@@ -238,6 +240,7 @@ public sealed partial class MainViewModel
                 string.Join("   ", log.Polls.Select(p => $"{p.Path.Split('/').Last()} x{p.Count:N0} ({p.LastStatus})"));
         }
         ShowFake(await _client.FakeTitan());
+        if (CitpEnabled) await RefreshCitp();
         if (_installWhenReady || UpdateText.StartsWith("Downloading", StringComparison.Ordinal)) await RefreshUpdate();
     }
 }

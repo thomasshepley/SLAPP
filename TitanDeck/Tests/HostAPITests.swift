@@ -151,6 +151,17 @@ final class HostAPITests: XCTestCase {
         XCTAssertEqual(moved.rdpHost, "")
     }
 
+    func testDecodesCitpSelection() throws {
+        // Captured from Host 0.9.0 with a CITP test console linked.
+        let linked = try decode(HostCitpSelection.self,
+                                #"{"enabled":true,"linked":true,"peer":"Titan","fixtures":[13,12],"problem":null}"#)
+        XCTAssertEqual(linked, HostCitpSelection(enabled: true, linked: true, peer: "Titan", fixtures: [13, 12], problem: nil))
+        let off = try decode(HostCitpSelection.self,
+                             #"{"enabled":false,"linked":false,"peer":null,"fixtures":[],"problem":null}"#)
+        XCTAssertFalse(off.enabled)
+        XCTAssertTrue(off.fixtures.isEmpty)
+    }
+
     func testAddressesLoseTheirInterfaceEnding() {
         XCTAssertEqual(HostAPI.cleanAddress(" 192.168.1.20%en0 "), "192.168.1.20", "what discovery used to fill in")
         XCTAssertEqual(HostAPI.cleanAddress("192.168.1.20%en0:5000"), "192.168.1.20:5000")

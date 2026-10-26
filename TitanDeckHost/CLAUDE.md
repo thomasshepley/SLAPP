@@ -17,7 +17,8 @@ TitanDeckHost/
 │                  TitanUiConfig (Titan's UI WebAPI config, checklist line, proxy allowlist),
 │                  FakeTitan (pretend Titan: WebAPI user + desk user state machine),
 │                  TitanLog (every Titan call, polls counted), Update/HostUpdate (GitHub releases),
-│                  TitanPatch (patch report CSV/XML/HTML), TitanPersonality + PersonalityLibrary (.d4)
+│                  TitanPatch (patch report CSV/XML/HTML), TitanPersonality + PersonalityLibrary (.d4),
+│                  Citp/ (CITP packets, PINF/FSEL/CAEX codecs, CitpAllowlist, CitpSession)
 ├── src/Service/   net8.0-windows Windows service (LocalSystem): Kestrel API on
 │                  0.0.0.0:4431 (paired iPad) and 127.0.0.1:4432 (the Host window),
 │                  WindowsProbe (reads the PC), Fixer (applies fixes), Advertiser (mDNS),
@@ -25,7 +26,8 @@ TitanDeckHost/
 │                  DeskLink (finds/edits Titan.dll.config / .exe.config, /titan proxy on 0.0.0.0:4434),
 │                  FakeTitanServer (Kestrel on 4430 + 4433 only while started, sACN out),
 │                  HostUpdater (checks GitHub every 6 h, downloads + verifies the installer),
-│                  PatchReader (newest patch report + personalities, Fake Titan's while it runs)
+│                  PatchReader (newest patch report + personalities, Fake Titan's while it runs),
+│                  CitpService (experimental CITP visualiser: UDP 4809 PLoc, TCP 4435)
 ├── src/App/       net8.0-windows WPF tray app + dashboard; talks only to 127.0.0.1:4432
 ├── tests/Core.Tests/  xunit
 └── installer/     Inno Setup script
@@ -86,6 +88,24 @@ TitanDeckHost/
   also `mode` in `/status`): Show stops Fake Titan and refuses to start it,
   and refuses `PatchReader.AskTitan`; the window hides those. New test-only
   tools must check `HostModeStore.IsShow` the same way.
+- **CITP** (`Core/Citp`, `CitpService`; experimental, Test mode only, off by
+  default, Data\citp.json; `GET/POST /local/citp`, paired `GET /api/v1/citp/selection`):
+  Titan 19's WebAPI can't see the desk's selection, so the Host joins Titan as
+  a CITP visualiser ("TitanDeck Host") and hears CAEX FixtureSelection (or FSEL).
+  **Titan auto-applies patch changes from a visualiser, so the Host must never
+  send FixtureList, FixtureModify, FixtureRemove, FixtureIdentify,
+  FixtureSelection, FPTC (Ptch/UPtc/SPtc), FSEL or SDMX.** `CitpAllowlist` only
+  lets PINF PLoc/PNam and CAEX EnterShow, LeaveShow, FixtureListRequest and
+  NACK out, and `CitpSession` sends everything through `CitpAllowlist.Check`.
+  Never widen it. Every request from Titan (FixtureListRequest,
+  ShowSyncVersion, live view...) gets NACK reason 3 (refused), answering its
+  RequestIndex. Titan's FixtureList maps its fixture ids to user numbers
+  ("Channel"); without one the ids are taken as user numbers and flagged as a
+  guess. Only peers on this PC can link (TCP from other PCs is refused); PLoc
+  goes out with TTL 1. The multicast listener only runs while it's switched on,
+  so it can't take 4809 from Titan by default. Show mode switches it off. Byte
+  layouts: CITP spec (bitbucket.org/lars_wernlund/citp) and Capture's CAEX
+  spec G; tests in `CitpTests`. Every message goes to the Titan log as `CITP`.
 - **Fake Titan** (`FakeTitan`) is the primary fake now; `TitanDeck/Tools/fake_titan.py`
   stays for the Mac. Keep them answering the same calls: when an action is added
   to `TitanEndpoints`, add it to both. It only listens while started from the

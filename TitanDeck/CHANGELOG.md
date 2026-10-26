@@ -7,6 +7,12 @@ the GitHub Actions run that built it. The top entry is shown in the app
 so add an entry - and bump `MARKETING_VERSION` in `project.yml` to match -
 with every change that goes to `main`.
 
+## 0.21.0 - 2026-10-26 - Desk selection over CITP (experimental)
+
+- **Follow the desk's selection on Titan 19:** Titan 19's WebAPI is a separate service that can't see what's selected on the desk, so TitanDeck Host 0.9 can now hear the selection over CITP instead, the way Capture does. Switch on "Follow selection via CITP" in TitanDeck Host (Test mode only) and, with the desk link on, the deck follows what you select in Layouts or on the desk. The deck's own WebAPI user selects the same fixtures, so its keys act on them.
+- Settings > Desk link and the loading screen say "Linked over CITP" when that's how it's linked.
+- Experimental: try it on a copy of your show first.
+
 ## 0.20.0 - 2026-10-26 - Change the Host's address
 
 - **Change Address** (Settings > TitanDeck Host): when the PC has more than one network and TitanDeck found the wrong one, point it at the right address without pairing again. Type it, or pick the PC from the ones found on the network.

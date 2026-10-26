@@ -136,6 +136,10 @@ final class AppState: ObservableObject {
         }
         deck.flashFadeRules = flashFadeRules
         deck.heldColorHex = heldKeyColour
+        deskLink.citpSelection = { [weak self] in
+            guard let client = self?.host.client else { return nil }
+            return try? await client.citpSelection()
+        }
         deskLink.onSelection = { [weak self] fixtures in
             self?.deck.setDeskSelection(fixtures)
         }
