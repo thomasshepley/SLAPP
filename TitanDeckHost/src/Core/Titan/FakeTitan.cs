@@ -266,8 +266,10 @@ public sealed class FakeTitan
         }
     }
 
-    /// <summary>POST /titan/set/2/...: only the cue fade times. Real Titan's
-    /// body format isn't documented; this takes a bare number, or JSON with one.</summary>
+    /// <summary>POST /titan/set/2/...: only the cue fade times. Like Titan 19,
+    /// which wants an AcwTimeSpan: a bare number is refused (500, Titan's own
+    /// message); a TimeSpan string ("00:00:02.5000000") or an object with the
+    /// seconds ({"Seconds": 2.5}, {"value": 2.5}) is taken.</summary>
     public FakeReply Set(string path, string body)
     {
         var name = path[(path.LastIndexOf('/') + 1)..];
@@ -282,12 +284,14 @@ public sealed class FakeTitan
             try
             {
                 var node = JsonNode.Parse(text);
-                var value = node is JsonObject o && o["value"] is { } v ? v : node;
+                if (node!.GetValueKind() == JsonValueKind.Number)
+                    return new(500, null, "Error: The JSON value could not be converted to Avolites.Acw.Titan.AcwTimeSpan.");
+                var value = node is JsonObject o ? o["Seconds"] ?? o["seconds"] ?? o["value"] : node;
                 seconds = value!.GetValueKind() == JsonValueKind.String
-                    ? double.Parse(value.GetValue<string>(), CultureInfo.InvariantCulture)
+                    ? TimeSpan.Parse(value.GetValue<string>(), CultureInfo.InvariantCulture).TotalSeconds
                     : value.GetValue<double>();
             }
-            catch (Exception error) when (error is JsonException or FormatException or InvalidOperationException or NullReferenceException)
+            catch (Exception error) when (error is JsonException or FormatException or InvalidOperationException or NullReferenceException or OverflowException)
             {
                 return new(400, null, $"body '{text}' isn't a number of seconds");
             }

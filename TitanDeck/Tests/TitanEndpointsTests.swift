@@ -114,4 +114,35 @@ final class TitanEndpointsTests: XCTestCase {
         XCTAssertEqual(TitanClient.errorText(status: 404, body: Data("<html><body>Not found</body></html>".utf8)), "HTTP 404")
         XCTAssertEqual(TitanClient.errorText(status: 500, body: Data(String(repeating: "x", count: 1000).utf8))?.count, 310)
     }
+
+    // MARK: Cue times (Titan 19's AcwTimeSpan)
+
+    private func text(_ data: Data) -> String { String(decoding: data, as: UTF8.self) }
+
+    func testTimeSpanTextIsDotNets() {
+        XCTAssertEqual(TitanTimeSpan.timeSpanText(0.3), "00:00:00.3000000")
+        XCTAssertEqual(TitanTimeSpan.timeSpanText(2), "00:00:02")
+        XCTAssertEqual(TitanTimeSpan.timeSpanText(90.25), "00:01:30.2500000")
+    }
+
+    func testTimesAreWrittenInTitansOwnShape() {
+        func shaped(_ current: String) -> String? {
+            TitanTimeSpan.shaped(seconds: 0.3, like: Data(current.utf8)).map(text)
+        }
+        XCTAssertEqual(shaped(#""00:00:02""#), #""00:00:00.3000000""#)
+        XCTAssertEqual(shaped(#"{"Seconds":2,"Infinite":false}"#), #"{"Infinite":false,"Seconds":0.3}"#)
+        XCTAssertEqual(shaped(#"{"Ticks":20000000}"#), #"{"Ticks":3000000}"#)
+        XCTAssertEqual(shaped(#"{"Time":"00:00:02","IsDefault":true}"#), #"{"IsDefault":true,"Time":"00:00:00.3000000"}"#)
+        XCTAssertEqual(shaped(#"{"Milliseconds":2000}"#), #"{"Milliseconds":300}"#)
+        XCTAssertEqual(shaped("2"), "0.3")
+        XCTAssertNil(shaped(#"{"Name":"Cue 1"}"#), "nothing time-like: no shape to copy")
+        XCTAssertNil(shaped("not json"))
+    }
+
+    func testTitansShapeComesFirstThenTheLikelyOnes() {
+        let bodies = TitanTimeSpan.bodies(seconds: 0.3, current: Data(#"{"Seconds":2}"#.utf8)).map(text)
+        XCTAssertEqual(bodies, [#"{"Seconds":0.3}"#, #""00:00:00.3000000""#, "0.3"], "duplicates dropped")
+        XCTAssertEqual(TitanTimeSpan.bodies(seconds: 1, current: nil).map(text),
+                       [#""00:00:01""#, #"{"Seconds":1}"#, "1"])
+    }
 }

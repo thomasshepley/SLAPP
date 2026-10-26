@@ -265,8 +265,8 @@ class FakeTitan:
 
     def set_property(self, path, body):
         """POST /titan/set/2/Playbacks/Editor/Times/CueFadeInTime (or Out), body
-        the seconds. Real Titan's body format isn't documented; this takes a
-        bare number, or JSON with one."""
+        the seconds. Like Titan 19 (an AcwTimeSpan): a bare number is refused,
+        a TimeSpan string ("00:00:02.5000000") or {"Seconds": 2.5} is taken."""
         name = path.rsplit("/", 1)[-1]
         if not path.startswith("/titan/set/2/Playbacks/Editor/Times/") or \
                 name not in ("CueFadeInTime", "CueFadeOutTime"):
@@ -276,7 +276,15 @@ class FakeTitan:
         text = body.decode(errors="replace").strip()
         try:
             value = json.loads(text)
-            seconds = float(value.get("value", value) if isinstance(value, dict) else value)
+            if isinstance(value, (int, float)):
+                return 500, None, "Error: The JSON value could not be converted to Avolites.Acw.Titan.AcwTimeSpan."
+            if isinstance(value, dict):
+                value = value.get("Seconds", value.get("seconds", value.get("value")))
+            if isinstance(value, str) and ":" in value:
+                h, m, s = value.split(":")
+                seconds = int(h) * 3600 + int(m) * 60 + float(s)
+            else:
+                seconds = float(value)
         except (ValueError, TypeError, AttributeError):
             return 400, None, f"body '{text}' isn't a number of seconds"
         self.cue_times.setdefault(self.editing, {})[name] = seconds

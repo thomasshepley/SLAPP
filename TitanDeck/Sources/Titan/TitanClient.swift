@@ -126,11 +126,12 @@ actor TitanClient {
                       detail: text?.isEmpty == false ? "cleared command line" : "cleared programmer")
     }
 
-    // MARK: - Cue fades (experimental)
+    // MARK: - Cue fades
 
-    /// Selects cue 1 of the playback, then writes its fade time. The API docs
-    /// list both properties but not the body format, so this sends the
-    /// seconds as plain text - check it on the console.
+    /// Selects cue 1 of the playback, reads its fade time to see the shape
+    /// Titan writes times in (an AcwTimeSpan on Titan 19, which refuses a bare
+    /// number), then writes the new time in that shape, trying the likely
+    /// shapes in turn if Titan didn't say (`TitanTimeSpan`).
     private func runCueFade(titanId: Int, fadeOut: Bool, seconds: Double) async -> TitanResult {
         let action = TitanAction.setCueFade(titanId: titanId, fadeOut: fadeOut, seconds: seconds)
         let start = Date()
@@ -141,17 +142,30 @@ actor TitanClient {
         guard let url = TitanEndpoints.cueFadePropertyURL(fadeOut: fadeOut, write: true, host: host, port: port) else {
             return finish(action, start, ok: false, status: nil, error: "No Titan host set")
         }
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("text/plain", forHTTPHeaderField: "Content-Type")
-        request.httpBody = Data(TitanEndpoints.format(number: seconds).utf8)
-        do {
-            let (data, response) = try await session.data(for: request)
-            let status = (response as? HTTPURLResponse)?.statusCode
-            return finish(action, start, ok: status == 200, status: status, error: Self.errorText(status: status, body: data))
-        } catch {
-            return finish(action, start, ok: false, status: nil, error: error.localizedDescription)
+        let current = await body(TitanEndpoints.cueFadePropertyURL(fadeOut: fadeOut, write: false, host: host, port: port))
+        let currentText = current.map { String(decoding: $0.prefix(200), as: UTF8.self) }
+        if let currentText { Log.titan("Cue fade \(fadeOut ? "out" : "in") reads as \(currentText)") }
+        var last: (status: Int?, error: String?) = (nil, nil)
+        for body in TitanTimeSpan.bodies(seconds: seconds, current: current) {
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.httpBody = body
+            do {
+                let (data, response) = try await session.data(for: request)
+                let status = (response as? HTTPURLResponse)?.statusCode
+                if status == 200 {
+                    return finish(action, start, ok: true, status: status, error: nil,
+                                  detail: "sent \(String(decoding: body, as: UTF8.self))")
+                }
+                last = (status, Self.errorText(status: status, body: data))
+            } catch {
+                last = (nil, error.localizedDescription)
+            }
         }
+        let error = (last.error ?? "Titan didn't take the time")
+            + (currentText.map { " (Titan reads it as \($0))" } ?? " (and Titan didn't say how it reads it)")
+        return finish(action, start, ok: false, status: last.status, error: error)
     }
 
     // MARK: - Flash (hold to 0%)

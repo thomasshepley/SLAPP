@@ -240,3 +240,108 @@ enum TitanEndpoints {
         text.addingPercentEncoding(withAllowedCharacters: unreserved) ?? text
     }
 }
+
+/// Titan 19's cue times are an AcwTimeSpan in JSON: a bare number is refused
+/// ("The JSON value could not be converted to Avolites.Acw.Titan.AcwTimeSpan"),
+/// and the API docs don't show its shape. So a time is written in the shape
+/// Titan itself gives when the same property is read, and failing that, in the
+/// likely shapes one after another. Pure, so it's tested. (In this file
+/// because the Watch target compiles a fixed list of files.)
+enum TitanTimeSpan {
+    /// Bodies to try in turn, best first.
+    static func bodies(seconds: Double, current: Data?) -> [Data] {
+        var bodies: [Data] = []
+        if let current, let shaped = shaped(seconds: seconds, like: current) { bodies.append(shaped) }
+        bodies.append(Data("\"\(timeSpanText(seconds))\"".utf8))                         // .NET TimeSpan
+        bodies.append(Data("{\"Seconds\":\(TitanEndpoints.format(number: seconds))}".utf8))
+        bodies.append(Data(TitanEndpoints.format(number: seconds).utf8))                  // older Titans
+        var seen = Set<Data>()
+        return bodies.filter { seen.insert($0).inserted }
+    }
+
+    /// "00:00:02.5000000", as .NET writes a TimeSpan.
+    static func timeSpanText(_ seconds: Double) -> String {
+        let ticks = Int64((max(seconds, 0) * 10_000_000).rounded())
+        let total = ticks / 10_000_000
+        let fraction = ticks % 10_000_000
+        let (h, m, s) = (total / 3600, total / 60 % 60, total % 60)
+        let base = String(format: "%02lld:%02lld:%02lld", h, m, s)
+        return fraction == 0 ? base : base + String(format: ".%07lld", fraction)
+    }
+
+    /// `seconds` written like `current`: the same JSON with its time fields replaced.
+    static func shaped(seconds: Double, like current: Data) -> Data? {
+        guard let value = try? JSONDecoder().decode(JSONValue.self, from: current),
+              let replaced = replace(value, seconds: seconds, key: nil) else { return nil }
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = .sortedKeys
+        return try? encoder.encode(replaced)
+    }
+
+    /// The value with every time in it set to `seconds`, or nil if there's none.
+    private static func replace(_ value: JSONValue, seconds: Double, key: String?) -> JSONValue? {
+        let name = key?.lowercased() ?? ""
+        switch value {
+        case .string(let text):
+            if isTimeSpan(text) { return .string(timeSpanText(seconds)) }
+            if Double(text) != nil { return .string(TitanEndpoints.format(number: seconds)) }
+            return nil
+        case .number:
+            if name.contains("tick") { return .number((seconds * 10_000_000).rounded()) }
+            if name.contains("milli") { return .number(seconds * 1000) }
+            if key == nil || name.contains("second") || name.contains("time") || name.contains("duration") || name == "value" {
+                return .number(seconds)
+            }
+            return nil
+        case .object(let fields):
+            var changed = false
+            var out = fields
+            for (field, inner) in fields {
+                if let new = replace(inner, seconds: seconds, key: field) {
+                    out[field] = new
+                    changed = true
+                }
+            }
+            return changed ? .object(out) : nil
+        case .bool, .array, .null:
+            return nil
+        }
+    }
+
+    private static func isTimeSpan(_ text: String) -> Bool {
+        text.range(of: #"^-?(\d+\.)?\d{1,2}:\d{2}:\d{2}(\.\d+)?$"#, options: .regularExpression) != nil
+    }
+}
+
+/// Any JSON, for copying the shape of one of Titan's answers.
+indirect enum JSONValue: Codable, Equatable {
+    case string(String)
+    case number(Double)
+    case bool(Bool)
+    case object([String: JSONValue])
+    case array([JSONValue])
+    case null
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        if container.decodeNil() { self = .null }
+        else if let bool = try? container.decode(Bool.self) { self = .bool(bool) }
+        else if let number = try? container.decode(Double.self) { self = .number(number) }
+        else if let string = try? container.decode(String.self) { self = .string(string) }
+        else if let array = try? container.decode([JSONValue].self) { self = .array(array) }
+        else { self = .object(try container.decode([String: JSONValue].self)) }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        switch self {
+        case .string(let value): try container.encode(value)
+        case .number(let value):
+            if value == value.rounded(), abs(value) < 1e15 { try container.encode(Int64(value)) } else { try container.encode(value) }
+        case .bool(let value): try container.encode(value)
+        case .object(let value): try container.encode(value)
+        case .array(let value): try container.encode(value)
+        case .null: try container.encodeNil()
+        }
+    }
+}
