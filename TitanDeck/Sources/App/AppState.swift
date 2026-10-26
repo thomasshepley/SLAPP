@@ -256,7 +256,7 @@ final class AppState: ObservableObject {
     }
 
     func fire(_ action: TitanAction, fromKey keyIndex: Int? = nil) {
-        let typing = keypad.current?.text
+        let typing = keypad.readout.current?.text
         let keypadLine = keypad.press(action)
         intensity.deckWillSend(action)
         if keypadTypesOnDesk, action == .keypadEnter, let typing, let level = DeskKeys.typedLevel(typing) {
