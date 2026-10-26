@@ -19,6 +19,8 @@ public static class TitanUiConfig
     public const string EnabledKey = "webapi.enabled";
     public const string PortKey = "webapi.port";
     public const int UiPort = 4433;
+    /// <summary>Titan's usual WebAPI port, the one TitanDeck always uses.</summary>
+    public const int ApiPort = 4430;
     public const int ProxyPort = 4434;
     public const string BackupSuffix = ".titandeck-backup";
 
@@ -85,11 +87,30 @@ public static class TitanUiConfig
                                                  : p.Equals(a, StringComparison.OrdinalIgnoreCase));
     }
 
+    /// <summary>
+    /// Some Titan installs already run their WebAPI inside the UI on 4430
+    /// (webapi.enabled = true, webapi.port = 4430 in Titan's settings file).
+    /// Then that's the desk's own WebAPI, there's no second one to add, and
+    /// it must never be moved: TitanDeck uses it for everything.
+    /// </summary>
+    public static bool UiIsOnApiPort(IReadOnlyList<State> configs) =>
+        configs.Any(c => c.Enabled && c.EffectivePort == ApiPort);
+
+    /// <summary>Where the desk link passes calls on to: 4430 when that's the UI's WebAPI, else 4433.</summary>
+    public static int TargetPort(IReadOnlyList<State> configs) => UiIsOnApiPort(configs) ? ApiPort : UiPort;
+
     /// <summary>The checklist line for the Host window and the iPad.</summary>
     public static Check Diagnose(IReadOnlyList<State> configs, bool uiAnswers, bool titanRunning)
     {
         const string id = "desklink";
         const string title = "Desk selection for TitanDeck";
+        if (UiIsOnApiPort(configs))
+            return uiAnswers || !titanRunning
+                ? new Check(id, title, CheckState.Ok,
+                    $"Nothing to change: Titan's settings file already runs its WebAPI inside Titan on port {ApiPort}, " +
+                    "the one TitanDeck uses, so the desk link uses it too.")
+                : new Check(id, title, CheckState.Warning,
+                    $"Titan's WebAPI is set up in its settings file on port {ApiPort}, but isn't answering. Is Titan's WebAPI on?");
         if (uiAnswers)
             return new Check(id, title, CheckState.Ok,
                 $"On. TitanDeck can follow what's selected on the desk (Titan's UI WebAPI, port {UiPort}).");

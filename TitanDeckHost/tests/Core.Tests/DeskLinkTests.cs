@@ -65,6 +65,27 @@ public class DeskLinkTests
         Assert.Equal("desklink", off.Id);
     }
 
+    [Fact]
+    public void AWebApiAlreadyInTitansUiOn4430IsLeftAlone()
+    {
+        IReadOnlyList<TitanUiConfig.State> on4430 = [new(true, TitanUiConfig.ApiPort)];
+        Assert.True(TitanUiConfig.UiIsOnApiPort(on4430));
+        Assert.Equal(TitanUiConfig.ApiPort, TitanUiConfig.TargetPort(on4430));   // the desk link uses 4430
+
+        var check = TitanUiConfig.Diagnose(on4430, uiAnswers: true, titanRunning: true);
+        Assert.Equal(CheckState.Ok, check.State);
+        Assert.Equal(FixAction.None, check.Fix);   // never offer to move the WebAPI TitanDeck uses
+        Assert.Contains("Nothing to change", check.Detail);
+
+        var quiet = TitanUiConfig.Diagnose(on4430, uiAnswers: false, titanRunning: true);
+        Assert.Equal(CheckState.Warning, quiet.State);
+        Assert.Equal(FixAction.None, quiet.Fix);
+
+        // Otherwise it's the separate 4433 one, as before.
+        Assert.Equal(TitanUiConfig.UiPort, TitanUiConfig.TargetPort([new(false, 4431)]));
+        Assert.Equal(TitanUiConfig.UiPort, TitanUiConfig.TargetPort([new(false, TitanUiConfig.ApiPort)]));   // off at 4430 doesn't count
+    }
+
     [Theory]
     [InlineData("/titan/script/2/Selection/Context/Global/GetAllSelectedFixtureIds", true)]
     [InlineData("/titan/script/2/Command/AppendStringAndPreview", true)]
