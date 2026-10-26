@@ -14,6 +14,8 @@ struct RDPSettings: Codable, Hashable {
     var connectOnLaunch = false
     /// Picture quality: visual effects here, image quality and frame rate on the PC.
     var quality = RDPQuality.preset(.best)
+    /// What a hardware keyboard's Command key does on the PC: Ctrl (the default) or the Windows key.
+    var commandKey: RDPKeyboard.CommandKey = .control
 
     /// The address to actually use, falling back to the Titan host.
     func effectiveHost(titanHost: String) -> String {
@@ -37,7 +39,7 @@ struct RDPSettings: Codable, Hashable {
     // `autoConnect` key (on by default back then) is deliberately ignored, which
     // turns connect-on-launch off once.
     private enum CodingKeys: String, CodingKey {
-        case host, port, username, domain, connectOnLaunch, quality
+        case host, port, username, domain, connectOnLaunch, quality, commandKey
     }
 
     init(from decoder: Decoder) throws {
@@ -48,6 +50,7 @@ struct RDPSettings: Codable, Hashable {
         domain = try container.decodeIfPresent(String.self, forKey: .domain) ?? ""
         connectOnLaunch = try container.decodeIfPresent(Bool.self, forKey: .connectOnLaunch) ?? false
         quality = (try? container.decodeIfPresent(RDPQuality.self, forKey: .quality)) ?? RDPQuality.preset(.best)
+        commandKey = (try? container.decodeIfPresent(RDPKeyboard.CommandKey.self, forKey: .commandKey)) ?? .control
     }
 
     static let defaultsKey = "rdpSettings"

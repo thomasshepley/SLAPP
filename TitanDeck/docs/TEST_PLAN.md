@@ -284,6 +284,51 @@ Before you start: on the Titan PC, back up Titan's .exe.config yourself too.
 - [ ] Unplug the PC's network for 5 s: Status says not answering, the deck
       still works (on its own WebAPI user), and it re-links when plugged back.
 
+## 5e2. Titan 19 calls and the Titan log (TitanDeck 0.21, Host 0.9)
+
+- [ ] TitanDeck Host's checklist: "Titan 19 WebAPI calls" says Problem.
+      Turn on (on the PC). It says what it restarted; if it says restart
+      Titan, do that.
+- [ ] TitanDeck Settings > Connection: turn on Through TitanDeck Host.
+      Test connection still shows Titan's version.
+- [ ] Keypad 1 @ 5 0 Enter, Clear, Exit, a fade time, the Layouts page:
+      each works, and each call shows in the Host's Titan log
+      ("TitanDeck - WebAPI"). Anything red: Copy the log and send it over.
+- [ ] Playbacks page: GO fires the cue (key lights), GO again releases it.
+- [ ] Magic Keyboard on the remote desktop: type in a Titan legend box or
+      Notepad. Arrows, Backspace held (repeats), Esc, F-keys, Shift-click,
+      Cmd-C / Cmd-V (as Ctrl-C / Ctrl-V). Switch Settings > Remote desktop >
+      Keyboard's Command key to Windows key: Cmd opens the Start menu.
+      Swipe home mid-keypress: nothing stays held on the PC.
+- [ ] No Windows password: TitanDeck Host > Accounts with no password >
+      Allow (on the PC). Leave the password blank in TitanDeck's Remote
+      desktop settings and Connect: Titan's screen appears.
+
+## 5f. Desk selection over CITP (Titan 19: TitanDeck 0.21, Host 0.9, experimental)
+
+Titan 19's WebAPI can't see the desk's selection, so this goes the way
+Capture does. **Use a copy of your show** (Disk > Save As first), and save
+the CITP lines from the Titan log (Copy) for Claude whatever happens.
+
+- [ ] TitanDeck Host in Test mode: the **Follow selection via CITP
+      (experimental)** card is there and says Off. Switch on (read the warning).
+- [ ] The card says "Waiting for Titan to connect". Does Titan appear in its
+      list (LightingConsole "Titan" ..., on this PC)? Note the TCP port.
+- [ ] In Titan, look for TitanDeck Host as a visualiser (probably Patch >
+      Active Fixtures, or the CITP / visualiser connections). Connect it the
+      way you'd connect Capture. Note exactly what Titan shows and asks.
+      **Say no to anything that offers to send or sync the patch.**
+- [ ] The card says Linked with Titan, and how many fixtures it knows.
+      Does that match the show?
+- [ ] Select a fixture in a Layout: does the card's "Selected" show its
+      number? Select 10, clear, select from the keypad - same each time?
+- [ ] With TitanDeck's desk link on: the deck shows the intensity keys,
+      Settings > Desk link says Linked over CITP, and +5% moves the fixture
+      you selected on the desk.
+- [ ] Afterwards, check the patch didn't change at all (same addresses,
+      no new or missing fixtures). If anything changed, tell Claude straight away.
+- [ ] Switch the Host to Show: the card disappears and CITP stops.
+
 
 - [ ] Settings → Remote desktop: PC address (blank uses the Titan address),
       Windows user and password, then **Connect**.

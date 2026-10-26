@@ -20,6 +20,7 @@ builder.WebHost.ConfigureKestrel(kestrel =>
     kestrel.ListenAnyIP(Protocol.NetworkPort);
     kestrel.Listen(IPAddress.Loopback, Protocol.LocalPort);
     kestrel.ListenAnyIP(TitanUiConfig.ProxyPort);   // desk link: Titan's UI WebAPI, passed through
+    kestrel.ListenAnyIP(TitanUiConfig.PassThroughPort);   // Titan's WebAPI through the Host, for the Titan log
     kestrel.Limits.MaxRequestBodySize = null;   // photos and videos from the iPad
 });
 
@@ -40,6 +41,8 @@ builder.Services.AddHostedService<Advertiser>();
 builder.Services.AddSingleton<DmxUniverses>();
 builder.Services.AddSingleton<SacnListener>();
 builder.Services.AddHostedService(services => services.GetRequiredService<SacnListener>());
+builder.Services.AddSingleton<CitpService>();
+builder.Services.AddHostedService(services => services.GetRequiredService<CitpService>());
 
 var app = builder.Build();
 var pairing = app.Services.GetRequiredService<PairingStore>();
@@ -152,6 +155,9 @@ network.MapGet("/dmx", (DmxUniverses store, SacnListener listener) => DmxSummary
 // The show's patch from Titan's patch report, for finding a fixture's intensity channel.
 network.MapGet("/patch", (PatchReader patch) => patch.Status());
 
+// The desk's selection over CITP (experimental, Test mode only).
+network.MapGet("/citp/selection", (CitpService citp) => citp.Selection());
+
 network.MapGet("/dmx/{universe:int}", (int universe, int? start, int? count, DmxUniverses store, SacnListener listener) =>
     DmxLevels(universe, start ?? 1, count ?? 512, store, listener));
 
@@ -174,10 +180,15 @@ network.MapPost("/outbox/{name}/received", (string name) =>
     return Results.Ok();
 });
 
-// --- Desk link (port 4434): Titan's UI WebAPI passed through, /titan/... only. ---
+// --- /titan/... only. Desk link (port 4434): Titan's UI WebAPI passed through.
+//     Port 4436: Titan's WebAPI (4430) passed through, so every call is in the Titan log. ---
 
-app.Map("/titan/{**rest}", (HttpContext http, DeskLink desk) =>
-    http.Connection.LocalPort == TitanUiConfig.ProxyPort ? desk.Forward(http) : NotFound(http));
+app.Map("/titan/{**rest}", (HttpContext http, DeskLink desk) => http.Connection.LocalPort switch
+{
+    TitanUiConfig.ProxyPort => desk.Forward(http),
+    TitanUiConfig.PassThroughPort => desk.PassThrough(http),
+    _ => NotFound(http),
+});
 
 static Task NotFound(HttpContext http)
 {
@@ -203,13 +214,24 @@ local.MapGet("/mode", (HostModeStore mode) => new ModeDto(mode.Mode));
 // The network adapter TitanDeck uses (announced on, and shown as the address to type).
 local.MapGet("/network", (NetworkChoice network) => network.Status());
 local.MapPost("/network", (NetworkChoiceRequest request, NetworkChoice network) => network.Choose(request.Id));
-local.MapPost("/mode", async (ModeDto request, HostModeStore mode, FakeTitanServer fake) =>
+local.MapPost("/mode", async (ModeDto request, HostModeStore mode, FakeTitanServer fake, CitpService citp) =>
 {
     if (request.Mode is not ("test" or "show")) return Results.BadRequest(new { error = "Mode is test or show." });
     mode.Set(request.Mode == "show");
-    if (mode.IsShow) await fake.Stop();
+    if (mode.IsShow)
+    {
+        await fake.Stop();
+        if (citp.Enabled) citp.SetEnabled(false);
+    }
     return Results.Ok(new ModeDto(mode.Mode));
 });
+
+// Follow the desk's selection over CITP: experimental, off by default, Test mode only.
+local.MapGet("/citp", (CitpService citp) => citp.Status());
+local.MapPost("/citp", (CitpEnableRequest request, CitpService citp, HostModeStore mode) =>
+    request.Enabled && mode.IsShow
+        ? Results.BadRequest(new { error = "CITP is a test feature: switch to Test mode first." })
+        : Results.Ok(citp.SetEnabled(request.Enabled)));
 
 local.MapGet("/pairing", () => PairingInfo(pairing));
 
@@ -298,18 +320,19 @@ static StatusResponse Status(WindowsProbe probe, DeskLink desk, HostPaths paths,
     var facts = probe.Gather();
     var checks = RdpDiagnosis.Run(facts);
     // Desk link is extra: it doesn't count towards remote desktop's overall state.
-    Check? deskCheck;
+    Check? deskCheck, webApiCheck;
     try
     {
         deskCheck = TitanUiConfig.Diagnose(desk.Configs().Select(c => c.State).ToList(), desk.UiAnswers(), facts.TitanRunning);
+        webApiCheck = WebApiServiceConfig.Diagnose(desk.WebApiServices().Select(s => s.Pre19).ToList());
     }
     catch (Exception)
     {
-        deskCheck = null;   // like every probe fact: one that can't be read doesn't sink the rest
+        deskCheck = webApiCheck = null;   // like every probe fact: one that can't be read doesn't sink the rest
     }
     return new StatusResponse(
         RdpDiagnosis.Overall(checks).ToString().ToLowerInvariant(),
-        checks.Append(deskCheck).OfType<Check>().Select(CheckDto.From).ToList(),
+        checks.Append(webApiCheck).Append(deskCheck).OfType<Check>().Select(CheckDto.From).ToList(),
         facts.IsHome ? "Windows Home" : facts.Edition,
         facts.WindowsVersion,
         facts.TermsrvVersion,

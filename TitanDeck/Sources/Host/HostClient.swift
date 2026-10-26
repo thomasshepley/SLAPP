@@ -93,6 +93,13 @@ struct HostClient: Sendable {
         return try await send(request)
     }
 
+    /// The desk's selection from the Host's CITP link (Host 0.9+).
+    func citpSelection() async throws -> HostCitpSelection {
+        var request = try request("citp/selection")
+        request.timeoutInterval = 1
+        return try await send(request)
+    }
+
     /// The show's patch from Titan's patch report (Host 0.6+).
     func patch() async throws -> HostPatch {
         var request = try request("patch")

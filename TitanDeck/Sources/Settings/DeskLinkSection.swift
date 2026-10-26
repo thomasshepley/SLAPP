@@ -75,6 +75,7 @@ struct DeskLinkSection: View {
         case .off: "Off"
         case .connecting: "Looking for the desk..."
         case .linked: desk.selection.isEmpty ? "Linked" : "Linked: \(DeckFlow.selectionLabel(desk.selection) ?? "")"
+        case .linkedViaCitp: desk.selection.isEmpty ? "Linked over CITP" : "Linked over CITP: \(DeckFlow.selectionLabel(desk.selection) ?? "")"
         case .unavailable(let reason): reason
         }
     }

@@ -39,7 +39,7 @@ public sealed partial class MainViewModel
     {
         if (IsShowMode) return;
         var answer = MessageBox.Show(
-            "All test features will be disabled if you confirm this.\n\nFake Titan stops (if it's running) and can't be started, and the test tools are hidden. You can switch back to Test at any time.",
+            "All test features will be disabled if you confirm this.\n\nFake Titan and following the selection over CITP stop (if they're running), and the test tools are hidden. You can switch back to Test at any time.",
             "Switch to Show mode?", MessageBoxButton.OKCancel, MessageBoxImage.Warning, MessageBoxResult.Cancel);
         if (answer != MessageBoxResult.OK) return;
         ShowMode(await _client.SetMode("show"));

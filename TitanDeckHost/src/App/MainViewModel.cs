@@ -120,6 +120,7 @@ public sealed partial class MainViewModel : INotifyPropertyChanged
         ShowPatch(await _client.Patch());
         ShowMode(await _client.Mode());
         ShowNetwork(await _client.Network());
+        ShowCitp(await _client.Citp());
     }
 
     private async Task SetQuality(string preset)

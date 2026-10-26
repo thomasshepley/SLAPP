@@ -1,19 +1,24 @@
 // App/DeskLink.swift
 import Foundation
 
-/// The desk link: Titan's UI WebAPI, which shares the operator's selection
-/// and programmer (Titan's normal WebAPI on 4430 is a separate user and sees
-/// neither). TitanDeck Host turns it on (Titan port 4433) and passes it on
-/// to the iPad on 4434. While it answers, TitanDeck follows what's selected
-/// in Layouts or on the desk, and sends the deck's commands there so they
-/// act on the desk's own programmer. If it stops answering, everything goes
-/// back to 4430 by itself. Off in Settings turns all of it off.
+/// The desk link: following what's selected on the desk. Two ways in:
+/// - Titan's UI WebAPI (Titan 14-18), which shares the operator's selection
+///   and programmer. TitanDeck Host turns it on (Titan port 4433) and passes
+///   it on to the iPad on 4434; while it answers, the deck's commands go
+///   there too, so they act on the desk's own programmer.
+/// - CITP (Titan 19, where the WebAPI is a separate service): the Host
+///   joins Titan as a visualiser and hears the selection. The deck's own
+///   4430 user then selects the same fixtures, so its keys act on them.
+/// If neither answers, everything carries on over 4430. Off in Settings
+/// turns all of it off.
 @MainActor
 final class DeskLink: ObservableObject {
     enum State: Equatable {
         case off
         case connecting
         case linked
+        /// Hearing the desk's selection over CITP, through TitanDeck Host.
+        case linkedViaCitp(String?)
         case unavailable(String)
     }
 
@@ -37,6 +42,8 @@ final class DeskLink: ObservableObject {
     var onSelection: (([Int]) -> Void)?
     /// Called when the link comes up or goes down.
     var onLinkChange: ((Bool) -> Void)?
+    /// The Host's CITP selection (Host 0.9+), or nil without a paired Host.
+    var citpSelection: (@MainActor () async -> HostCitpSelection?)?
 
     static let defaultPort = 4434
     /// About three times a second: quick enough to feel live, light on Titan's UI.
@@ -64,10 +71,16 @@ final class DeskLink: ObservableObject {
         port = defaults.object(forKey: Keys.port) as? Int ?? Self.defaultPort
     }
 
-    var isLinked: Bool { state == .linked }
+    var isLinked: Bool {
+        switch state {
+        case .linked, .linkedViaCitp: true
+        default: false
+        }
+    }
 
-    /// Where deck commands should go: the desk while linked, else nil (4430).
-    var commandClient: TitanClient? { isLinked ? client : nil }
+    /// Where deck commands should go: the desk's UI WebAPI while linked to
+    /// it, else nil (4430, which CITP also uses).
+    var commandClient: TitanClient? { state == .linked ? client : nil }
 
     func setHost(_ newHost: String) {
         let clean = newHost.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -105,11 +118,26 @@ final class DeskLink: ObservableObject {
     }
 
     private func tick(_ client: TitanClient) async {
+        // Titan 19: the Host hears the selection over CITP.
+        if let citpSelection, let citp = await citpSelection(), citp.enabled {
+            if citp.linked {
+                failures = 0
+                let was = isLinked
+                state = .linkedViaCitp(citp.peer)
+                if !was { onLinkChange?(true) }
+                guard citp.fixtures != selection else { return }
+                selection = citp.fixtures
+                // The deck's own user selects them too, so its keys act on them.
+                await api.selectFixtures(userNumbers: citp.fixtures)
+                onSelection?(citp.fixtures)
+                return
+            }
+        }
         guard let ids = await client.selectedFixtureIds() else {
             failures += 1
             // A blip doesn't drop the link; three misses in a row does.
             if failures >= 3 {
-                setLinked(false, reason: "Titan's UI WebAPI isn't answering on port \(port). Turn it on in TitanDeck Host on the PC (Desk selection for TitanDeck), then restart Titan.")
+                setLinked(false, reason: "Not linked. Titan 19: turn on Follow selection via CITP in TitanDeck Host (0.9). Titan 14-18: Desk selection for TitanDeck in TitanDeck Host, then restart Titan.")
                 if !selection.isEmpty {
                     selection = []
                     onSelection?([])

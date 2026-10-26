@@ -135,3 +135,20 @@ public sealed record NetworkChoiceRequest(string? Id);
 
 /// <summary>A report file picked in the Host window.</summary>
 public sealed record PatchImportRequest(string Name, string Text);
+
+/// <summary>
+/// `GET /api/v1/citp/selection`: the desk's selection as Titan shares it with
+/// a CITP visualiser. Enabled = the experimental switch is on (Test mode
+/// only); linked = Titan is connected; fixtures are user numbers.
+/// </summary>
+public sealed record CitpSelectionDto(bool Enabled, bool Linked, string? Peer, IReadOnlyList<int> Fixtures, string? Problem);
+
+/// <summary>Something on the network announcing itself over CITP (PINF PLoc).</summary>
+public sealed record CitpPeerDto(string Address, string Type, string Name, string State, int TcpPort, bool OnThisPc, DateTimeOffset LastSeen);
+
+/// <summary>`GET /local/citp`: the Host window's CITP card.</summary>
+public sealed record CitpStatusDto(bool Enabled, bool Allowed, bool Running, int? ListeningPort, IReadOnlyList<CitpPeerDto> Peers,
+    string? Connected, string? PeerShow, int Fixtures, IReadOnlyList<int> Selection, string? Problem);
+
+/// <summary>`POST /local/citp`: the experimental switch.</summary>
+public sealed record CitpEnableRequest(bool Enabled);

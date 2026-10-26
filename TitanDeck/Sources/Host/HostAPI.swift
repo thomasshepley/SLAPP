@@ -163,6 +163,17 @@ struct HostPatchFixture: Codable, Equatable {
     let intensity: [Int]?
 }
 
+/// `GET /api/v1/citp/selection` (Host 0.9+): the desk's selection as Titan
+/// shares it with visualisers over CITP, when the Host's experimental CITP
+/// link is on and Titan has connected. `fixtures` are user numbers.
+struct HostCitpSelection: Codable, Equatable {
+    let enabled: Bool
+    let linked: Bool
+    let peer: String?
+    let fixtures: [Int]
+    let problem: String?
+}
+
 struct HostErrorBody: Codable {
     var error: String?
     var message: String?

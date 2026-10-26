@@ -49,6 +49,7 @@ struct SettingsView: View {
                     .multilineTextAlignment(.trailing)
                     .frame(maxWidth: 260)
             }
+            Toggle("Through TitanDeck Host", isOn: $appState.titanViaHost)
             HStack {
                 Button("Test connection") { appState.checkConnection() }
                     .disabled(appState.titanHost.isEmpty || appState.isCheckingConnection)
@@ -63,7 +64,9 @@ struct SettingsView: View {
         } header: {
             Text("Connection")
         } footer: {
-            Text("WebAPI on port \(TitanEndpoints.defaultPort). Enable it in Titan's User Settings and allow TCP \(TitanEndpoints.defaultPort) through the PC firewall.")
+            Text(appState.titanViaHost
+                 ? "Titan's WebAPI through TitanDeck Host (0.9+, port \(TitanEndpoints.viaHostPort)), so the Host's Titan log shows every call and what Titan answered. Needs the Host running."
+                 : "WebAPI on port \(TitanEndpoints.defaultPort). Turn on Through TitanDeck Host to see every call in the Host's Titan log.")
         }
     }
 
@@ -318,6 +321,9 @@ private struct RemoteDesktopSection: View {
                     .frame(maxWidth: 300)
             }
             Toggle("Connect when TitanDeck opens", isOn: $appState.rdpSettings.connectOnLaunch)
+            Picker("Keyboard's Command key", selection: $appState.rdpSettings.commandKey) {
+                ForEach(RDPKeyboard.CommandKey.allCases, id: \.self) { Text($0.title).tag($0) }
+            }
             NavigationLink {
                 RDPQualityView(host: appState.host)
             } label: {
@@ -356,7 +362,7 @@ private struct RemoteDesktopSection: View {
         } header: {
             Text("Remote desktop")
         } footer: {
-            Text("The PC needs RDP enabled (RDP Wrapper on Windows Home) and TCP 3389 allowed through its firewall. Three-finger long press on the desktop opens Settings.")
+            Text("The PC needs RDP enabled (RDP Wrapper on Windows Home) and TCP 3389 allowed through its firewall. Three-finger long press on the desktop opens Settings. A Magic Keyboard types on the PC while the remote desktop is showing; iPadOS keeps a few shortcuts for itself (Cmd-Tab, Cmd-Space, Globe keys).")
         }
         .onAppear { password = appState.remotePassword }
         .onDisappear { appState.remotePassword = password }

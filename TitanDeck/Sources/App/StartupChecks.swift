@@ -136,12 +136,13 @@ final class StartupChecks: ObservableObject {
     private func checkDesk(_ app: AppState) async {
         guard app.deskLink.isEnabled else { return set("desk", .off, "Off in Settings") }
         for _ in 0 ..< 10 {
-            if app.deskLink.state == .linked { break }
+            if app.deskLink.isLinked { break }
             if case .unavailable = app.deskLink.state { break }
             try? await Task.sleep(nanoseconds: 300_000_000)
         }
         switch app.deskLink.state {
         case .linked: set("desk", .ok, "Following the desk's selection")
+        case .linkedViaCitp(let peer): set("desk", .ok, "Following the desk's selection over CITP\(peer.map { " (\($0))" } ?? "")")
         case .unavailable(let reason): set("desk", .warning, reason)
         case .connecting: set("desk", .warning, "Still looking for the desk's UI WebAPI.")
         case .off: set("desk", .off, "Off")

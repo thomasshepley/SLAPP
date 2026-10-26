@@ -92,4 +92,23 @@ final class TitanEndpointsTests: XCTestCase {
         XCTAssertEqual(TitanEndpoints.clearProgrammerURL(host: host)?.absoluteString,
                        "http://10.0.0.1:4430/titan/script/2/Playbacks/Editor/ClearAll?presets=false&allProgrammers=false")
     }
+
+    func testLatchingGoReleasesByTitanId() throws {
+        let url = try XCTUnwrap(TitanEndpoints.url(for: .releaseHandle(titanId: 1688), host: "10.0.0.5"))
+        XCTAssertEqual(url.path, "/titan/script/2/Playbacks/ReleasePlayback")
+        let query = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
+        XCTAssertEqual(query.first { $0.name == "handle_titanId" }?.value, "1688")
+        XCTAssertEqual(query.first { $0.name == "useMasterReleaseTime" }?.value, "true")
+        XCTAssertTrue(TitanAction.releaseHandle(titanId: 1688).isRemote)
+        XCTAssertEqual(TitanEndpoints.url(for: .releaseHandle(titanId: 1), host: "10.0.0.5", port: TitanEndpoints.viaHostPort)?.port, 4436)
+    }
+
+    func testTitansErrorTextIsKept() {
+        XCTAssertNil(TitanClient.errorText(status: 200, body: Data("ok".utf8)))
+        XCTAssertEqual(TitanClient.errorText(status: 500, body: Data("  Unknown function Command.AppendStringAndPreview \n".utf8)),
+                       "HTTP 500: Unknown function Command.AppendStringAndPreview")
+        XCTAssertEqual(TitanClient.errorText(status: 500, body: Data()), "HTTP 500")
+        XCTAssertEqual(TitanClient.errorText(status: 404, body: Data("<html><body>Not found</body></html>".utf8)), "HTTP 404")
+        XCTAssertEqual(TitanClient.errorText(status: 500, body: Data(String(repeating: "x", count: 1000).utf8))?.count, 310)
+    }
 }

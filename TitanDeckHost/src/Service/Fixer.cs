@@ -52,6 +52,9 @@ public sealed class Fixer
                 FixAction.AddDefenderExclusion => AddDefenderExclusion(),
                 FixAction.InstallRdpWrapper => await InstallRdpWrapper(),
                 FixAction.EnableDeskLink => EnableDeskLink(),
+                FixAction.EnableWebApiCompatibility => _deskLink.EnableWebApiCompatibility(),
+                FixAction.AllowBlankPasswordSignIn => SetBlankPasswordSignIn(allow: true),
+                FixAction.LimitBlankPasswordSignIn => SetBlankPasswordSignIn(allow: false),
                 _ => throw new InvalidOperationException("Nothing to do."),
             };
             return new FixResponse(true, message);
@@ -158,6 +161,23 @@ public sealed class Fixer
         return message;
     }
 
+    /// <summary>
+    /// Windows' "Accounts: Limit local account use of blank passwords to
+    /// console logon only". Off lets a no-password account sign in by remote
+    /// desktop (and over the network generally), so it's PC only and the
+    /// checklist offers Undo. Takes effect for the next sign-in.
+    /// </summary>
+    private string SetBlankPasswordSignIn(bool allow)
+    {
+        using var key = Registry.LocalMachine.OpenSubKey(WindowsProbe.LsaKey, writable: true)
+                        ?? throw new InvalidOperationException("Windows' security settings (Lsa) weren't found in the registry.");
+        key.SetValue("LimitBlankPasswordUse", allow ? 0 : 1, RegistryValueKind.DWord);
+        _log.LogInformation("LimitBlankPasswordUse set to {Value}", allow ? 0 : 1);
+        return allow
+            ? "Allowed: a Windows account with no password can now sign in by remote desktop. Leave the password blank in TitanDeck."
+            : "Back to Windows' default: accounts with no password sign in at the PC only.";
+    }
+
     private static string AddFirewallRules()
     {
         var rules = new (string Name, string Protocol, int Port)[]
@@ -168,6 +188,7 @@ public sealed class Fixer
             ("Host", "TCP", Protocol.NetworkPort),
             ("Host discovery", "UDP", 5353),
             ("Desk link", "TCP", TitanUiConfig.ProxyPort),
+            ("Titan WebAPI through the Host", "TCP", TitanUiConfig.PassThroughPort),
         };
         foreach (var rule in rules)
         {
