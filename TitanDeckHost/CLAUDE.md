@@ -77,6 +77,10 @@ TitanDeckHost/
   WebAPI as a separate service (`WebAPI\<version>\WebAPIService.dll.config`,
   same keys): it's its own user and never sees the desk's selection, so only
   `Titan.dll.config` / `Titan.exe.config` are read (`IsSettingsFileName`).
+- **Accounts with no password** (`RdpFacts.BlankPasswordsCanSignInRemotely`, checklist id
+  `blankpassword`, always Ok since the Host can't see whether the account has a password):
+  `AllowBlankPasswordSignIn` / `LimitBlankPasswordSignIn` set `LimitBlankPasswordUse` in
+  `HKLM\SYSTEM\CurrentControlSet\Control\Lsa` to 0 / 1. PC only: 0 weakens every network sign-in.
 - **Titan 19 WebAPI** (`WebApiServiceConfig`, checklist id `webapi19`): Titan 19.2's
   WebAPI service only takes the pre-19 calls TitanDeck uses with
   `webapi.pre19Compatibility` = true (19.2 release notes). `DeskLink` finds

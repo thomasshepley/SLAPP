@@ -20,6 +20,7 @@ final class RDPFailureTests: XCTestCase {
                                        blankPassword: true)
         XCTAssertTrue(text.contains("no password"))
         XCTAssertTrue(text.contains("automatic sign-in"))
+        XCTAssertTrue(text.contains("Accounts with no password > Allow"))
         // Nothing answering is still about the address, password or not.
         XCTAssertTrue(RDPFailure.describe("x", host: "10.0.0.5", port: 3389, answered: false, blankPassword: true)
             .hasPrefix("Nothing answered"))

@@ -28,6 +28,8 @@ public sealed class WindowsProbe
         _log = log;
     }
 
+    public const string LsaKey = @"SYSTEM\CurrentControlSet\Control\Lsa";
+
     public RdpFacts Gather()
     {
         var wrapperFolder = Try(RdpWrapperFolder, null);
@@ -54,6 +56,8 @@ public sealed class WindowsProbe
             DefenderExcludesRdpWrapper = Try<bool?>(() => DefenderExcludes(wrapperFolder ?? DefaultRdpWrapperFolder), null),
             RdpWrapperPackageAvailable = Try(() => RdpWrapperInstaller.FindPackage(_paths) is not null, false),
             TitanRunning = Try(TitanRunning, false),
+            // Missing means Windows' default, 1.
+            BlankPasswordsCanSignInRemotely = Try<bool?>(() => (ReadInt(LsaKey, "LimitBlankPasswordUse") ?? 1) == 0, null),
         };
     }
 

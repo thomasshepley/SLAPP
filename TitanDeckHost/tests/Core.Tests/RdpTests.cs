@@ -139,4 +139,17 @@ public class RdpTests
         Assert.Equal(FixAction.InstallRdpWrapper, ready.Fix);
         Assert.Equal("Install", ready.FixTitle);
     }
+
+    [Fact]
+    public void NoPasswordAccountsAreExplainedNeverWarned()
+    {
+        var limited = RdpDiagnosis.Run(new RdpFacts { BlankPasswordsCanSignInRemotely = false }).Single(c => c.Id == "blankpassword");
+        Assert.Equal(CheckState.Ok, limited.State);
+        Assert.Equal(FixAction.AllowBlankPasswordSignIn, limited.Fix);
+        Assert.Equal("Allow", limited.FixTitle);
+        var allowed = RdpDiagnosis.Run(new RdpFacts { BlankPasswordsCanSignInRemotely = true }).Single(c => c.Id == "blankpassword");
+        Assert.Equal(FixAction.LimitBlankPasswordSignIn, allowed.Fix);
+        Assert.Equal("Undo", allowed.FixTitle);
+        Assert.DoesNotContain(RdpDiagnosis.Run(new RdpFacts()), c => c.Id == "blankpassword");   // couldn't tell
+    }
 }

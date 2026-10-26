@@ -295,6 +295,9 @@ Before you start: on the Titan PC, back up Titan's .exe.config yourself too.
       each works, and each call shows in the Host's Titan log
       ("TitanDeck - WebAPI"). Anything red: Copy the log and send it over.
 - [ ] Playbacks page: GO fires the cue (key lights), GO again releases it.
+- [ ] No Windows password: TitanDeck Host > Accounts with no password >
+      Allow (on the PC). Leave the password blank in TitanDeck's Remote
+      desktop settings and Connect: Titan's screen appears.
 
 ## 5f. Desk selection over CITP (Titan 19: TitanDeck 0.21, Host 0.9, experimental)
 

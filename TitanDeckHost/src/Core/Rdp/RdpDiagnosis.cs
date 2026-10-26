@@ -26,6 +26,9 @@ public sealed record RdpFacts
     public bool? DefenderExcludesRdpWrapper { get; init; }
     public bool RdpWrapperPackageAvailable { get; init; }
     public bool TitanRunning { get; init; }
+    /// <summary>LimitBlankPasswordUse is 0: a Windows account with no password can sign in remotely
+    /// (Windows' default is 1, console only). Null = couldn't tell.</summary>
+    public bool? BlankPasswordsCanSignInRemotely { get; init; }
 
     public bool IsHome => Edition.StartsWith("Core", StringComparison.OrdinalIgnoreCase);
 }
@@ -48,6 +51,10 @@ public enum FixAction
     EnableDeskLink,
     /// <summary>Turns on Titan 19's WebAPI pre19Compatibility, so TitanDeck's calls work. PC only.</summary>
     EnableWebApiCompatibility,
+    /// <summary>Lets a Windows account with no password sign in remotely (LimitBlankPasswordUse = 0). PC only.</summary>
+    AllowBlankPasswordSignIn,
+    /// <summary>Back to Windows' default: no-password accounts sign in at the PC only. PC only.</summary>
+    LimitBlankPasswordSignIn,
 }
 
 public sealed record Check(string Id, string Title, CheckState State, string Detail, FixAction Fix = FixAction.None,
@@ -65,6 +72,8 @@ public sealed record Check(string Id, string Title, CheckState State, string Det
         FixAction.InstallRdpWrapper => "Install",
         FixAction.EnableDeskLink => "Turn on",
         FixAction.EnableWebApiCompatibility => "Turn on",
+        FixAction.AllowBlankPasswordSignIn => "Allow",
+        FixAction.LimitBlankPasswordSignIn => "Undo",
         _ => "",
     };
 }
@@ -158,6 +167,18 @@ public static class RdpDiagnosis
                 "The show network is set to Public, so Windows blocks most local connections.",
                 FixAction.SetNetworkPrivate));
         }
+
+        // Never a warning: it's only in the way for an account with no password, which the Host can't see.
+        if (f.BlankPasswordsCanSignInRemotely == true)
+            checks.Add(new Check("blankpassword", "Accounts with no password", CheckState.Ok,
+                "Allowed to sign in remotely, so remote desktop works for a Windows account with no password. " +
+                "Anything on the PC's networks can sign in to such an account too: Undo puts Windows' default back.",
+                FixAction.LimitBlankPasswordSignIn));
+        else if (f.BlankPasswordsCanSignInRemotely == false)
+            checks.Add(new Check("blankpassword", "Accounts with no password", CheckState.Ok,
+                "Windows' default: a Windows account with no password can only sign in at the PC, not by remote desktop. " +
+                "Fine if the account has a password. If it hasn't, Allow (then anything on the PC's networks can sign in to it).",
+                FixAction.AllowBlankPasswordSignIn));
 
         checks.Add(f.TitanRunning
             ? new Check("titan", "Titan", CheckState.Ok, "Running.")

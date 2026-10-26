@@ -18,8 +18,9 @@ enum RDPFailure {
         if blankPassword {
             // Windows' default "Limit local account use of blank passwords to console logon only".
             return "The PC answered at \(address), but Windows won't let an account with no password sign in remotely "
-                + "(\(detail)). Give the Windows account a password and type it in Settings > Remote desktop. "
-                + "To keep the PC starting straight into Titan, turn on automatic sign-in for that account."
+                + "(\(detail)). On the PC, TitanDeck Host (0.9) > Accounts with no password > Allow. "
+                + "Or give the Windows account a password, type it in Settings > Remote desktop, "
+                + "and turn on automatic sign-in so the PC still starts straight into Titan."
         }
         return "The PC answered at \(address), but the remote desktop didn't open (\(detail)). "
             + "Check the username and password in Settings > Remote desktop, and TitanDeck Host's Remote Desktop checks "

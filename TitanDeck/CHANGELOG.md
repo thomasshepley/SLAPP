@@ -13,7 +13,7 @@ with every change that goes to `main`.
 - **See what Titan says:** when Titan answers with an error, Settings > Recent calls now shows Titan's own message, not just "HTTP 500".
 - **Through TitanDeck Host** (Settings > Connection): sends TitanDeck's Titan calls through the Host (0.9), so the Host's Titan log shows every one, with Titan's answer. Needs the Host running.
 - **GO latches:** the Playbacks page's GO keys still say GO, but work like a latch button on the desk: press to fire the cue, press again to release it.
-- **Remote desktop with no Windows password:** says so plainly. Windows doesn't let an account with no password sign in remotely, so it explains giving the account a password (with automatic sign-in, so the PC still starts into Titan).
+- **Remote desktop with no Windows password:** says so plainly. Windows doesn't let an account with no password sign in remotely by default; TitanDeck Host 0.9 can allow it (Accounts with no password > Allow, on the PC), then leave the password blank.
 
 - **Follow the desk's selection on Titan 19:** Titan 19's WebAPI is a separate service that can't see what's selected on the desk, so TitanDeck Host 0.9 can now hear the selection over CITP instead, the way Capture does. Switch on "Follow selection via CITP" in TitanDeck Host (Test mode only) and, with the desk link on, the deck follows what you select in Layouts or on the desk. The deck's own WebAPI user selects the same fixtures, so its keys act on them.
 - Settings > Desk link and the loading screen say "Linked over CITP" when that's how it's linked.
