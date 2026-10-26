@@ -80,6 +80,11 @@ struct HostStatus: Codable, Equatable {
     var mode: String?
 }
 
+/// `POST /api/v1/desk/keys` (Host 0.10+): keypad keys to type on the PC for Titan.
+struct HostDeskKeysRequest: Codable, Equatable {
+    let keys: [String]
+}
+
 struct HostFixRequest: Codable, Equatable {
     var action: String
 }

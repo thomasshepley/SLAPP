@@ -87,6 +87,13 @@ TitanDeckHost/
   `WebAPIService.dll.config` alongside Titan's own settings files;
   `FixAction.EnableWebApiCompatibility` (PC only) backs it up, turns it on and
   restarts the Windows service whose ImagePath contains WebAPIService, if any.
+- **Desk keys** (`Core/Titan/DeskKeys`, `DeskKeyQueue`, paired `POST /api/v1/desk/keys`,
+  window long-polls `GET /local/desk/keys/wait`, `App/DeskTyper` SendInput with
+  scan codes): the deck's keypad typed on the PC for Titan, which captures the
+  keyboard. Only `DeskKeys.All` keys can be typed (never letters); refused when
+  the window isn't polling or Titan isn't running; keys older than 2 s dropped.
+  If Titan ever runs elevated, SendInput from the (non-elevated) window can't
+  reach it (UIPI): the iPad falls back to typing over RDP.
 - **Pass-through** (port 4436, `DeskLink.PassThrough`): `/titan/...` to
   127.0.0.1:4430, logged as "TitanDeck - WebAPI" with Titan's error text. It's
   the same API the iPad could call directly, so nothing is refused; Patch calls

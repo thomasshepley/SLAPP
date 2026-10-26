@@ -300,6 +300,13 @@ Before you start: on the Titan PC, back up Titan's .exe.config yourself too.
       Cmd-C / Cmd-V (as Ctrl-C / Ctrl-V). Switch Settings > Remote desktop >
       Keyboard's Command key to Windows key: Cmd opens the Start menu.
       Swipe home mid-keypress: nothing stays held on the PC.
+- [ ] Keypad types on the desk (0.22, Host 0.10, Host window open on the PC):
+      Settings > Desk link > Keypad types on the desk is on. Type 1 0 1
+      Enter on the deck: the desk's command line shows it and fixture 101 is
+      selected on the desk. @ 5 0 Enter: it goes to 50% on the desk. +10%
+      on the deck moves it too. Clear, Exit. Each key shows in the Host's
+      Titan log as Desk keys. Close the Host window (tray > Close): the
+      keypad still works over the remote desktop if that's connected.
 - [ ] On-screen keyboard (0.22): the keyboard button (top right) shows the
       iPad keyboard with Esc / Tab / Ctrl / Alt / arrows / Del above it. Type
       in a Titan legend box: letters, capitals, numbers, £ @ " #, Backspace,

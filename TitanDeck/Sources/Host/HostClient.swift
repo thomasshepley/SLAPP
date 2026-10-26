@@ -93,6 +93,17 @@ struct HostClient: Sendable {
         return try await send(request)
     }
 
+    /// Types keypad keys on the PC for Titan (Host 0.10+). Throws when the
+    /// Host can't (its window isn't open, Titan isn't running, an older Host).
+    func typeOnDesk(_ keys: [String]) async throws {
+        var request = try request("desk/keys", method: "POST")
+        request.timeoutInterval = 1.5
+        request.httpBody = try HostAPI.encoder.encode(HostDeskKeysRequest(keys: keys))
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        let (data, response) = try await transport { try await Self.session.data(for: request) }
+        try check(response, body: data)
+    }
+
     /// The desk's selection from the Host's CITP link (Host 0.9+).
     func citpSelection() async throws -> HostCitpSelection {
         var request = try request("citp/selection")

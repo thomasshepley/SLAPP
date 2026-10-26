@@ -163,7 +163,15 @@ final class AppState: ObservableObject {
                 : "Desk link down: deck commands go to Titan's WebAPI user (4430)")
         }
         deck.onSelectionChanged = { [weak self] fixtures in
-            self?.intensity.setFixture(fixtures.first)
+            guard let self else { return }
+            self.intensity.setFixture(fixtures.first)
+            // Typed on the desk: the deck's WebAPI user selects the same fixtures,
+            // so the intensity, flash and colour keys act on them. (Following the
+            // desk's selection does this itself.)
+            if self.keypadTypesOnDesk, !self.deskLink.isLinked {
+                let titan = self.titan
+                Task { await titan.selectFixtures(userNumbers: fixtures) }
+            }
         }
         intensity.onLevel = { [weak self] level in
             self?.deck.setLiveLevel(level)
@@ -219,25 +227,78 @@ final class AppState: ObservableObject {
 
     /// Fire an action at Titan. Pass the key index when it came from the deck
     /// so a failure can flash that key red.
+    /// The keypad types on the Titan PC (Settings > Desk link), so it's on the
+    /// desk's own command line and its selection shows on the desk.
+    var keypadTypesOnDesk: Bool {
+        UserDefaults.standard.object(forKey: SettingsKeys.keypadTypesOnDesk) as? Bool ?? true
+    }
+    /// Keys typed on the desk go one after another, in the order pressed.
+    private var deskTyping: Task<Void, Never>?
+
     func fire(_ action: TitanAction, fromKey keyIndex: Int? = nil) {
         let keypadLine = keypad.press(action)
         intensity.deckWillSend(action)
+        if keypadTypesOnDesk, let keys = DeskKeys.names(for: action) {
+            let previous = deskTyping
+            deskTyping = Task { [weak self] in
+                await previous?.value
+                guard let self else { return }
+                let result = await self.typeOnDesk(action, keys: keys)
+                self.finish(result, keypadLine: keypadLine, keyIndex: keyIndex)
+            }
+            return
+        }
         // Linked to the desk, commands act on the desk's own programmer.
         let client = deskLink.commandClient ?? titan
         Task {
             let result = await client.perform(action)
-            if let keypadLine { keypad.markAnswered(keypadLine, ok: result.ok) }
-            recentResults.insert(result, at: 0)
-            if recentResults.count > Self.maxResults {
-                recentResults.removeLast(recentResults.count - Self.maxResults)
-            }
-            if let keyIndex {
-                deck.report(success: result.ok, forKey: keyIndex)
-                if !result.ok {
-                    connectionLog.record(.key, .info, "Key \(keyIndex + 1) \(action.summary) failed: \(result.error ?? "HTTP \(result.statusCode ?? 0)")")
-                }
+            finish(result, keypadLine: keypadLine, keyIndex: keyIndex)
+        }
+    }
+
+    private func finish(_ result: TitanResult, keypadLine: UUID?, keyIndex: Int?) {
+        if let keypadLine { keypad.markAnswered(keypadLine, ok: result.ok) }
+        recentResults.insert(result, at: 0)
+        if recentResults.count > Self.maxResults {
+            recentResults.removeLast(recentResults.count - Self.maxResults)
+        }
+        if let keyIndex {
+            deck.report(success: result.ok, forKey: keyIndex)
+            if !result.ok {
+                connectionLog.record(.key, .info, "Key \(keyIndex + 1) \(result.action.summary) failed: \(result.error ?? "HTTP \(result.statusCode ?? 0)")")
             }
         }
+    }
+
+    /// Types a keypad key on the Titan PC: through TitanDeck Host if it can,
+    /// else through the remote desktop if it's connected, else as before
+    /// (the WebAPI's own command line). Clear also clears the deck's own
+    /// WebAPI programmer, where the intensity keys' changes are.
+    private func typeOnDesk(_ action: TitanAction, keys: [String]) async -> TitanResult {
+        let start = Date()
+        var typed = false
+        var why: String?
+        if let client = host.client {
+            do {
+                try await client.typeOnDesk(keys)
+                typed = true
+            } catch {
+                why = error.localizedDescription
+            }
+        }
+        if !typed, rdp.state == .connected {
+            for name in keys {
+                for stroke in DeskKeys.strokes(for: name) { rdp.send(stroke) }
+            }
+            typed = true
+        }
+        if action == .keypadClear { _ = await titan.perform(.keypadClear) }
+        guard typed else {
+            if let why { Log.titan("Keypad not typed on the desk (\(why)); using the WebAPI") }
+            return await titan.perform(action)
+        }
+        return TitanResult(action: action, ok: true, statusCode: nil,
+                          milliseconds: Int((Date().timeIntervalSince(start) * 1000).rounded()), error: nil, date: start)
     }
 
     func checkConnection() {

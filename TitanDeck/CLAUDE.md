@@ -198,6 +198,13 @@ support posts):
   `WebAPI\<version>\WebAPIService.dll.config`; otherwise HTTP 500 (playbacks
   still fire). TitanDeck Host 0.9 checks and fixes it. `TitanClient.errorText`
   keeps Titan's error body for Recent calls.
+- **Keypad types on the desk** (`DeskKeys`, `AppState.typeOnDesk`, on by default,
+  `deck.keypadTypesOnDesk`): keypad actions become Titan's PC keyboard shortcuts
+  (number keys, number-pad * = @, / = Thro, Enter, Esc = Exit, Alt+C = Clear),
+  typed by the Host window (`POST /api/v1/desk/keys`) or over RDP, so they reach
+  the desk's own command line. Typing is serial (one Task chain). The WebAPI user
+  mirrors the keypad selection so intensity keys still work. Keep the key names
+  in step with `TitanDeckHost/src/Core/Titan/DeskKeys.cs`.
 - **Through TitanDeck Host** (`AppState.titanViaHost`, `titan.viaHost`): the
   shared `TitanClient` uses port 4436 (`TitanEndpoints.viaHostPort`), the
   Host's logged pass-through to 127.0.0.1:4430. App Intents and the Watch still

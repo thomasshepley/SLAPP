@@ -6,7 +6,9 @@ until it's show-ready (1.0): MINOR for features, PATCH for fixes. Keep
 (ChangelogTests checks). Each version is published as a GitHub release
 `host-v<version>` with the installer attached.
 
-## 0.9.1 - 2026-10-26 - Quieter CITP
+## 0.10.0 - 2026-10-26 - The deck's keypad types on the desk, quieter CITP
+
+- **The deck's keypad on the desk's own command line:** Titan 19's WebAPI is a separate user, so a selection made from the deck never showed on the desk. With TitanDeck 0.22, the Host types the keypad on this PC as if on its keyboard, using Titan's own keyboard shortcuts (number keys, number-pad * for @, Enter, Esc for Exit, Alt+C for Clear), so the selection shows on the desk. The Host window does the typing (the service can't type on the desktop), so it needs to be open (it starts in the tray at login). Only those keypad keys can ever be typed, keys more than 2 seconds old are dropped rather than typed late, and nothing is typed unless Titan is running. Each one shows in the Titan log as "Desk keys".
 
 - **Fixed: "refused: already linked" filling the Titan log** several times a second. Titan opens more than one CITP connection and keeps retrying any that are refused, so the Host now keeps up to 8 links from Titan on this PC and follows the selection from whichever heard it last. Extra links only log selections and problems, a link coming up or going is logged at most every 30 seconds, and anything over 8 is one line a minute.
 - The desk link passes TitanDeck's Clear through under its Titan 19 name (Programmer/Editor/ClearAll).

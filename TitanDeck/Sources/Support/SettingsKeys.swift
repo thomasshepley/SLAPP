@@ -13,4 +13,7 @@ enum SettingsKeys {
     static let showMode = "app.showMode"
     /// Titan calls go through TitanDeck Host (port 4436), so its Titan log shows them.
     static let titanViaHost = "titan.viaHost"
+    /// The deck's keypad types on the Titan PC (through the Host or the
+    /// remote desktop), so it's on the desk's own command line. On by default.
+    static let keypadTypesOnDesk = "deck.keypadTypesOnDesk"
 }
