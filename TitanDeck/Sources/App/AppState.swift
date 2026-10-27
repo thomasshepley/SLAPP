@@ -197,6 +197,7 @@ final class AppState: ObservableObject {
         deck.onSelectionChanged = { [weak self] fixtures in
             guard let self else { return }
             self.intensity.setFixture(fixtures.first)
+            self.showTypedLevel()
             // Typed on the desk: the deck's WebAPI user selects the same fixtures,
             // so the intensity, flash and colour keys act on them. (Following the
             // desk's selection does this itself.)
@@ -285,6 +286,13 @@ final class AppState: ObservableObject {
 
     private func rememberTyped(_ level: Double, fixtures: [Int]? = nil) {
         typedLevel = (level, Date(), fixtures ?? deck.selectedFixtures)
+        showTypedLevel()
+    }
+
+    /// The flash key shows the level last typed for this selection when
+    /// there's no live reading.
+    private func showTypedLevel() {
+        deck.typedLevel = typedLevel.flatMap { Set($0.fixtures) == Set(deck.selectedFixtures) ? $0.level : nil }
     }
 
     func fire(_ action: TitanAction, fromKey keyIndex: Int? = nil) {

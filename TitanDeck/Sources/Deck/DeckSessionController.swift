@@ -162,10 +162,11 @@ final class DeckSessionController: ObservableObject {
             .map { DeckFlow.slateKey($0, state: slateState) }
             .map { key in
                 // The flash key carries the selected fixture's live level.
-                guard key.action == .flashSelection, liveLevel != nil || key.label == DeckFlow.flashLabel(level: nil)
+                let level = liveLevel ?? typedLevel
+                guard key.action == .flashSelection, level != nil || key.label == DeckFlow.flashLabel(level: nil)
                 else { return key }
                 var shown = key
-                shown.label = DeckFlow.flashLabel(level: liveLevel)
+                shown.label = DeckFlow.flashLabel(level: level)
                 return shown
             }
     }
@@ -184,6 +185,15 @@ final class DeckSessionController: ObservableObject {
             if case .selection(let home)? = flowOverlay { showPage(home) }
         case .none:
             break
+        }
+    }
+
+    /// The level the deck last typed for the selection (0...1), shown on the
+    /// flash key when there's no live reading.
+    var typedLevel: Double? {
+        didSet {
+            guard typedLevel != oldValue, liveLevel == nil, let page = currentPage else { return }
+            for key in page.keys where key.action == .flashSelection { draw(logicalIndex: key.index) }
         }
     }
 
