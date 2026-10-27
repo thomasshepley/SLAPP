@@ -329,8 +329,11 @@ final class AppState: ObservableObject {
             queueOnDesk(action, keys: keys, keypadLine: keypadLine, keyIndex: keyIndex)
             return
         }
-        // Linked to the desk, commands act on the desk's own programmer.
-        let client = deskLink.commandClient ?? titan
+        // Linked to the desk, commands act on the desk's own programmer. Cue
+        // times are the show's, so they're set through the WebAPI's own
+        // editor, leaving the operator's editor as it is.
+        var client = deskLink.commandClient ?? titan
+        if case .setCueFade = action { client = titan }
         Task {
             let result = await client.perform(action)
             finish(result, keypadLine: keypadLine, keyIndex: keyIndex)
@@ -400,7 +403,15 @@ final class AppState: ObservableObject {
         let start = Date()
         if action == .keypadClear {
             if !keys.isEmpty { _ = await typeKeys(keys) }
-            return await titan.clearSelection()
+            // The WebAPI's own selection too, where the deck's keys act when
+            // the desk isn't linked; the desk's own is through the desk link.
+            let own = await titan.clearSelection()
+            guard let desk = deskLink.commandClient else {
+                return TitanResult(action: action, ok: false, statusCode: own.statusCode, milliseconds: own.milliseconds,
+                                   error: "The desk link isn't up, so the desk's selection wasn't cleared (only TitanDeck's own)",
+                                   date: start)
+            }
+            return await desk.clearSelection()
         }
         let (typed, why) = await typeKeys(keys)
         guard typed else {

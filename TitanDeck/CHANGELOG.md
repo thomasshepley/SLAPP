@@ -7,6 +7,12 @@ the GitHub Actions run that built it. The top entry is shown in the app
 so add an entry - and bump `MARKETING_VERSION` in `project.yml` to match -
 with every change that goes to `main`.
 
+## 0.31.0 - 2026-10-27 - CLEAR on the desk, fade times through the editor
+
+- **Fixed: CLEAR on the deck doing nothing on the desk.** Since 0.29 it cleared the selection of the WebAPI's own separate user, not the desk's. It now goes through the desk link and uses Titan's own "clear the selection" call (the desk's first Clear), so the desk's selection clears and every programmer stays as it is. If the desk link isn't up, the key goes red and says so.
+- **Fade times, the way Titan's macros set them:** the playback is now loaded into Titan's editor before its cue 1 is selected, and the time is sent typed as a time (as macros write `time:3`). Without the editor step Titan had no cue to change, which is why every try failed or did nothing. Fades go through the WebAPI's own editor, so the editor on the desk isn't touched.
+- If a fade still fails, the message also says which playback Titan's editor had loaded.
+
 ## 0.30.0 - 2026-10-27 - Remote bar button fixed
 
 - **Fixed: the Remote screen's top-left button not opening the menu while connected.** With fixtures selected, the selection strip took the whole bar and squeezed Menu, the keyboard and the connection pill to nothing. They now always keep their room and the selection gets what's left. The bar also keeps clear of iPadOS's window controls in the top-left corner, and the whole button takes the tap.
