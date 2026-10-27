@@ -11,7 +11,8 @@ with every change that goes to `main`.
 
 - **Fixed: the desk's own Clear and wheels stopped working** after the deck's Clear. TitanDeck typed Alt+C (Titan's Clear shortcut) on the PC, and a held Alt is the likely culprit. The deck never types Alt (or any modifier) now: Clear backs out anything typed with Exit, then clears every programmer, the desk's included, through Titan's WebAPI (as the console's Clear all programmers). If the desk still acts oddly after updating, press and let go of Alt on the PC's keyboard once.
 - **+10% is your level plus 10:** with Keypad types on the desk, the +/- keys type "@ level Enter" on the desk, taking the selected fixtures' current level and adding (or taking off) the nudge: 40% and +10 is 50%. The current level comes from Titan's live output (sACN through TitanDeck Host), with Titan's patch now coming straight from Titan over CITP (Host 0.12), so no patch report is needed. A level set from the deck's keypad ("101 @ 50") counts too.
-- If TitanDeck doesn't know the level yet, the key flashes red and says why, instead of nudging the WebAPI's separate programmer (which is what gave odd levels).
+- **Hold for 0% on the desk:** it takes the selected fixtures to 0 and back to their level, typed on the desk, now TitanDeck knows the level from Titan's patch over CITP. Before, with no patch report, it quietly went to the WebAPI's separate programmer and nothing happened.
+- If TitanDeck doesn't know the level yet, the +/- keys and Hold for 0% flash red and say why, instead of going to the WebAPI's separate programmer (which is what gave odd levels or nothing at all).
 - Settings > Desk link: "Use Titan's patch" is on by default.
 
 ## 0.25.0 - 2026-10-26 - A clearer Wi-Fi channel map

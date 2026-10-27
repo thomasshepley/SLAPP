@@ -268,13 +268,22 @@ final class AppState: ObservableObject {
             queueOnDesk(action, keys: typing == nil ? [] : ["exit"], keypadLine: keypadLine, keyIndex: keyIndex)
             return
         }
-        if keypadTypesOnDesk, case .adjustIntensity = action, !deck.selectedFixtures.isEmpty, currentLevel == nil {
-            // The WebAPI's own programmer isn't the desk's: nudging there gave odd levels.
+        let needsLevel = switch action {
+        case .adjustIntensity, .dimmerFlash(down: true, seconds: _): true
+        default: false
+        }
+        if keypadTypesOnDesk, needsLevel, !deck.selectedFixtures.isEmpty, currentLevel == nil {
+            // The WebAPI's own programmer isn't the desk's: nudging or flashing
+            // there did nothing you could see, or gave odd levels.
             finish(TitanResult(action: action, ok: false, statusCode: nil, milliseconds: 0,
-                               error: "TitanDeck doesn't know the level yet: needs live levels (sACN through TitanDeck Host, with Titan's patch over CITP or a patch report), or set it once from the keypad (\"@ 50\")",
+                               error: "TitanDeck doesn't know the level yet, so it can't nudge it or put it back after Hold for 0%: needs live levels (sACN through TitanDeck Host, with Titan's patch over CITP or a patch report), or set it once from the keypad (\"@ 50\")",
                                date: Date()),
                    keypadLine: keypadLine, keyIndex: keyIndex)
             return
+        }
+        if keypadTypesOnDesk, case .dimmerFlash(down: false, seconds: _) = action, flashRestore == nil,
+           !deck.selectedFixtures.isEmpty {
+            return   // the press was refused (level unknown): nothing to put back
         }
         if keypadTypesOnDesk, let keys = DeskKeys.names(for: action) ?? deskLevelKeys(for: action) {
             queueOnDesk(action, keys: keys, keypadLine: keypadLine, keyIndex: keyIndex)
