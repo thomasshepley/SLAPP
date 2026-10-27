@@ -114,14 +114,14 @@ actor TitanClient {
         return finish(.keypadEnter, start, ok: run.ok, status: run.status, error: run.error, detail: "ran \"\(text)\"")
     }
 
-    /// Clear for the desk: every programmer (the desk's too, which the WebAPI
-    /// user can't otherwise reach) and the selection. Never typed as Alt+C.
-    func clearAllProgrammers() async -> TitanResult {
+    /// Clear for the desk: the selection only (Titan's global selection
+    /// context), leaving every programmer as it is, like the desk's own first
+    /// Clear. Never typed as Alt+C.
+    func clearSelection() async -> TitanResult {
         let start = Date()
-        let result = await get(TitanEndpoints.clearProgrammerURL(host: host, port: port, allProgrammers: true))
-        _ = await get(TitanEndpoints.clearSelectionURL(host: host, port: port))
+        let result = await get(TitanEndpoints.clearSelectionURL(host: host, port: port))
         return finish(.keypadClear, start, ok: result.ok, status: result.status, error: result.error,
-                      detail: "cleared every programmer, the desk's too")
+                      detail: "cleared the selection")
     }
 
     /// Clear: like the console - clears what's typed first, then the programmer.
