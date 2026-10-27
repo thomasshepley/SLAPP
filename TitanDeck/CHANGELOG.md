@@ -7,6 +7,10 @@ the GitHub Actions run that built it. The top entry is shown in the app
 so add an entry - and bump `MARKETING_VERSION` in `project.yml` to match -
 with every change that goes to `main`.
 
+## 0.30.0 - 2026-10-27 - Remote bar button fixed
+
+- **Fixed: the Remote screen's top-left button not opening the menu while connected.** With fixtures selected, the selection strip took the whole bar and squeezed Menu, the keyboard and the connection pill to nothing. They now always keep their room and the selection gets what's left. The bar also keeps clear of iPadOS's window controls in the top-left corner, and the whole button takes the tap.
+
 ## 0.29.0 - 2026-10-27 - Fade times in Titan 19's shape, Clear clears the selection
 
 - **Fade times on Titan 19:** Titan keeps a cue's time as {TimeType, TimeValue "00:00:00", TotalSeconds...}. TitanDeck now sends it back in exactly that shape with the new time ("00:00:02.5") and the kind of time left as it was. Before, it wrongly changed TimeType as well, and Titan's SetProperty route errors on cue times, so neither worked. A plain-text SetProperty is tried too, and each try is checked by reading the time back.
