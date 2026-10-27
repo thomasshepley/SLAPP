@@ -6,6 +6,11 @@ until it's show-ready (1.0): MINOR for features, PATCH for fixes. Keep
 (ChangelogTests checks). Each version is published as a GitHub release
 `host-v<version>` with the installer attached.
 
+## 0.12.0 - 2026-10-26 - Titan's patch over CITP, no more Alt+C
+
+- **Fixed: the desk's own Clear and wheels stopped working** after TitanDeck's Clear. The Host typed Alt+C (Titan's Clear shortcut), and a held Alt is the likely culprit. The Host now never types Alt or any other modifier: only number keys, number-pad @ / Thro / And / Not, Enter and Esc. TitanDeck 0.25 clears through Titan's WebAPI instead. When it starts, the Host also lets go of Alt, Ctrl and Shift in case an older version left one held down.
+- **Titan's patch straight from Titan:** with Follow selection via CITP on, the fixture list Titan shares (read only) is used as the patch, so live levels work without saving a patch report, and TitanDeck's +/- keys know each fixture's current level. When the patch changes on the desk, the Host asks for the list again. The newest of Titan's list, the Reports folder and a report picked by hand counts.
+
 ## 0.11.0 - 2026-10-26 - CITP in Show mode, Fake Titan retired, Clear on the desk
 
 - **Follow selection via CITP is a full feature now:** no longer experimental or Test-only. The card shows in Show mode too, switching to Show no longer turns it off, and it can be switched on in either mode. It still only ever announces itself, opens a show and asks for the fixture list: never a patch, selection or DMX.

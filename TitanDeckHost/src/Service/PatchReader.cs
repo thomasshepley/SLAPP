@@ -7,7 +7,9 @@ namespace TitanDeckHost.Service;
 /// The show's patch, from the newest patch report Titan wrote (Disk &gt;
 /// Reports, Fixtures, saved to this PC: Documents\Titan\Reports), matched to
 /// Titan's personalities for where each fixture's intensity is. Only reads
-/// files: nothing here touches Titan's Patch menu. A report picked in the Host window counts
+/// files: nothing here touches Titan's Patch menu. While Titan is linked over
+/// CITP, the fixture list it shares (read only) is the patch, with no report
+/// needed. Whichever is newest counts. A report picked in the Host window counts
 /// until a newer one turns up in the folder.
 /// </summary>
 public sealed class PatchReader(TitanLog log, HostModeStore mode, ILogger<PatchReader> logger)
@@ -18,7 +20,8 @@ public sealed class PatchReader(TitanLog log, HostModeStore mode, ILogger<PatchR
 
     private readonly object gate = new();
     private readonly PersonalityLibrary library = new(PersonalityFolders());
-    private (string Source, DateTimeOffset Written, IReadOnlyList<PatchFixture> Fixtures)? fromFile, imported;
+    private (string Source, DateTimeOffset Written, IReadOnlyList<PatchFixture> Fixtures)? fromFile, imported, fromCitp;
+    private string? citpSignature;
     private (string Path, DateTime Written)? lastFile;
     private DateTimeOffset lastScan = DateTimeOffset.MinValue;
     private DateTimeOffset? read;
@@ -68,6 +71,23 @@ public sealed class PatchReader(TitanLog log, HostModeStore mode, ILogger<PatchR
                 Logged("IMPORT", request.Name ?? "", imported.Value.Fixtures);
             }
             return DtoLocked();
+        }
+    }
+
+    /// <summary>Titan's patch from its CITP fixture list. Only logged when it changes.</summary>
+    public void UseCitp(IReadOnlyList<Core.Citp.CaexFixture> fixtures, string from)
+    {
+        var patch = Core.Citp.CitpPatch.From(fixtures);
+        var signature = string.Join(";", patch.Select(f => $"{f.UserNumber},{f.Model},{f.Mode},{f.Line}.{f.Address},{f.Channels}"));
+        lock (gate)
+        {
+            if (signature == citpSignature) return;
+            citpSignature = signature;
+            if (patch.Count == 0) return;
+            fromCitp = ($"Titan over CITP ({from})", DateTimeOffset.Now, library.Fill(patch));
+            read = DateTimeOffset.Now;
+            problem = null;
+            Logged("CITP", "Titan's fixture list", fromCitp.Value.Fixtures);
         }
     }
 
@@ -158,12 +178,12 @@ public sealed class PatchReader(TitanLog log, HostModeStore mode, ILogger<PatchR
 
     private PatchDto DtoLocked()
     {
-        // The newer of the folder's report and one picked by hand.
-        var current = imported is { } i && (fromFile is not { } f || i.Written >= f.Written) ? imported : fromFile;
+        // The newest of Titan's CITP list, the folder's report and one picked by hand.
+        var current = new[] { fromCitp, fromFile, imported }.Where(s => s is not null).MaxBy(s => s!.Value.Written);
         var fixtures = current?.Fixtures.Select(f =>
             new PatchFixtureDto(f.UserNumber, f.Model, f.Mode, f.Line, f.Address, f.Channels, f.Intensity, f.Legend)).ToList() ?? [];
         var problemText = problem ?? (current is null
-            ? "No patch report yet. On Titan: Disk > Reports, tick Fixtures, choose CSV, save to this PC."
+            ? "No patch yet. Switch on Follow selection via CITP (Titan shares its patch), or on Titan: Disk > Reports, tick Fixtures, choose CSV, save to this PC."
             : null);
         return new PatchDto(current?.Source, current?.Written, read, fixtures, library.Count, problemText,
             ReportFolders().Where(Directory.Exists).Concat(library.Folders).ToList());

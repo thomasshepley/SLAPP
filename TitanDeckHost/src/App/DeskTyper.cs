@@ -17,6 +17,7 @@ internal static class DeskTyper
 {
     public static async Task Run(CancellationToken stop)
     {
+        ReleaseModifiers();
         using var http = new HttpClient
         {
             BaseAddress = new Uri($"http://127.0.0.1:{Protocol.LocalPort}/local/"),
@@ -42,27 +43,26 @@ internal static class DeskTyper
         }
     }
 
-    /// One key, as a hand would press it: each event on its own with a short
-    /// gap, and Alt held down before (and let go after) its key. Sent all at
-    /// once, Titan saw the C of Alt+C (Clear) without the Alt.
+    /// One key, as a hand would press it: down and up as separate events with
+    /// a short gap. No modifiers are ever held (see <see cref="DeskKeys"/>).
     private static void Type(string name)
     {
         if (!DeskKeys.All.TryGetValue(name, out var key)) return;
-        const ushort alt = 0x38;
-        if (key.Alt)
-        {
-            Send(Scan(alt, extended: false, up: false));
-            Thread.Sleep(40);
-        }
         Send(Scan(key.Scancode, key.Extended, up: false));
         Thread.Sleep(20);
         Send(Scan(key.Scancode, key.Extended, up: true));
-        if (key.Alt)
-        {
-            Thread.Sleep(40);
-            Send(Scan(alt, extended: false, up: true));
-        }
         Thread.Sleep(15);
+    }
+
+    /// <summary>
+    /// Lets go of Alt, Ctrl and Shift (both sides) in case an older Host left
+    /// one down: 0.11 typed Alt+C for Clear, and afterwards none of the desk's
+    /// own buttons worked. A key-up for a key that isn't down does nothing.
+    /// </summary>
+    public static void ReleaseModifiers()
+    {
+        (ushort Scan, bool Extended)[] modifiers = [(0x38, false), (0x38, true), (0x1D, false), (0x1D, true), (0x2A, false), (0x36, false)];
+        foreach (var (scan, extended) in modifiers) Send(Scan(scan, extended, up: true));
     }
 
     private static void Send(Input input) => SendInput(1, [input], Marshal.SizeOf<Input>());
