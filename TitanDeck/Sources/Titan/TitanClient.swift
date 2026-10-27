@@ -168,17 +168,22 @@ actor TitanClient {
             return abs(read - seconds) < 0.05
         }
 
+        // Titan's own shape first (Titan 19 answers SetProperty.Float on a cue
+        // time with "Error executing an Action Script"), then the URL setters.
         var attempts: [(name: String, request: URLRequest)] = []
-        if let url = TitanEndpoints.setPropertyFloatURL(id: TitanEndpoints.cueFadePropertyID(fadeOut: fadeOut),
-                                                        value: seconds, host: host, port: port) {
-            attempts.append(("SetProperty.Float", URLRequest(url: url)))
-        }
         for body in TitanTimeSpan.bodies(seconds: seconds, current: current) {
             var request = URLRequest(url: postURL)
             request.httpMethod = "POST"
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
             request.httpBody = body
             attempts.append((String(decoding: body, as: UTF8.self), request))
+        }
+        let property = TitanEndpoints.cueFadePropertyID(fadeOut: fadeOut)
+        if let url = TitanEndpoints.setPropertyURL(id: property, value: TitanTimeSpan.shortTimeText(seconds), host: host, port: port) {
+            attempts.append(("SetProperty \(TitanTimeSpan.shortTimeText(seconds))", URLRequest(url: url)))
+        }
+        if let url = TitanEndpoints.setPropertyFloatURL(id: property, value: seconds, host: host, port: port) {
+            attempts.append(("SetProperty.Float", URLRequest(url: url)))
         }
 
         var errors: [String] = []
@@ -196,7 +201,9 @@ actor TitanClient {
                 errors.append("\(attempt.name): \(error.localizedDescription)")
             }
         }
-        let error = (errors.first ?? "Titan didn't take the time")
+        // Every try and Titan's answer, short, so one screenshot says it all.
+        let tried = errors.map { $0.count > 160 ? String($0.prefix(160)) + "..." : $0 }
+        let error = (tried.isEmpty ? "Titan didn't take the time" : "Tried " + tried.joined(separator: " | "))
             + (currentText.map { ". Titan reads the time as \($0)" } ?? ". Titan didn't say how it reads the time")
         Log.titan("Cue fade not set. Tried: " + errors.joined(separator: " | "))
         return finish(action, start, ok: false, status: lastStatus, error: error)
