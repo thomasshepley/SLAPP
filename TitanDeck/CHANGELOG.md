@@ -7,6 +7,11 @@ the GitHub Actions run that built it. The top entry is shown in the app
 so add an entry - and bump `MARKETING_VERSION` in `project.yml` to match -
 with every change that goes to `main`.
 
+## 0.28.0 - 2026-10-27 - Remote bar tidy, level on the flash key
+
+- **Remote screen:** the button that folds the top bar's controls away is now at the very left, where TEST was. The controls open out from it, and TEST and the selection follow.
+- **The flash key shows the level:** as well as Titan's live level (from sACN, with the patch from Titan over CITP), it now shows the level TitanDeck last typed on the desk for the selection ("@ 50", a nudge), so it isn't blank before the live reading arrives.
+
 ## 0.27.0 - 2026-10-27 - Slate Book
 
 - **Slate Book: the look per slate and take, logged for you.** With TitanDeck Host 0.13, the Host keeps a record of the whole of Titan's output for every slate and take, UK style (a slate per setup, letters for pickups, no I or O), with Day/Night, FX and the time.

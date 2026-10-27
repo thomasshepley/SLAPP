@@ -39,23 +39,24 @@ struct RemoteView: View {
             .overlay(alignment: .top) {
                 // Empty space in the bar passes touches through to the desktop.
                 HStack(spacing: 10) {
-                    ModeBadge()
-                        .allowsHitTesting(false)
-                    SelectionStrip(deck: appState.deck)
-                        .layoutPriority(1)
-                    Spacer(minLength: 0)
+                    // The fold button sits at the very left, the controls opening out from it.
+                    foldButton
                     if !controlsFolded {
-                        if session.state == .connected {
-                            keyboardButton
-                            menuButton
-                        }
                         ConnectionPill(heartbeat: appState.heartbeat, session: session,
                                        network: appState.network, localNetwork: appState.localNetwork,
                                        titanHost: appState.titanHost,
                                        remoteHost: appState.rdpSettings.effectiveHost(titanHost: appState.titanHost))
                             .transition(.opacity)
+                        if session.state == .connected {
+                            menuButton
+                            keyboardButton
+                        }
                     }
-                    foldButton
+                    ModeBadge()
+                        .allowsHitTesting(false)
+                    SelectionStrip(deck: appState.deck)
+                        .layoutPriority(1)
+                    Spacer(minLength: 0)
                 }
                 .padding(.top, 12)
                 .padding(.horizontal, 16)
@@ -137,7 +138,7 @@ struct RemoteView: View {
                 if controlsFolded {
                     StatusDot(heartbeat: appState.heartbeat, session: session)
                 }
-                Image(systemName: controlsFolded ? "chevron.left" : "chevron.right")
+                Image(systemName: controlsFolded ? "chevron.right" : "chevron.left")
             }
             .font(.caption.weight(.semibold))
             .padding(.horizontal, 12)
