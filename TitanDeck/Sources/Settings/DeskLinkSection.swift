@@ -45,8 +45,8 @@ struct DeskLinkSection: View {
             if intensity.isEnabled {
                 Toggle(isOn: $intensity.usesPatchReport) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Use Titan's patch report")
-                        Text("Needs TitanDeck Host 0.6. On Titan: Disk > Reports > Fixtures, CSV, saved to the PC.")
+                        Text("Use Titan's patch")
+                        Text("From Titan over CITP (TitanDeck Host 0.12, Follow selection via CITP on), or a patch report saved on the PC.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }

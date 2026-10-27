@@ -42,7 +42,8 @@ final class IntensityReader: ObservableObject {
     private enum Keys {
         static let enabled = "intensity.live.enabled"
         static let patch = "intensity.patchLookup"
-        static let patchReport = "intensity.patchReport"
+        /// v2: on by default, now Titan's patch also comes over CITP (Host 0.12).
+        static let patchReport = "intensity.patch.v2"
         static let learned = "intensity.learned"
     }
 
@@ -71,7 +72,7 @@ final class IntensityReader: ObservableObject {
         self.defaults = defaults
         isEnabled = defaults.object(forKey: Keys.enabled) as? Bool ?? true
         usesPatchLookup = defaults.object(forKey: Keys.patch) as? Bool ?? false
-        usesPatchReport = defaults.object(forKey: Keys.patchReport) as? Bool ?? false
+        usesPatchReport = defaults.object(forKey: Keys.patchReport) as? Bool ?? true
         learned = (defaults.data(forKey: Keys.learned)).flatMap {
             try? JSONDecoder().decode([Int: [DmxSlot]].self, from: $0)
         } ?? [:]

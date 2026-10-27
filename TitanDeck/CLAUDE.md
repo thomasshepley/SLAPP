@@ -156,7 +156,7 @@ parameter is named `srcHandle`). Levels are `level_level=` (absolute, 0-1).
 | Macro | `Macros/Run?macroId=<id string>` |
 | Keypad digit / @ / Thru | `Command/AppendStringAndPreview?text=7` (or `@`, or `>` for Thru: unconfirmed, desk typing is the main path) |
 | Keypad Enter | GET `/titan/get/2/Command/CommandLineText`, then `Command/RunCommand?command=<text>`, then `Command/StartNewCommand` |
-| Keypad Clear | `Command/StartNewCommand` if something's typed, else `Programmer/Editor/ClearAll?presets=false&allProgrammers=false` (Titan 19.2 has Programmer.Editor and the old Playbacks.Editor names; prefer Programmer.Editor where both exist) |
+| Keypad Clear | `Command/StartNewCommand` if something's typed, else `Programmer/Editor/ClearAll?presets=false&allProgrammers=false` (Titan 19.2 has Programmer.Editor and the old Playbacks.Editor names; prefer Programmer.Editor where both exist). With Keypad types on the desk: `allProgrammers=true` then `Selection/Context/Global/Clear` |
 | Keypad Exit | `Menu/ExitRootOrLatched` |
 | Intensity +/- | `Programmer/Editor/Fixtures/IncrementDimmer?value=5&timeDelta=1&shiftEnabled=false` (value assumed to be percent - unconfirmed) |
 | Version check | `GET /titan/get/System/SoftwareVersion` |
@@ -204,7 +204,14 @@ support posts):
   typed by the Host window (`POST /api/v1/desk/keys`) or over RDP, so they reach
   the desk's own command line. On the default keypad, Clear shows as THRU
   (`.keypadThro`, `DeckFlow.keypadKey`) while nothing is selected;
-  `KeypadBuffer` turns "1>10 Enter" into a selection of 1-10. Typing is serial (one Task chain). The WebAPI user
+  `KeypadBuffer` turns "1>10 Enter" into a selection of 1-10. **Never Alt or
+  any modifier:** Alt+C for Clear left the desk's own Clear and wheels dead
+  (0.24); Clear types Exit if something's typed, then
+  `TitanClient.clearAllProgrammers` (ClearAll allProgrammers=true + selection
+  clear). +/- nudges are current level + nudge (`DeskKeys.nudged`), from
+  `currentLevel` (typed in the last 2 s, else sACN live level, else the level
+  last typed for the same selection); unknown = refused, never the WebAPI
+  wheel. Typing is serial (one Task chain). The WebAPI user
   mirrors the keypad selection so intensity keys still work. Keep the key names
   in step with `TitanDeckHost/src/Core/Titan/DeskKeys.cs`.
 - **Desk-typed levels** (`AppState.deskLevelKeys`): with the keypad typing on

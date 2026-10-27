@@ -37,16 +37,27 @@ public sealed class CitpSession
     private readonly Action<CitpPacket> _send;
     private readonly Action<CitpLogLine> _log;
     private readonly Dictionary<uint, int> _userNumbers = [];
+    private readonly Dictionary<uint, CaexFixture> _fixtures = [];
+    private readonly Action<IReadOnlyList<CaexFixture>>? _patched;
     private List<int> _selection = [];
     private ushort _nextRequest = 1;
     private bool _askedForFixtures;
+    private DateTimeOffset _askedAt = DateTimeOffset.MinValue;
+    /// <summary>After a patch change, the soonest the whole list is asked for again.</summary>
+    private static readonly TimeSpan AskAgainAfter = TimeSpan.FromSeconds(5);
 
-    public CitpSession(string ourName, Action<CitpPacket> send, Action<CitpLogLine> log)
+    /// <param name="patched">Titan's whole patch, each time a fixture list changes it.</param>
+    public CitpSession(string ourName, Action<CitpPacket> send, Action<CitpLogLine> log,
+                       Action<IReadOnlyList<CaexFixture>>? patched = null)
     {
         _ourName = ourName;
         _send = send;
         _log = log;
+        _patched = patched;
     }
+
+    /// <summary>Every fixture Titan has listed, patched or not.</summary>
+    public IReadOnlyList<CaexFixture> Fixtures => _fixtures.Values.ToList();
 
     public string? PeerName { get; private set; }
     public string? PeerShow { get; private set; }
@@ -139,9 +150,18 @@ public sealed class CitpSession
         }
         if (CitpMessages.ReadFixtureList(packet) is { } list)
         {
-            if (list.Type == 0) _userNumbers.Clear();   // the whole patch; 1 = added, 2 = exchanged
-            foreach (var fixture in list.Fixtures) _userNumbers[fixture.Identifier] = fixture.Channel;
+            if (list.Type == 0)   // the whole patch; 1 = added, 2 = exchanged
+            {
+                _userNumbers.Clear();
+                _fixtures.Clear();
+            }
+            foreach (var fixture in list.Fixtures)
+            {
+                _userNumbers[fixture.Identifier] = fixture.Channel;
+                _fixtures[fixture.Identifier] = fixture;
+            }
             HaveFixtureList = true;
+            _patched?.Invoke(Fixtures);
             Problem = null;
             Log(false, what, $"{list.Fixtures.Count} fixture{(list.Fixtures.Count == 1 ? "" : "s")} ({ListType(list.Type)}), {FixtureCount} known"
                 + Sample(list.Fixtures));
@@ -154,7 +174,12 @@ public sealed class CitpSession
         }
         if (CitpMessages.ReadFixtureRemove(packet) is { } removed)
         {
-            foreach (var id in removed) _userNumbers.Remove(id);
+            foreach (var id in removed)
+            {
+                _userNumbers.Remove(id);
+                _fixtures.Remove(id);
+            }
+            _patched?.Invoke(Fixtures);
             Log(false, what, $"{removed.Count} removed from Titan's patch (only noted, never answered)");
             return;
         }
@@ -165,6 +190,15 @@ public sealed class CitpSession
         }
         if (PatchNews.Contains(code))
         {
+            // A repatch on the desk: ask for the whole list again (read only), at most every few seconds.
+            if (code is CitpMessages.FixtureModify or CitpMessages.FixtureModifyV2
+                && DateTimeOffset.UtcNow - _askedAt > AskAgainAfter)
+            {
+                Log(false, what, "patch changed on Titan: asking for the fixture list again (never answered)");
+                _askedForFixtures = false;
+                AskForFixtures();
+                return;
+            }
             Log(false, what, "only noted, never answered");
             return;
         }
@@ -201,6 +235,7 @@ public sealed class CitpSession
     {
         if (_askedForFixtures) return;
         _askedForFixtures = true;
+        _askedAt = DateTimeOffset.UtcNow;
         Send(CitpMessages.CaexFixtureListRequest(_nextRequest++), "for the fixture numbers (read only)");
     }
 

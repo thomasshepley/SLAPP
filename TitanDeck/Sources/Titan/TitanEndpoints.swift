@@ -204,10 +204,12 @@ enum TitanEndpoints {
     }
 
     /// Clears the programmer (this one only) and the selection.
-    static func clearProgrammerURL(host: String, port: Int = defaultPort) -> URL? {
+    /// `allProgrammers`: every user's programmer, the desk's own included (Titan
+    /// 19's WebAPI is a separate user), as the console's Clear all programmers.
+    static func clearProgrammerURL(host: String, port: Int = defaultPort, allProgrammers: Bool = false) -> URL? {
         // Programmer.Editor: Titan 19.2 only answers the old Playbacks.Editor name
         // with pre19Compatibility on; the Programmer one is in both.
-        script(host, port, "Programmer/Editor/ClearAll", [("presets", "false"), ("allProgrammers", "false")])
+        script(host, port, "Programmer/Editor/ClearAll", [("presets", "false"), ("allProgrammers", allProgrammers ? "true" : "false")])
     }
 
     /// Any number, without trailing zeros ("5", "-2.5").
