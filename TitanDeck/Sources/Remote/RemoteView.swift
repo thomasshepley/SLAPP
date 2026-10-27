@@ -36,24 +36,32 @@ struct RemoteView: View {
                         .allowsHitTesting(false)   // display only; touches go to the desktop
                 }
             }
+            .ignoresSafeArea()
+            // The bar keeps to the safe area (unlike the desktop), so it stays
+            // clear of iPadOS's window controls in the top-left corner.
             .overlay(alignment: .top) {
                 // Empty space in the bar passes touches through to the desktop.
                 HStack(spacing: 10) {
                     // The fold button sits at the very left, the controls opening out from it.
-                    foldButton
-                    if !controlsFolded {
-                        ConnectionPill(heartbeat: appState.heartbeat, session: session,
-                                       network: appState.network, localNetwork: appState.localNetwork,
-                                       titanHost: appState.titanHost,
-                                       remoteHost: appState.rdpSettings.effectiveHost(titanHost: appState.titanHost))
-                            .transition(.opacity)
-                        if session.state == .connected {
-                            menuButton
-                            keyboardButton
+                    // They're never squeezed: the selection gets what's left.
+                    HStack(spacing: 10) {
+                        foldButton
+                        if !controlsFolded {
+                            ConnectionPill(heartbeat: appState.heartbeat, session: session,
+                                           network: appState.network, localNetwork: appState.localNetwork,
+                                           titanHost: appState.titanHost,
+                                           remoteHost: appState.rdpSettings.effectiveHost(titanHost: appState.titanHost))
+                                .transition(.opacity)
+                            if session.state == .connected {
+                                menuButton
+                                keyboardButton
+                            }
                         }
+                        ModeBadge()
+                            .allowsHitTesting(false)
                     }
-                    ModeBadge()
-                        .allowsHitTesting(false)
+                    .fixedSize()
+                    .layoutPriority(2)
                     SelectionStrip(deck: appState.deck)
                         .layoutPriority(1)
                     Spacer(minLength: 0)
@@ -61,7 +69,6 @@ struct RemoteView: View {
                 .padding(.top, 12)
                 .padding(.horizontal, 16)
             }
-            .ignoresSafeArea()
             .onAppear {
                 appState.remoteViewSize = geometry.size
                 appState.autoConnectRemote()
@@ -143,6 +150,7 @@ struct RemoteView: View {
             .font(.caption.weight(.semibold))
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
+            .contentShape(.capsule)   // the whole capsule takes the tap, not just the chevron
         }
         .buttonStyle(.plain)
         .glassEffect(.regular.interactive(), in: .capsule)
