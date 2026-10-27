@@ -148,9 +148,32 @@ final class TitanEndpointsTests: XCTestCase {
 
     func testTitansShapeComesFirstThenTheLikelyOnes() {
         let bodies = TitanTimeSpan.bodies(seconds: 0.3, current: Data(#"{"Seconds":2}"#.utf8)).map(text)
-        XCTAssertEqual(bodies, [#"{"Seconds":0.3}"#, #""00:00:00.3000000""#, "0.3"])
+        XCTAssertEqual(bodies, [#"{"Seconds":0.3}"#, #""00:00:00.3""#, #""00:00:00.3000000""#, "0.3"])
         XCTAssertEqual(TitanTimeSpan.bodies(seconds: 1, current: nil).map(text), [#""00:00:01""#, "1"],
                        "never a guessed object: Titan could take it as 0 s")
+    }
+
+    /// Titan 19.2's answer for a cue's fade time (from the desk).
+    private let titan19Time = #"{"TimeType":0,"TimeValue":"00:00:00","TotalSeconds":0,"TimeOrDefault":"00:00:00","HasValue":true}"#
+
+    func testTitan19sTimeKeepsItsKindAndFlags() {
+        let bodies = TitanTimeSpan.bodies(seconds: 2.5, current: Data(titan19Time.utf8)).map(text)
+        XCTAssertEqual(bodies.first,
+                       #"{"HasValue":true,"TimeOrDefault":"00:00:02.5","TimeType":0,"TimeValue":"00:00:02.5","TotalSeconds":2.5}"#,
+                       "TimeType is the kind of time: never set to the seconds")
+        XCTAssertEqual(bodies[1],
+                       #"{"HasValue":true,"TimeOrDefault":"00:00:02.5000000","TimeType":0,"TimeValue":"00:00:02.5000000","TotalSeconds":2.5}"#)
+        XCTAssertEqual(Array(bodies.dropFirst(2)), [#""00:00:02.5""#, #""00:00:02.5000000""#, "2.5"])
+        XCTAssertEqual(TitanTimeSpan.seconds(from: Data(titan19Time.utf8)), 0)
+        let set = #"{"TimeType":1,"TimeValue":"00:00:03","TotalSeconds":3,"TimeOrDefault":"00:00:03","HasValue":true}"#
+        XCTAssertEqual(TitanTimeSpan.seconds(from: Data(set.utf8)), 3, "read from the times, not TimeType")
+    }
+
+    func testShortTimesTrimTheFraction() {
+        XCTAssertEqual(TitanTimeSpan.shortTimeText(2), "00:00:02")
+        XCTAssertEqual(TitanTimeSpan.shortTimeText(2.5), "00:00:02.5")
+        XCTAssertEqual(TitanTimeSpan.shortTimeText(0.25), "00:00:00.25")
+        XCTAssertEqual(TitanTimeSpan.shortTimeText(90.3), "00:01:30.3")
     }
 
     func testTimesAreReadBack() {

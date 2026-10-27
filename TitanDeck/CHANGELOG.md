@@ -7,6 +7,12 @@ the GitHub Actions run that built it. The top entry is shown in the app
 so add an entry - and bump `MARKETING_VERSION` in `project.yml` to match -
 with every change that goes to `main`.
 
+## 0.29.0 - 2026-10-27 - Fade times in Titan 19's shape, Clear clears the selection
+
+- **Fade times on Titan 19:** Titan keeps a cue's time as {TimeType, TimeValue "00:00:00", TotalSeconds...}. TitanDeck now sends it back in exactly that shape with the new time ("00:00:02.5") and the kind of time left as it was. Before, it wrongly changed TimeType as well, and Titan's SetProperty route errors on cue times, so neither worked. A plain-text SetProperty is tried too, and each try is checked by reading the time back.
+- **CLEAR on the deck clears the selection only** (as the desk's first Clear does), and no longer clears every programmer as it has since 0.26. Anything typed on the desk is still backed out first.
+- If a fade still can't be set, the message lists every way TitanDeck tried and what Titan said to each, so one screenshot shows the whole story.
+
 ## 0.28.0 - 2026-10-27 - Remote bar tidy, level on the flash key
 
 - **Remote screen:** the button that folds the top bar's controls away is now at the very left, where TEST was. The controls open out from it, and TEST and the selection follow.

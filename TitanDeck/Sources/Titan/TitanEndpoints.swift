@@ -112,6 +112,12 @@ enum TitanEndpoints {
         script(host, port, "ActionScript/SetProperty/Float", [("id", id), ("value", format(number: value))])
     }
 
+    /// Sets a Titan property from text, Titan converting it to the property's
+    /// type (`ActionScript.SetProperty`, as macros set a legend).
+    static func setPropertyURL(id: String, value: String, host: String, port: Int = defaultPort) -> URL? {
+        script(host, port, "ActionScript/SetProperty", [("id", id), ("value", value)])
+    }
+
     /// Titan's property id for the selected cue's fade in or out time.
     static func cueFadePropertyID(fadeOut: Bool) -> String {
         "Playbacks.Editor.Times.\(fadeOut ? "CueFadeOutTime" : "CueFadeInTime")"
@@ -275,10 +281,18 @@ enum TitanEndpoints {
 /// likely shapes one after another. Pure, so it's tested. (In this file
 /// because the Watch target compiles a fixed list of files.)
 enum TitanTimeSpan {
-    /// Bodies to try in turn, best first.
+    /// Bodies to try in turn, best first: Titan's own shape (Titan 19 reads a
+    /// cue time as {"TimeType":0,"TimeValue":"00:00:00","TotalSeconds":0,
+    /// "TimeOrDefault":"00:00:00","HasValue":true}) with the time written
+    /// short ("00:00:02.5") and then as .NET does ("00:00:02.5000000"), then
+    /// those as plain strings, then a number.
     static func bodies(seconds: Double, current: Data?) -> [Data] {
         var bodies: [Data] = []
-        if let current, let shaped = shaped(seconds: seconds, like: current) { bodies.append(shaped) }
+        if let current {
+            if let shaped = shaped(seconds: seconds, like: current, text: shortTimeText) { bodies.append(shaped) }
+            if let shaped = shaped(seconds: seconds, like: current) { bodies.append(shaped) }
+        }
+        bodies.append(Data("\"\(shortTimeText(seconds))\"".utf8))
         bodies.append(Data("\"\(timeSpanText(seconds))\"".utf8))                         // .NET TimeSpan
         bodies.append(Data(TitanEndpoints.format(number: seconds).utf8))                  // older Titans
         // Never a guessed object like {"Seconds": n}: Titan ignores names it
@@ -301,6 +315,7 @@ enum TitanTimeSpan {
         let name = key?.lowercased() ?? ""
         switch value {
         case .number(let number):
+            if name.contains("type") { return nil }   // TimeType is a kind of time, not a time
             if name.contains("tick") { return number / 10_000_000 }
             if name.contains("milli") { return number / 1000 }
             if key == nil || name.contains("second") || name.contains("time") || name.contains("duration") || name == "value" {
@@ -325,6 +340,16 @@ enum TitanTimeSpan {
         }
     }
 
+    /// "00:00:02.5": hours, minutes, seconds and only the fraction there is,
+    /// like Titan's own "00:00:00".
+    static func shortTimeText(_ seconds: Double) -> String {
+        let full = timeSpanText(seconds)
+        guard full.contains(".") else { return full }
+        var trimmed = full
+        while trimmed.hasSuffix("0") { trimmed.removeLast() }
+        return trimmed.hasSuffix(".") ? String(trimmed.dropLast()) : trimmed
+    }
+
     /// "00:00:02.5000000", as .NET writes a TimeSpan.
     static func timeSpanText(_ seconds: Double) -> String {
         let ticks = Int64((max(seconds, 0) * 10_000_000).rounded())
@@ -335,24 +360,27 @@ enum TitanTimeSpan {
         return fraction == 0 ? base : base + String(format: ".%07lld", fraction)
     }
 
-    /// `seconds` written like `current`: the same JSON with its time fields replaced.
-    static func shaped(seconds: Double, like current: Data) -> Data? {
+    /// `seconds` written like `current`: the same JSON with its time fields
+    /// replaced (times as `text` writes them), its kind and flags left alone.
+    static func shaped(seconds: Double, like current: Data, text: (Double) -> String = timeSpanText) -> Data? {
         guard let value = try? JSONDecoder().decode(JSONValue.self, from: current),
-              let replaced = replace(value, seconds: seconds, key: nil) else { return nil }
+              let replaced = replace(value, seconds: seconds, key: nil, text: text) else { return nil }
         let encoder = JSONEncoder()
         encoder.outputFormatting = .sortedKeys
         return try? encoder.encode(replaced)
     }
 
     /// The value with every time in it set to `seconds`, or nil if there's none.
-    private static func replace(_ value: JSONValue, seconds: Double, key: String?) -> JSONValue? {
+    private static func replace(_ value: JSONValue, seconds: Double, key: String?,
+                                text write: (Double) -> String) -> JSONValue? {
         let name = key?.lowercased() ?? ""
         switch value {
         case .string(let text):
-            if isTimeSpan(text) { return .string(timeSpanText(seconds)) }
+            if isTimeSpan(text) { return .string(write(seconds)) }
             if Double(text) != nil { return .string(TitanEndpoints.format(number: seconds)) }
             return nil
         case .number:
+            if name.contains("type") { return nil }   // TimeType: which kind of time, never the time
             if name.contains("tick") { return .number((seconds * 10_000_000).rounded()) }
             if name.contains("milli") { return .number(seconds * 1000) }
             if key == nil || name.contains("second") || name.contains("time") || name.contains("duration") || name == "value" {
@@ -363,7 +391,7 @@ enum TitanTimeSpan {
             var changed = false
             var out = fields
             for (field, inner) in fields {
-                if let new = replace(inner, seconds: seconds, key: field) {
+                if let new = replace(inner, seconds: seconds, key: field, text: write) {
                     out[field] = new
                     changed = true
                 }

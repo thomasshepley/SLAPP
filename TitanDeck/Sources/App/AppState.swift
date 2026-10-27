@@ -304,7 +304,7 @@ final class AppState: ObservableObject {
             rememberTyped(level / 100, fixtures: DeskKeys.typedFixtures(typing) ?? deck.selectedFixtures)
         }
         if keypadTypesOnDesk, action == .keypadClear {
-            // Exit backs out anything typed on the desk, then the WebAPI clears every programmer.
+            // Exit backs out anything typed on the desk, then the WebAPI clears the selection (only).
             queueOnDesk(action, keys: typing == nil ? [] : ["exit"], keypadLine: keypadLine, keyIndex: keyIndex)
             return
         }
@@ -400,7 +400,7 @@ final class AppState: ObservableObject {
         let start = Date()
         if action == .keypadClear {
             if !keys.isEmpty { _ = await typeKeys(keys) }
-            return await titan.clearAllProgrammers()
+            return await titan.clearSelection()
         }
         let (typed, why) = await typeKeys(keys)
         guard typed else {

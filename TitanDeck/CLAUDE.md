@@ -207,8 +207,9 @@ support posts):
   `KeypadBuffer` turns "1>10 Enter" into a selection of 1-10. **Never Alt or
   any modifier:** Alt+C for Clear left the desk's own Clear and wheels dead
   (0.24); Clear types Exit if something's typed, then
-  `TitanClient.clearAllProgrammers` (ClearAll allProgrammers=true + selection
-  clear). +/- nudges are current level + nudge (`DeskKeys.nudged`), from
+  `TitanClient.clearSelection` (`Selection/Context/Global/Clear` only: the
+  user wants the deck's CLEAR to clear the selection, never the programmers;
+  0.26-0.28 also cleared every programmer). +/- nudges are current level + nudge (`DeskKeys.nudged`), from
   `currentLevel` (typed in the last 2 s, else sACN live level, else the level
   last typed for the same selection); unknown = refused, never the WebAPI
   wheel. Typing is serial (one Task chain). The WebAPI user
