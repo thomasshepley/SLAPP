@@ -156,19 +156,18 @@ parameter is named `srcHandle`). Levels are `level_level=` (absolute, 0-1).
 | Macro | `Macros/Run?macroId=<id string>` |
 | Keypad digit / @ / Thru | `Command/AppendStringAndPreview?text=7` (or `@`, or `>` for Thru: unconfirmed, desk typing is the main path) |
 | Keypad Enter | GET `/titan/get/2/Command/CommandLineText`, then `Command/RunCommand?command=<text>`, then `Command/StartNewCommand` |
-| Keypad Clear | `Command/StartNewCommand` if something's typed, else `Programmer/Editor/ClearAll?presets=false&allProgrammers=false` (Titan 19.2 has Programmer.Editor and the old Playbacks.Editor names; prefer Programmer.Editor where both exist). With Keypad types on the desk: `allProgrammers=true` then `Selection/Context/Global/Clear` |
+| Keypad Clear | `Command/StartNewCommand` if something's typed, else `Programmer/Editor/ClearAll?presets=false&allProgrammers=false` (Titan 19.2 has Programmer.Editor and the old Playbacks.Editor names; prefer Programmer.Editor where both exist). With Keypad types on the desk: Exit if typing, then `Programmer/Editor/ClearSelection?disable=false&clearAllProgrammers=false` on 4430 and the desk link (selection only) |
 | Keypad Exit | `Menu/ExitRootOrLatched` |
 | Intensity +/- | `Programmer/Editor/Fixtures/IncrementDimmer?value=5&timeDelta=1&shiftEnabled=false` (value assumed to be percent - unconfirmed) |
 | Version check | `GET /titan/get/System/SoftwareVersion` |
 | Colour temp preset | `GET /titan/handles/Colours`, find the palette whose legend says "3200K", then `Palette/ApplyPalette?handle_titanId=N&usePaletteTimes=false` |
 | Layout (workspace) | `Workspace/Apply?handle_userNumber=N`; names from `GET /titan/handles/Workspaces` (group name from community sources) |
 | Fire a picked cue | `Playbacks/FirePlaybackAtLevel?handle_titanId=N&level_level=1&alwaysRefire=false` |
-| Cue fade time | `Playbacks/Editor/CueSelection/SelectCueByNumber?handle_titanId=N&cueNumber=1`, then POST `/titan/set/2/Playbacks/Editor/Times/CueFadeInTime` (or `CueFadeOutTime`), body the seconds as text. **Experimental:** body format undocumented |
+| Cue fade time | Always on the 4430 client (never the desk link: it would change the operator's editor). `ActionScript/SetProperty?id=Playbacks.Editor.SelectedPlayback&value_titanId=N` (fallback `Playbacks/Editor/SetSelectedPlaybacks?handles_handleList=N`), `SelectCueByNumber` cue 1, then `ActionScript/SetProperty?id=Playbacks.Editor.Times.CueFadeInTime&value_time=S` (macros: `time:3`; see avosupport.de "Set fade-in time" macro). Then Float, text, JSON bodies last (a JSON body Titan can't read may zero the time). Each checked by read-back. **Experimental** until confirmed on the desk |
 | Flash to 0 | `Programmer/Editor/Fixtures/SetDimmerLevel?level=0` (no time, so a faded flash is 20 `IncrementDimmer` steps of -5); back with `ClearSelectedControls?release=true&releaseTime=S` |
 | Desk selection (desk link) | `Selection/Context/Global/GetAllSelectedFixtureIds` on Titan's UI WebAPI (TitanDeck port 4434 via the Host, Titan 4433); returns titan ids, mapped with `/titan/handles/Fixtures` |
 | Latching GO (Playbacks page) | live: `Playbacks/ReleasePlayback?handle_titanId=N&fadeTime=0&useMasterReleaseTime=true`, else `FirePlaybackAtLevel?handle_titanId=N` |
 | Desk selection (Titan 19, CITP) | Host `GET /api/v1/citp/selection`; then `Selection/Context/Global/Clear` + `SelectFixturesFromHandles` on 4430 so the deck's user has the same selection |
-| Cue fade time | select cue 1 (`Playbacks/Editor/CueSelection/SelectCueByNumber`), `GET /titan/get/2/Playbacks/Editor/Times/CueFadeIn/OutTime`, then `POST /titan/set/...` with JSON (`TitanTimeSpan`: Titan's own shape first, then `"00:00:00.3000000"`, `{"Seconds":0.3}`, a bare number). Titan 19 refuses a bare number (AcwTimeSpan) |
 | Intensity nudge | `Programmer/Editor/Fixtures/IncrementDimmer?value=` is wheel steps, 4096 = full (`dimmerStepsPerPercent` 40.96), `timeDelta=1` (no acceleration) |
 | Flash, no fade | `Programmer/Editor/Fixtures/FlashOut`, then `ClearFlash` |
 | Patch address (experimental, off) | 4430 only: `Selection/Context/Global/SelectFixturesFromHandles?handleList_userNumberList=N` (when linked), `Patch/Repatch/SetDmxAddressesFromSelectedFixture`, `GET /titan/get/2/Patch/CurrentDmxAssignment` (format unknown) |
@@ -207,9 +206,12 @@ support posts):
   `KeypadBuffer` turns "1>10 Enter" into a selection of 1-10. **Never Alt or
   any modifier:** Alt+C for Clear left the desk's own Clear and wheels dead
   (0.24); Clear types Exit if something's typed, then
-  `TitanClient.clearSelection` (`Selection/Context/Global/Clear` only: the
-  user wants the deck's CLEAR to clear the selection, never the programmers;
-  0.26-0.28 also cleared every programmer). +/- nudges are current level + nudge (`DeskKeys.nudged`), from
+  `TitanClient.clearSelection` on the 4430 client AND the desk link client
+  (`Programmer/Editor/ClearSelection?disable=false&clearAllProgrammers=false`,
+  falling back to `Selection/Context/Global/Clear`): the user wants the deck's
+  CLEAR to clear the desk's selection, never the programmers. 0.26-0.28 also
+  cleared every programmer; 0.29-0.30 only cleared the 4430 user's selection
+  (did nothing on the desk). Desk link down = red key with a message. +/- nudges are current level + nudge (`DeskKeys.nudged`), from
   `currentLevel` (typed in the last 2 s, else sACN live level, else the level
   last typed for the same selection); unknown = refused, never the WebAPI
   wheel. Typing is serial (one Task chain). The WebAPI user

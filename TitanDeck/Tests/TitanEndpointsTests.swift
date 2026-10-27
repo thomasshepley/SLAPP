@@ -196,4 +196,21 @@ final class TitanEndpointsTests: XCTestCase {
         XCTAssertEqual(query.first { $0.name == "id" }?.value, "Playbacks.Editor.Times.CueFadeOutTime")
         XCTAssertEqual(query.first { $0.name == "value" }?.value, "0.3")
     }
+
+    func testCueTimesGoThroughTheEditorLikeTitansMacros() {
+        let host = "10.0.0.5"
+        XCTAssertEqual(TitanEndpoints.selectEditorPlaybackURL(titanId: 1903, host: host)?.absoluteString,
+                       "http://10.0.0.5:4430/titan/script/2/ActionScript/SetProperty?id=Playbacks.Editor.SelectedPlayback&value_titanId=1903")
+        XCTAssertEqual(TitanEndpoints.setSelectedPlaybacksURL(titanId: 1903, host: host)?.absoluteString,
+                       "http://10.0.0.5:4430/titan/script/2/Playbacks/Editor/SetSelectedPlaybacks?handles_handleList=1903")
+        XCTAssertEqual(TitanEndpoints.editorPlaybackURL(host: host)?.absoluteString,
+                       "http://10.0.0.5:4430/titan/get/2/Playbacks/Editor/SelectedPlayback")
+        XCTAssertEqual(TitanEndpoints.setPropertyTimeURL(id: TitanEndpoints.cueFadePropertyID(fadeOut: false), seconds: 2.5, host: host)?.absoluteString,
+                       "http://10.0.0.5:4430/titan/script/2/ActionScript/SetProperty?id=Playbacks.Editor.Times.CueFadeInTime&value_time=2.5")
+    }
+
+    func testDeskClearClearsTheSelectionOnly() {
+        XCTAssertEqual(TitanEndpoints.clearDeskSelectionURL(host: "10.0.0.5", port: 4434)?.absoluteString,
+                       "http://10.0.0.5:4434/titan/script/2/Programmer/Editor/ClearSelection?disable=false&clearAllProgrammers=false")
+    }
 }

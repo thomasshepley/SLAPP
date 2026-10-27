@@ -104,6 +104,32 @@ enum TitanEndpoints {
         ])
     }
 
+    /// Loads a playback into the editor, as Titan's own cue-time macros do
+    /// first (`ActionScript.SetProperty("Playbacks.Editor.SelectedPlayback",
+    /// handle)`): the editor's cue selection and times all relate to it.
+    static func selectEditorPlaybackURL(titanId: Int, host: String, port: Int = defaultPort) -> URL? {
+        script(host, port, "ActionScript/SetProperty", [("id", "Playbacks.Editor.SelectedPlayback"), ("value_titanId", "\(titanId)")])
+    }
+
+    /// The same through Titan's documented call for the selected playbacks,
+    /// for a Titan that won't take the handle above.
+    static func setSelectedPlaybacksURL(titanId: Int, host: String, port: Int = defaultPort) -> URL? {
+        script(host, port, "Playbacks/Editor/SetSelectedPlaybacks", [("handles_handleList", "\(titanId)")])
+    }
+
+    /// The playback loaded into the editor (read to say what Titan was editing).
+    static func editorPlaybackURL(host: String, port: Int = defaultPort) -> URL? {
+        let cleanHost = host.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleanHost.isEmpty else { return nil }
+        return URL(string: "http://\(authority(host, port))/titan/get/2/Playbacks/Editor/SelectedPlayback")
+    }
+
+    /// Sets a time property in seconds, typed as a time the way macros write
+    /// `time:3` and Titan's own time parameters take `fadeTime=5`.
+    static func setPropertyTimeURL(id: String, seconds: Double, host: String, port: Int = defaultPort) -> URL? {
+        script(host, port, "ActionScript/SetProperty", [("id", id), ("value_time", format(number: seconds))])
+    }
+
     /// Sets a Titan property from a number in the URL, the way Titan's own
     /// macros do (`ActionScript.SetProperty.Float`). Titan converts it to the
     /// property's type: the cue times' AcwTimeSpan takes seconds, as in
@@ -154,6 +180,12 @@ enum TitanEndpoints {
     /// the WebAPI user's own.
     static func selectedFixtureIdsURL(context: String = "Global", host: String, port: Int = defaultPort) -> URL? {
         script(host, port, "Selection/Context/\(context)/GetAllSelectedFixtureIds", [])
+    }
+
+    /// The desk's first Clear: the selection only, every programmer left as it
+    /// is. On the UI WebAPI (desk link) that's the operator's own selection.
+    static func clearDeskSelectionURL(host: String, port: Int = defaultPort) -> URL? {
+        script(host, port, "Programmer/Editor/ClearSelection", [("disable", "false"), ("clearAllProgrammers", "false")])
     }
 
     /// Empties that WebAPI user's own selection.

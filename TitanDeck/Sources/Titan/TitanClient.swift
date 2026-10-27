@@ -114,12 +114,16 @@ actor TitanClient {
         return finish(.keypadEnter, start, ok: run.ok, status: run.status, error: run.error, detail: "ran \"\(text)\"")
     }
 
-    /// Clear for the desk: the selection only (Titan's global selection
-    /// context), leaving every programmer as it is, like the desk's own first
-    /// Clear. Never typed as Alt+C.
+    /// Clear for the desk: the selection only, leaving every programmer as it
+    /// is, like the desk's own first Clear (Titan's Programmer.Editor.
+    /// ClearSelection; the global selection context if that isn't there).
+    /// Sent to the desk link, it's the operator's selection. Never Alt+C.
     func clearSelection() async -> TitanResult {
         let start = Date()
-        let result = await get(TitanEndpoints.clearSelectionURL(host: host, port: port))
+        var result = await get(TitanEndpoints.clearDeskSelectionURL(host: host, port: port))
+        if !result.ok, result.status != nil {
+            result = await get(TitanEndpoints.clearSelectionURL(host: host, port: port))
+        }
         return finish(.keypadClear, start, ok: result.ok, status: result.status, error: result.error,
                       detail: "cleared the selection")
     }
@@ -138,16 +142,23 @@ actor TitanClient {
 
     // MARK: - Cue fades
 
-    /// Selects cue 1 of the playback, then sets its fade time. Titan 19 wants
-    /// cue times as an AcwTimeSpan, which its JSON property setter won't take
-    /// as a plain number, so this tries in turn: Titan's own URL setter with
-    /// the seconds (as its macros do), the JSON in the shape Titan reads it
-    /// in, a .NET TimeSpan string, and a plain number (older Titans). When
-    /// Titan can read the time back, each try is checked, so one Titan takes
-    /// without using the value doesn't count.
+    /// Loads the playback into the editor and selects its cue 1, as Titan's
+    /// own cue-time macros do, then sets the fade time. Titan 19 keeps cue
+    /// times as an AcwTimeSpan, so this tries in turn: SetProperty with the
+    /// value typed as a time (`value_time`, the macros' `time:3`), the
+    /// number setters, then the JSON in the shape Titan reads it in. When
+    /// Titan can read the time back, each try is checked, so a try Titan
+    /// takes without using the value doesn't count.
     private func runCueFade(titanId: Int, fadeOut: Bool, seconds: Double) async -> TitanResult {
         let action = TitanAction.setCueFade(titanId: titanId, fadeOut: fadeOut, seconds: seconds)
         let start = Date()
+        // Without the playback in the editor, Titan's setters have no cue to
+        // change: the ActionScript ones error and the JSON one does nothing.
+        let loaded = await get(TitanEndpoints.selectEditorPlaybackURL(titanId: titanId, host: host, port: port))
+        if !loaded.ok {
+            Log.titan("Couldn't load handle \(titanId) into the editor (\(loaded.error ?? "HTTP \(loaded.status ?? 0)")); trying SetSelectedPlaybacks")
+            _ = await get(TitanEndpoints.setSelectedPlaybacksURL(titanId: titanId, host: host, port: port))
+        }
         let select = await get(TitanEndpoints.selectFirstCueURL(titanId: titanId, host: host, port: port))
         guard select.ok else {
             return finish(action, start, ok: false, status: select.status, error: select.error ?? "Couldn't select the cue")
@@ -156,6 +167,8 @@ actor TitanClient {
               let readURL = TitanEndpoints.cueFadePropertyURL(fadeOut: fadeOut, write: false, host: host, port: port) else {
             return finish(action, start, ok: false, status: nil, error: "No Titan host set")
         }
+        let editing = await body(TitanEndpoints.editorPlaybackURL(host: host, port: port))
+            .map { String(decoding: $0.prefix(120), as: UTF8.self) }
         let current = await body(readURL)
         let currentText = current.map { String(decoding: $0.prefix(200), as: UTF8.self) }
         if let currentText { Log.titan("Cue fade \(fadeOut ? "out" : "in") reads as \(currentText)") }
@@ -168,22 +181,25 @@ actor TitanClient {
             return abs(read - seconds) < 0.05
         }
 
-        // Titan's own shape first (Titan 19 answers SetProperty.Float on a cue
-        // time with "Error executing an Action Script"), then the URL setters.
+        // The URL setters first: a JSON body Titan takes but can't read may
+        // leave the time at zero, so it goes last.
+        let property = TitanEndpoints.cueFadePropertyID(fadeOut: fadeOut)
         var attempts: [(name: String, request: URLRequest)] = []
+        if let url = TitanEndpoints.setPropertyTimeURL(id: property, seconds: seconds, host: host, port: port) {
+            attempts.append(("SetProperty value_time", URLRequest(url: url)))
+        }
+        if let url = TitanEndpoints.setPropertyFloatURL(id: property, value: seconds, host: host, port: port) {
+            attempts.append(("SetProperty.Float", URLRequest(url: url)))
+        }
+        if let url = TitanEndpoints.setPropertyURL(id: property, value: TitanTimeSpan.shortTimeText(seconds), host: host, port: port) {
+            attempts.append(("SetProperty \(TitanTimeSpan.shortTimeText(seconds))", URLRequest(url: url)))
+        }
         for body in TitanTimeSpan.bodies(seconds: seconds, current: current) {
             var request = URLRequest(url: postURL)
             request.httpMethod = "POST"
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
             request.httpBody = body
             attempts.append((String(decoding: body, as: UTF8.self), request))
-        }
-        let property = TitanEndpoints.cueFadePropertyID(fadeOut: fadeOut)
-        if let url = TitanEndpoints.setPropertyURL(id: property, value: TitanTimeSpan.shortTimeText(seconds), host: host, port: port) {
-            attempts.append(("SetProperty \(TitanTimeSpan.shortTimeText(seconds))", URLRequest(url: url)))
-        }
-        if let url = TitanEndpoints.setPropertyFloatURL(id: property, value: seconds, host: host, port: port) {
-            attempts.append(("SetProperty.Float", URLRequest(url: url)))
         }
 
         var errors: [String] = []
@@ -203,8 +219,9 @@ actor TitanClient {
         }
         // Every try and Titan's answer, short, so one screenshot says it all.
         let tried = errors.map { $0.count > 160 ? String($0.prefix(160)) + "..." : $0 }
-        let error = (tried.isEmpty ? "Titan didn't take the time" : "Tried " + tried.joined(separator: " | "))
-            + (currentText.map { ". Titan reads the time as \($0)" } ?? ". Titan didn't say how it reads the time")
+        let triedText: String = tried.isEmpty ? "Titan didn't take the time" : "Tried " + tried.joined(separator: " | ")
+        let readText: String = currentText.map { ". Titan reads the time as \($0)" } ?? ". Titan didn't say how it reads the time"
+        let error = triedText + readText + ". Editor playback: \(editing ?? "unknown")"
         Log.titan("Cue fade not set. Tried: " + errors.joined(separator: " | "))
         return finish(action, start, ok: false, status: lastStatus, error: error)
     }
