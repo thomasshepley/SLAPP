@@ -14,7 +14,8 @@ namespace TitanDeckHost.Core.Titan;
 /// dimmer channel) its colour channels, the brightest of which is its level.
 /// </summary>
 public sealed record PatchFixture(int UserNumber, string? Model, string? Mode, int Line, int Address,
-                                  int? Channels = null, IReadOnlyList<int>? Intensity = null, string? Legend = null);
+                                  int? Channels = null, IReadOnlyList<int>? Intensity = null, string? Legend = null,
+                                  IReadOnlyList<PersonalityAttribute>? Attributes = null);
 
 /// <summary>
 /// Reads the patch out of a report Titan writes (Disk &gt; Reports, the

@@ -24,12 +24,14 @@ enum DeckFlow {
         case titanCues(slot: Int, page: Int, fromConnect: Bool, returnTo: Int)
         /// Fade times for a slot's cue.
         case fadePicker(slot: Int, fadeOut: Bool, returnTo: Int)
+        /// The Slate Book: slate, take, day/night, FX.
+        case slate(returnTo: Int)
 
         /// The profile page to go back to.
         var returnTo: Int {
             switch self {
             case .menu: return 0
-            case .selection(let page), .colour(let page), .connectCue(let page): return page
+            case .selection(let page), .colour(let page), .connectCue(let page), .slate(let page): return page
             case .titanPages(_, _, _, let page), .titanCues(_, _, _, let page), .fadePicker(_, _, let page): return page
             }
         }
@@ -367,7 +369,7 @@ enum DeckFlow {
     static func menuLabel(onPage index: Int, overlay: Overlay?, profile: DeckProfile, pageName: String?,
                           hasSelection: Bool, selectionText: String? = nil) -> String? {
         switch overlay {
-        case .selection?, .colour?:
+        case .selection?, .colour?, .slate?:
             return nil
         case nil:
             if index == quickKeysPageIndex(in: profile) { return nil }
@@ -394,11 +396,60 @@ enum DeckFlow {
     /// The main menu: one key per page, so new pages appear by themselves.
     static func menuPage(profile: DeckProfile) -> DeckPage {
         let palette = ["#2D4FA3", "#1E7D32", "#8A5A00", "#6A3FA0", "#0E7C86", "#B23B1E"]
-        let keys = profile.pages.prefix(profile.keyCount).enumerated().map { index, page in
+        var keys = profile.pages.prefix(profile.keyCount).enumerated().map { index, page in
             KeyDefinition(index: index, label: page.name, colorHex: palette[index % palette.count],
                           action: .switchPage(index))
         }
-        return DeckPage(name: "Main Menu", keys: Array(keys))
+        // The Slate Book, after the pages: the last key if the pages fill the deck.
+        let slateSpot = min(keys.count, max(profile.keyCount - 1, 0))
+        keys.removeAll { $0.index == slateSpot }
+        keys.append(KeyDefinition(index: slateSpot, label: "SLATES", colorHex: slateColour,
+                                  sfSymbol: "film", action: .deckChoice(.openSlates)))
+        return DeckPage(name: "Main Menu", keys: keys)
+    }
+
+    static let slateColour = "#2B2B33"
+
+    /// The Slate page: what's showing (slate, take, day or night, FX) and the
+    /// buttons that move it on, each logging the look on stage in the Host's
+    /// Slate Book. Return to Keypad where Menu is.
+    static func slatePage(profile: DeckProfile, returnTo: Int) -> DeckPage {
+        let threeWide = isThreeWide(profile)
+        let templates: [KeyDefinition] = [
+            KeyDefinition(index: 0, label: "SL", colorHex: "#1F2A44", action: .deckChoice(.slateShow(0))),
+            KeyDefinition(index: 1, label: "TK", colorHex: "#1F2A44", action: .deckChoice(.slateShow(1))),
+            KeyDefinition(index: 2, label: "DAY", colorHex: "#8A5A00", sfSymbol: "sun.max.fill", action: .deckChoice(.slateNight)),
+            KeyDefinition(index: 3, label: "NEW\nSLATE", colorHex: DeckProfile.goColor, action: .deckChoice(.slateNew)),
+            KeyDefinition(index: 4, label: "TAKE +", colorHex: DeckProfile.pageColor, action: .deckChoice(.slateTake)),
+            KeyDefinition(index: 5, label: "FX", colorHex: "#3A3A3A", sfSymbol: "sparkles", action: .deckChoice(.slateFx)),
+            KeyDefinition(index: 6, label: "LETTER", colorHex: "#0E7C86", action: .deckChoice(.slateLetter)),
+        ]
+        let room = threeWide ? templates.count : max(profile.keyCount - 1, 0)
+        let keys = withReturnKey(Array(templates.prefix(room)), keyCount: profile.keyCount, threeWide: threeWide)
+        return DeckPage(name: "Slates", keys: keys.sorted { $0.index < $1.index })
+    }
+
+    /// A Slate page key as it reads now: the slate and take showing, day or
+    /// night, FX lit or not.
+    static func slateKey(_ key: KeyDefinition, state: HostSlateState?) -> KeyDefinition {
+        guard case .deckChoice(let choice)? = key.action else { return key }
+        var shown = key
+        switch choice {
+        case .slateShow(0): shown.label = SlateText.slateKey(state)
+        case .slateShow: shown.label = SlateText.takeKey(state)
+        case .slateNight:
+            let night = state?.night ?? false
+            shown.label = SlateText.dayNight(night)
+            shown.sfSymbol = night ? "moon.stars.fill" : "sun.max.fill"
+            shown.colorHex = night ? "#23305E" : "#8A5A00"
+        case .slateFx:
+            let fx = state?.fx ?? false
+            shown.label = fx ? "FX ON" : "FX"
+            shown.colorHex = fx ? "#6A3FA0" : "#3A3A3A"
+        default:
+            break
+        }
+        return shown
     }
 
     /// The next page, wrapping round (Menu on a profile with no keypad).

@@ -140,4 +140,18 @@ enum DeckChoice: Codable, Hashable {
     case selectionStrip(Int)
     case back
     case done
+    /// The main menu's way to the Slate page.
+    case openSlates
+    /// Slate page: the slate (0) or take (1) showing; a tap does nothing.
+    case slateShow(Int)
+    /// Slate page: the next take, logging the look.
+    case slateTake
+    /// Slate page: the next slate, take 1, logging the look.
+    case slateNew
+    /// Slate page: the same setup's next letter ("112A"), take 1.
+    case slateLetter
+    /// Slate page: day or night.
+    case slateNight
+    /// Slate page: FX shot or not.
+    case slateFx
 }

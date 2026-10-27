@@ -17,7 +17,8 @@ TitanDeckHost/
 │                  TitanUiConfig (Titan's UI WebAPI config, checklist line, proxy allowlist),
 │                  TitanLog (every Titan call, polls counted), Update/HostUpdate (GitHub releases),
 │                  TitanPatch (patch report CSV/XML/HTML), TitanPersonality + PersonalityLibrary (.d4),
-│                  Citp/ (CITP packets, PINF/FSEL/CAEX codecs, CitpAllowlist, CitpSession)
+│                  Citp/ (CITP packets, PINF/FSEL/CAEX codecs, CitpAllowlist, CitpSession),
+│                  Slate/ (SlateNumbers, LookDiff, LookWatcher, SlateBook)
 ├── src/Service/   net8.0-windows Windows service (LocalSystem): Kestrel API on
 │                  0.0.0.0:4431 (paired iPad) and 127.0.0.1:4432 (the Host window),
 │                  WindowsProbe (reads the PC), Fixer (applies fixes), Advertiser (mDNS),
@@ -25,7 +26,8 @@ TitanDeckHost/
 │                  DeskLink (finds/edits Titan.dll.config / .exe.config, /titan proxy on 0.0.0.0:4434),
 │                  HostUpdater (checks GitHub every 6 h, downloads + verifies the installer),
 │                  PatchReader (newest patch report + personalities),
-│                  CitpService (CITP visualiser: UDP 4809 PLoc, TCP 4435; Test and Show)
+│                  CitpService (CITP visualiser: UDP 4809 PLoc, TCP 4435; Test and Show),
+│                  SlateService (Slate Book from sACN, Data\SlateBook\<day>.json)
 ├── src/App/       net8.0-windows WPF tray app + dashboard; talks only to 127.0.0.1:4432
 ├── tests/Core.Tests/  xunit
 └── installer/     Inno Setup script
@@ -154,6 +156,17 @@ TitanDeckHost/
   against real Avolites files. DMX line N is taken as sACN universe N.
   Paired: `GET /api/v1/patch`. "Ask Titan" (`Reports/GenerateReport` on the
   4430 user) is experimental and logged.
+- **Slate Book** (`Core/Slate`, `SlateService`; paired `GET /api/v1/slate`
+  (`?summary=true` for just the slate showing), `/slate/day/{day}`,
+  `/slate/match/{day}/{id}`, POST `/slate/take|new|letter|set|note`): read
+  only, from `DmxUniverses`; it never talks to Titan. TAKE / NEW SLATE / a
+  letter log the whole look (base64 per universe) and what changed since the
+  line before, named by `PatchFixture.Attributes` (every .d4 attribute with a
+  channel) or by address. `LookWatcher` logs a change once the output has been
+  still for 3 s, leaving out channels that changed in 3 of the last 6 samples
+  (effects). Nothing is logged until the day's first TAKE/NEW SLATE; at most
+  `SlateBook.MaxEntries` lines a day. One file per local day, written via a
+  temp file; the slate showing carries over in `state.json`.
 - **Updates** (`HostUpdate`/`HostUpdater`): only releases tagged `host-v*` with a
   `TitanDeckHost-Setup-*.exe` asset under
   `https://github.com/thomasshepley/SLAPP/releases/download/host-v`, verified

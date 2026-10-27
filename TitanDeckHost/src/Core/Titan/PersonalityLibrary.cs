@@ -61,8 +61,8 @@ public sealed class PersonalityLibrary
             if (!found.TryGetValue(fixture.Model, out var personality)) found[fixture.Model] = personality = Find(fixture.Model);
             var mode = personality?.Mode(fixture.Mode, fixture.Channels);
             return mode?.Intensity is { } intensity
-                ? fixture with { Intensity = intensity, Channels = fixture.Channels ?? mode.Channels }
-                : fixture;
+                ? fixture with { Intensity = intensity, Channels = fixture.Channels ?? mode.Channels, Attributes = mode.Attributes }
+                : mode is not null ? fixture with { Attributes = mode.Attributes } : fixture;
         }).ToList();
     }
 

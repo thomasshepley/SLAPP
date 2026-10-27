@@ -287,6 +287,32 @@ the CITP lines from the Titan log (Copy) for Claude whatever happens.
 - [ ] Switch the Host to Show (Host 0.11+): the card stays, CITP stays linked
       and the deck still follows the desk's selection.
 
+## 5g. Slate Book (TitanDeck 0.27, Host 0.13)
+
+Logs the look on stage per slate and take, from Titan's sACN. Read only: it
+never talks to Titan. Needs the Host paired and Titan's sACN reaching the PC.
+
+- [ ] Deck: hold Menu for the main menu: the last key is **SLATES**. It opens
+      the Slate page: SL / TK showing the slate and take, DAY/NIGHT, NEW SLATE,
+      TAKE +, FX, LETTER, and Return to Keypad where Menu is.
+- [ ] Set the lights, press **NEW SLATE**: SL goes up one, TK reads 1. The
+      Slates tab shows the slate with take 1 and the time.
+- [ ] Change a fixture's level on the desk and leave it: a few seconds later a
+      change appears under that take ("101 Dimmer 60 → 45%"). With a patch from
+      CITP or a report, changes are named by fixture and attribute; without,
+      by address (U1.37).
+- [ ] Run an effect (a chase): nothing is logged while it runs on its own.
+- [ ] **TAKE +**: TK goes up, a new take in the tab. **LETTER**: 112 → 112A,
+      take 1 (no I or O). DAY/NIGHT and FX toggle on the deck and in the tab.
+- [ ] Slates tab: hold New Slate → Type a Slate... → 140 → Log. Put Right
+      (pencil) changes the slate or take without logging.
+- [ ] Swipe a line → **Match**: with nothing changed, "It matches". Change a
+      fixture, Again: it's listed, biggest difference first.
+- [ ] Swipe → **Note**: the note shows under the line, and after a refresh.
+- [ ] Restart the PC: the slate showing and today's book are still there. The
+      calendar menu shows earlier days.
+- [ ] Unplug the network (no sACN): NEW SLATE flashes red and the tab says why.
+
 
 - [ ] Settings → Remote desktop: PC address (blank uses the Titan address),
       Windows user and password, then **Connect**.

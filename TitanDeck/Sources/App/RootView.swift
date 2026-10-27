@@ -36,6 +36,10 @@ struct RootView: View {
                 .tabItem { Label("Wi-Fi", systemImage: "wifi.router") }
                 .tag(AppState.Mode.network)
 
+            SlateBookView(store: appState.slates)
+                .tabItem { Label("Slates", systemImage: "film.stack") }
+                .tag(AppState.Mode.slates)
+
             SettingsView()
                 .tabItem { Label("Settings", systemImage: "gearshape") }
                 .tag(AppState.Mode.settings)

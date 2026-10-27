@@ -42,6 +42,16 @@ public sealed class PatchReader(TitanLog log, HostModeStore mode, ILogger<PatchR
         }
     }
 
+    /// <summary>The current patch with each fixture's attributes, for naming changes in the Slate Book.</summary>
+    public IReadOnlyList<PatchFixture> Fixtures()
+    {
+        lock (gate)
+        {
+            if (DateTimeOffset.UtcNow - lastScan > Rescan) ScanLocked();
+            return CurrentLocked()?.Fixtures ?? [];
+        }
+    }
+
     public PatchDto Reload()
     {
         lock (gate)
@@ -176,10 +186,13 @@ public sealed class PatchReader(TitanLog log, HostModeStore mode, ILogger<PatchR
             $"({library.Count} personalities on this PC)", null, false, DateTimeOffset.Now);
     }
 
+    /// <summary>The newest of Titan's CITP list, the folder's report and one picked by hand.</summary>
+    private (string Source, DateTimeOffset Written, IReadOnlyList<PatchFixture> Fixtures)? CurrentLocked() =>
+        new[] { fromCitp, fromFile, imported }.Where(s => s is not null).MaxBy(s => s!.Value.Written);
+
     private PatchDto DtoLocked()
     {
-        // The newest of Titan's CITP list, the folder's report and one picked by hand.
-        var current = new[] { fromCitp, fromFile, imported }.Where(s => s is not null).MaxBy(s => s!.Value.Written);
+        var current = CurrentLocked();
         var fixtures = current?.Fixtures.Select(f =>
             new PatchFixtureDto(f.UserNumber, f.Model, f.Mode, f.Line, f.Address, f.Channels, f.Intensity, f.Legend)).ToList() ?? [];
         var problemText = problem ?? (current is null

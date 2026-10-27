@@ -41,6 +41,8 @@ builder.Services.AddSingleton<DmxUniverses>();
 builder.Services.AddSingleton<SacnListener>();
 builder.Services.AddHostedService(services => services.GetRequiredService<SacnListener>());
 builder.Services.AddSingleton<DeskKeyQueue>();
+builder.Services.AddSingleton<SlateService>();
+builder.Services.AddHostedService(services => services.GetRequiredService<SlateService>());
 builder.Services.AddSingleton<CitpService>();
 builder.Services.AddHostedService(services => services.GetRequiredService<CitpService>());
 
@@ -173,6 +175,16 @@ network.MapPost("/desk/keys", (DeskKeysRequest request, DeskKeyQueue queue, Tita
 
 // The desk's selection over CITP (experimental, Test mode only).
 network.MapGet("/citp/selection", (CitpService citp) => citp.Selection());
+
+// The Slate Book: the look per slate and take, logged from Titan's sACN (read only).
+network.MapGet("/slate", (bool? summary, SlateService slate) => slate.Status(entries: summary != true));
+network.MapGet("/slate/day/{day}", (string day, SlateService slate) => slate.Day(day) is { } book ? Results.Ok(book) : Results.NotFound());
+network.MapPost("/slate/take", (SlateService slate) => slate.Take());
+network.MapPost("/slate/new", (SlateNewRequest request, SlateService slate) => slate.NewSlate(request.Slate));
+network.MapPost("/slate/letter", (SlateService slate) => slate.Letter());
+network.MapPost("/slate/set", (SlateSetRequest request, SlateService slate) => slate.Set(request));
+network.MapPost("/slate/note", (SlateNoteRequest request, SlateService slate) => slate.Note(request));
+network.MapGet("/slate/match/{day}/{id:long}", (string day, long id, SlateService slate) => slate.Match(day, id));
 
 network.MapGet("/dmx/{universe:int}", (int universe, int? start, int? count, DmxUniverses store, SacnListener listener) =>
     DmxLevels(universe, start ?? 1, count ?? 512, store, listener));

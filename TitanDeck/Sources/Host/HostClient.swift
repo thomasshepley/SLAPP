@@ -111,6 +111,57 @@ struct HostClient: Sendable {
         return try await send(request)
     }
 
+    // MARK: - Slate Book (Host 0.13+)
+
+    /// Today's Slate Book, or just the slate showing with `summary`.
+    func slateBook(summary: Bool = false) async throws -> HostSlateBook {
+        var request = try request("slate", query: summary ? [URLQueryItem(name: "summary", value: "true")] : [])
+        request.timeoutInterval = 4
+        return try await send(request)
+    }
+
+    /// A past day's Slate Book ("2026-10-27").
+    func slateBook(day: String) async throws -> HostSlateBook {
+        var request = try request("slate/day/\(day)")
+        request.timeoutInterval = 6
+        return try await send(request)
+    }
+
+    /// TAKE: the next take, with the look logged.
+    func slateTake() async throws -> HostSlateEntry { try await slatePost("slate/take", body: Optional<HostSlateNewRequest>.none) }
+
+    /// NEW SLATE: the next slate (or the one typed), take 1, the look logged.
+    func slateNew(_ slate: String? = nil) async throws -> HostSlateEntry {
+        try await slatePost("slate/new", body: HostSlateNewRequest(slate: slate))
+    }
+
+    /// The same setup's next letter ("112" to "112A"), take 1, the look logged.
+    func slateLetter() async throws -> HostSlateEntry { try await slatePost("slate/letter", body: Optional<HostSlateNewRequest>.none) }
+
+    /// Day or night, FX, or the slate or take put right, without logging a look.
+    func slateSet(_ change: HostSlateSetRequest) async throws -> HostSlateBook { try await slatePost("slate/set", body: change) }
+
+    func slateNote(day: String, id: Int, note: String?) async throws -> HostSlateEntry {
+        try await slatePost("slate/note", body: HostSlateNoteRequest(day: day, id: id, note: note))
+    }
+
+    /// What's different on stage now from a line of the book.
+    func slateMatch(day: String, id: Int) async throws -> HostSlateMatch {
+        var request = try request("slate/match/\(day)/\(id)")
+        request.timeoutInterval = 4
+        return try await send(request)
+    }
+
+    private func slatePost<Body: Encodable, Answer: Decodable>(_ path: String, body: Body?) async throws -> Answer {
+        var request = try request(path, method: "POST")
+        request.timeoutInterval = 4
+        if let body {
+            request.httpBody = try HostAPI.encoder.encode(body)
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        }
+        return try await send(request)
+    }
+
     /// The show's patch from Titan's patch report (Host 0.6+).
     func patch() async throws -> HostPatch {
         var request = try request("patch")

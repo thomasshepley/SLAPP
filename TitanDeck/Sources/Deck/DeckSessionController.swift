@@ -71,6 +71,15 @@ final class DeckSessionController: ObservableObject {
     }
     /// Called whenever `selectedFixtures` changes.
     var onSelectionChanged: (([Int]) -> Void)?
+    /// A Slate page button (the Int is the key, to flash its result back).
+    var onSlate: ((SlateStore.Command, Int) -> Void)?
+    /// The slate showing, from the Host's Slate Book, for the Slate page's keys.
+    var slateState: HostSlateState? {
+        didSet {
+            guard slateState != oldValue, case .slate? = flowOverlay else { return }
+            redraw()
+        }
+    }
     private var deskSelection: [Int] = []
     private var follower = DeckFlow.SelectionFollower()
 
@@ -110,6 +119,8 @@ final class DeckSessionController: ObservableObject {
             let cue = profile.cue(onSlot: slot)
             return DeckCues.fadePage(current: fadeOut ? cue?.fadeOut : cue?.fadeIn, fadeOut: fadeOut,
                                      keyCount: profile.keyCount)
+        case .slate(let returnTo)?:
+            return DeckFlow.slatePage(profile: profile, returnTo: returnTo)
         case nil:
             // The Quick Keys page always comes with its flash, CCT and way back.
             if currentPageIndex == DeckFlow.quickKeysPageIndex(in: profile) {
@@ -148,6 +159,7 @@ final class DeckSessionController: ObservableObject {
                 if slot == 0, shown.label.isEmpty { shown.label = DeckFlow.nothingSelected }
                 return shown
             }
+            .map { DeckFlow.slateKey($0, state: slateState) }
             .map { key in
                 // The flash key carries the selected fixture's live level.
                 guard key.action == .flashSelection, liveLevel != nil || key.label == DeckFlow.flashLabel(level: nil)
@@ -432,6 +444,24 @@ final class DeckSessionController: ObservableObject {
 
     /// A press on one of the Connect Cue / fade pickers, or the selection strip.
     private func choose(_ choice: DeckChoice, at index: Int) {
+        let slateCommand: SlateStore.Command? = switch choice {
+        case .slateTake: .take
+        case .slateNew: .newSlate(nil)
+        case .slateLetter: .letter
+        case .slateNight: .toggleNight
+        case .slateFx: .toggleFx
+        default: nil
+        }
+        if let slateCommand {
+            setOverlay(.pressed, at: index)
+            onSlate?(slateCommand, index)
+            return
+        }
+        if case .slateShow = choice { return }
+        if case .openSlates = choice {
+            show(.slate(returnTo: DeckFlow.keypadPageIndex(in: profile) ?? currentPageIndex))
+            return
+        }
         if case .selectionStrip = choice {
             // On to the next selected fixtures (back to the start after the last).
             stripOffset = DeckFlow.selectionStrip(selectedFixtures, offset: stripOffset, slots: stripSlots).next

@@ -6,6 +6,12 @@ until it's show-ready (1.0): MINOR for features, PATCH for fixes. Keep
 (ChangelogTests checks). Each version is published as a GitHub release
 `host-v<version>` with the installer attached.
 
+## 0.13.0 - 2026-10-27 - Slate Book
+
+- **Slate Book:** the Host logs the whole of Titan's sACN output for each slate and take, when TitanDeck's NEW SLATE, TAKE + or LETTER is pressed, with Day/Night, FX and the time. In between, a change is logged once the output has been still for 3 seconds, ignoring channels that keep moving (an effect). Each line says what changed since the one before, by fixture and attribute when Titan's patch is known (every attribute in its personality), else by DMX address.
+- Kept in Data\SlateBook, one file per day, so it survives restarts; the slate showing carries on into the next day. Read only: nothing is ever sent to Titan.
+- Match: what's different on stage now from any line of the book.
+
 ## 0.12.0 - 2026-10-26 - Titan's patch over CITP, no more Alt+C
 
 - **Fixed: the desk's own Clear and wheels stopped working** after TitanDeck's Clear. The Host typed Alt+C (Titan's Clear shortcut), and a held Alt is the likely culprit. The Host now never types Alt or any other modifier: only number keys, number-pad @ / Thro / And / Not, Enter and Esc. TitanDeck 0.25 clears through Titan's WebAPI instead. When it starts, the Host also lets go of Alt, Ctrl and Shift in case an older version left one held down.
