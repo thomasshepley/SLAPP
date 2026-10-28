@@ -70,6 +70,14 @@ enum TitanAction: Codable, Hashable {
     /// Keypad Thro ("1 THRU 10"). On the default keypad it takes Clear's
     /// place while nothing is selected.
     case keypadThro
+    /// Rig check: Titan's Highlight on or off for the selected fixtures.
+    case toggleHighlight
+    /// Rig check: the next fixture of the selection on its own (Titan's Next).
+    case nextFixture
+    /// Rig check: the previous fixture of the selection on its own (Titan's Prev).
+    case previousFixture
+    /// A group master (a playback fader with a group on it) to a level, 0...1.
+    case setGroupMaster(titanId: Int, level: Double)
 
     /// True for actions that go over the network to Titan.
     var isRemote: Bool {
@@ -119,6 +127,10 @@ enum TitanAction: Codable, Hashable {
         case .releaseHandle(let id): return "Release handle \(id)"
         case .setCueFade(let id, let out, let s): return "Handle \(id) fade \(out ? "out" : "in") \(TitanEndpoints.format(number: s))s"
         case .flashSelection: return "Flash selection to 0%"
+        case .toggleHighlight: return "Highlight"
+        case .nextFixture: return "Next fixture"
+        case .previousFixture: return "Previous fixture"
+        case .setGroupMaster(let id, let level): return "Group master \(id) @ \(Int((level * 100).rounded()))%"
         case .dimmerFlash(let down, let s): return "Flash \(down ? "down" : "back")\(s.map { " over \(TitanEndpoints.format(number: $0))s" } ?? "")"
         }
     }
@@ -154,4 +166,12 @@ enum DeckChoice: Codable, Hashable {
     case slateNight
     /// Slate page: FX shot or not.
     case slateFx
+    /// The main menu's way to the Rig page (Highlight, Next and Previous fixture).
+    case openRig
+    /// The main menu's way to the Masters page (the group masters on Titan's page 60).
+    case openMasters
+    /// Masters page: a group master, to pick its level.
+    case pickMaster(titanId: Int)
+    /// A group master's level picker: 0...1.
+    case masterLevel(Double)
 }

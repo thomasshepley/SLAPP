@@ -80,6 +80,13 @@ final class DeckSessionController: ObservableObject {
             redraw()
         }
     }
+    /// Highlight is on, as far as the deck knows (the Rig page's key).
+    @Published private(set) var highlightOn = false
+    /// Group master levels set from the deck (titanId: 0...1), shown when
+    /// Titan doesn't report the fader's level itself.
+    @Published private(set) var masterLevels: [Int: Double] = [:]
+    /// The group masters on Titan's page 60.
+    var groupMasters: [DeckFlow.GroupMaster] { DeckFlow.groupMasters(availableCues, levels: masterLevels) }
     private var deskSelection: [Int] = []
     private var follower = DeckFlow.SelectionFollower()
 
@@ -121,6 +128,12 @@ final class DeckSessionController: ObservableObject {
                                      keyCount: profile.keyCount)
         case .slate(let returnTo)?:
             return DeckFlow.slatePage(profile: profile, returnTo: returnTo)
+        case .rig(let returnTo)?:
+            return DeckFlow.rigPage(profile: profile, returnTo: returnTo, highlightOn: highlightOn)
+        case .masters?:
+            return DeckFlow.mastersPage(profile: profile, masters: groupMasters)
+        case .masterLevel(let titanId, _)?:
+            return DeckFlow.masterLevelPage(master: groupMasters.first { $0.titanId == titanId }, keyCount: profile.keyCount)
         case nil:
             // The Quick Keys page always comes with its flash, CCT and way back.
             if currentPageIndex == DeckFlow.quickKeysPageIndex(in: profile) {
@@ -254,7 +267,10 @@ final class DeckSessionController: ObservableObject {
     }
 
     private func show(_ overlay: DeckFlow.Overlay?) {
-        if case .titanPages? = overlay { onNeedCues?() }
+        switch overlay {
+        case .titanPages?, .masters?: onNeedCues?()
+        default: break
+        }
         flowOverlay = overlay
         overlays.removeAll()
         redraw()
@@ -422,6 +438,10 @@ final class DeckSessionController: ObservableObject {
         default:
             setOverlay(.pressed, at: index)
             onAction?(action, index)
+            if action == .toggleHighlight {
+                highlightOn.toggle()
+                draw(logicalIndex: index)
+            }
             let event = keypad.apply(action)
             refreshSelection()
             switch event {
@@ -472,6 +492,14 @@ final class DeckSessionController: ObservableObject {
             show(.slate(returnTo: DeckFlow.keypadPageIndex(in: profile) ?? currentPageIndex))
             return
         }
+        if case .openRig = choice {
+            show(.rig(returnTo: DeckFlow.keypadPageIndex(in: profile) ?? currentPageIndex))
+            return
+        }
+        if case .openMasters = choice {
+            show(.masters(returnTo: DeckFlow.keypadPageIndex(in: profile) ?? currentPageIndex))
+            return
+        }
         if case .selectionStrip = choice {
             // On to the next selected fixtures (back to the start after the last).
             stripOffset = DeckFlow.selectionStrip(selectedFixtures, offset: stripOffset, slots: stripSlots).next
@@ -504,6 +532,14 @@ final class DeckSessionController: ObservableObject {
             show(.titanPages(slot: slot, first: 0, fromConnect: fromConnect, returnTo: home))
         case (.back, .titanPages(_, _, true, _)):
             show(.connectCue(returnTo: home))
+        case (.pickMaster(let titanId), .masters):
+            show(.masterLevel(titanId: titanId, returnTo: home))
+        case (.masterLevel(let level), .masterLevel(let titanId, _)):
+            onAction?(.setGroupMaster(titanId: titanId, level: level), index)
+            masterLevels[titanId] = level
+            show(.masters(returnTo: home))
+        case (.back, .masterLevel):
+            show(.masters(returnTo: home))
         case (.intensity, _):
             show(.selection(returnTo: home))
         case (.back, _), (.done, _):
@@ -547,7 +583,7 @@ final class DeckSessionController: ObservableObject {
 
     private static func showsCues(_ overlay: DeckFlow.Overlay) -> Bool {
         switch overlay {
-        case .titanPages, .titanCues: return true
+        case .titanPages, .titanCues, .masters, .masterLevel: return true
         default: return false
         }
     }

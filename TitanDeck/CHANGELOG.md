@@ -7,6 +7,13 @@ the GitHub Actions run that built it. The top entry is shown in the app
 so add an entry - and bump `MARKETING_VERSION` in `project.yml` to match -
 with every change that goes to `main`.
 
+## 0.33.0 - 2026-10-28 - Rig and Masters on the deck
+
+- **RIG on the main menu** (hold Menu): FIX -1, HI LIGHT and FIX +1 across the top, like the desk's Prev, Highlight and Next, for checking a rig fixture by fixture. Select the fixtures first; HI LIGHT lights up while it's on. They're also in the key editor, for any page.
+- **MASTERS on the main menu:** your group masters on Titan's playback page 60, faders 1 to 10, each key showing the master's name and level. Press one for its level picker, laid out like the keypad: 0%, 10%, 20% up to 100%, the current level lit. Pick one and it's set, and you're back on the masters.
+- The level shown is Titan's own when Titan reports it, otherwise the level last set from the deck ("-" until then).
+- On Titan 19 these go through Titan's WebAPI, which is its own user: HI LIGHT and FIX +1/-1 step through the selection TitanDeck mirrors from the desk, so the desk's own screen doesn't show the step.
+
 ## 0.32.0 - 2026-10-28 - Cue fades and CLEAR done by TitanDeck Host
 
 - **Cue fades and CLEAR are now done by TitanDeck Host (0.14) on the Titan PC** when the iPad is paired with it. The Host tries each way it knows, checks it worked (the time read back from the cue, the desk's selection over CITP) and logs every call in its Titan log. The answer, worked or not, shows here in Recent events.

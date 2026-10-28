@@ -26,12 +26,19 @@ enum DeckFlow {
         case fadePicker(slot: Int, fadeOut: Bool, returnTo: Int)
         /// The Slate Book: slate, take, day/night, FX.
         case slate(returnTo: Int)
+        /// Rig check: Highlight, Fix -1, Fix +1.
+        case rig(returnTo: Int)
+        /// The group masters on Titan's playback page 60, with their levels.
+        case masters(returnTo: Int)
+        /// One group master's level, 0% to 100% in tens.
+        case masterLevel(titanId: Int, returnTo: Int)
 
         /// The profile page to go back to.
         var returnTo: Int {
             switch self {
             case .menu: return 0
-            case .selection(let page), .colour(let page), .connectCue(let page), .slate(let page): return page
+            case .selection(let page), .colour(let page), .connectCue(let page), .slate(let page),
+                 .rig(let page), .masters(let page), .masterLevel(_, let page): return page
             case .titanPages(_, _, _, let page), .titanCues(_, _, _, let page), .fadePicker(_, _, let page): return page
             }
         }
@@ -369,7 +376,7 @@ enum DeckFlow {
     static func menuLabel(onPage index: Int, overlay: Overlay?, profile: DeckProfile, pageName: String?,
                           hasSelection: Bool, selectionText: String? = nil) -> String? {
         switch overlay {
-        case .selection?, .colour?, .slate?:
+        case .selection?, .colour?, .slate?, .rig?, .masters?:
             return nil
         case nil:
             if index == quickKeysPageIndex(in: profile) { return nil }
@@ -400,15 +407,112 @@ enum DeckFlow {
             KeyDefinition(index: index, label: page.name, colorHex: palette[index % palette.count],
                           action: .switchPage(index))
         }
-        // The Slate Book, after the pages: the last key if the pages fill the deck.
-        let slateSpot = min(keys.count, max(profile.keyCount - 1, 0))
-        keys.removeAll { $0.index == slateSpot }
-        keys.append(KeyDefinition(index: slateSpot, label: "SLATES", colorHex: slateColour,
-                                  sfSymbol: "film", action: .deckChoice(.openSlates)))
+        // Rig, Masters and the Slate Book after the pages, taking the last
+        // keys if the pages fill the deck.
+        let extras = [
+            KeyDefinition(index: 0, label: "RIG", colorHex: rigColour, sfSymbol: "lightbulb.max", action: .deckChoice(.openRig)),
+            KeyDefinition(index: 0, label: "MASTERS", colorHex: mastersColour, sfSymbol: "slider.vertical.3",
+                          action: .deckChoice(.openMasters)),
+            KeyDefinition(index: 0, label: "SLATES", colorHex: slateColour, sfSymbol: "film", action: .deckChoice(.openSlates)),
+        ].suffix(max(profile.keyCount, 0))
+        let start = max(min(keys.count, profile.keyCount - extras.count), 0)
+        keys.removeAll { $0.index >= start }
+        for (offset, var extra) in extras.enumerated() {
+            extra.index = start + offset
+            keys.append(extra)
+        }
         return DeckPage(name: "Main Menu", keys: keys)
     }
 
     static let slateColour = "#2B2B33"
+    static let rigColour = "#7A5C00"
+    static let mastersColour = "#3D2E6B"
+
+    // MARK: Rig
+
+    /// The Rig page: Fix -1, Highlight and Fix +1 across the top (like the
+    /// desk's Prev, Highlight and Next), for checking a rig fixture by
+    /// fixture. Return to Keypad where Menu is.
+    static func rigPage(profile: DeckProfile, returnTo: Int, highlightOn: Bool) -> DeckPage {
+        let threeWide = isThreeWide(profile)
+        let templates = [
+            KeyDefinition(index: 0, label: "FIX -1", colorHex: DeckProfile.pageColor, sfSymbol: "chevron.left",
+                          action: .previousFixture),
+            KeyDefinition(index: 1, label: highlightOn ? "HI LIGHT\nON" : "HI LIGHT", colorHex: highlightOn ? "#E0A800" : rigColour,
+                          sfSymbol: "lightbulb.max", action: .toggleHighlight),
+            KeyDefinition(index: 2, label: "FIX +1", colorHex: DeckProfile.pageColor, sfSymbol: "chevron.right",
+                          action: .nextFixture),
+        ]
+        let room = threeWide ? templates.count : max(profile.keyCount - 1, 0)
+        let keys = withReturnKey(Array(templates.prefix(room)), keyCount: profile.keyCount, threeWide: threeWide)
+        return DeckPage(name: "Rig", keys: keys.sorted { $0.index < $1.index })
+    }
+
+    // MARK: Masters
+
+    /// Titan's playback page for the group masters (60, 0-based 59).
+    static let mastersTitanPage = 59
+    /// Faders 1-10 on it.
+    static let masterFaders = 10
+    /// The levels offered for a master: 0% to 100% in tens.
+    static let masterLevels: [Double] = (0 ... 10).map { Double($0) / 10 }
+
+    /// A group master on Titan's page 60, as the Masters page shows it.
+    struct GroupMaster: Equatable {
+        var titanId: Int
+        /// Fader number on the page, 1-based.
+        var fader: Int
+        var name: String
+        /// 0...1, from Titan if it says, else as last set from the deck.
+        var level: Double?
+    }
+
+    /// The group masters among Titan's playbacks: faders 1-10 of page 60, in order.
+    static func groupMasters(_ cues: [CueChoice], levels: [Int: Double]) -> [GroupMaster] {
+        cues.filter { $0.page == mastersTitanPage && $0.index < masterFaders }
+            .sorted { $0.index < $1.index }
+            .map { cue in
+                let name = cue.legend.trimmingCharacters(in: .whitespacesAndNewlines)
+                return GroupMaster(titanId: cue.titanId, fader: cue.index + 1,
+                                   name: name.isEmpty ? "Fader \(cue.index + 1)" : name,
+                                   level: cue.level ?? levels[cue.titanId])
+            }
+    }
+
+    /// "50%", or "-" when the level isn't known.
+    static func percentText(_ level: Double?) -> String {
+        level.map { "\(Int(($0 * 100).rounded()))%" } ?? "-"
+    }
+
+    /// The Masters page: each group master's name and level; a press picks its level.
+    static func mastersPage(profile: DeckProfile, masters: [GroupMaster]) -> DeckPage {
+        let threeWide = isThreeWide(profile)
+        let room = threeWide ? 12 : max(profile.keyCount - 1, 0)
+        var keys = masters.prefix(min(room, masterFaders)).enumerated().map { slot, master in
+            KeyDefinition(index: slot, label: "\(master.name)\n\(percentText(master.level))", colorHex: mastersColour,
+                          action: .deckChoice(.pickMaster(titanId: master.titanId)))
+        }
+        if keys.isEmpty {
+            keys = [KeyDefinition(index: 0, label: "No masters\non page 60", colorHex: "#3A3A3C")]
+        }
+        keys = withReturnKey(keys, keyCount: profile.keyCount, threeWide: threeWide)
+        return DeckPage(name: "Masters", keys: keys.sorted { $0.index < $1.index })
+    }
+
+    /// One master's level, keypad style: 0% to 100% in tens, the current one
+    /// lit, with Back.
+    static func masterLevelPage(master: GroupMaster?, keyCount: Int) -> DeckPage {
+        let back = max(keyCount - 1, 0)
+        let current = master?.level.map { ($0 * 10).rounded() / 10 }
+        var keys = masterLevels.prefix(back).enumerated().map { slot, level in
+            KeyDefinition(index: slot, label: percentText(level),
+                          colorHex: level == current ? DeckProfile.goColor : mastersColour,
+                          action: .deckChoice(.masterLevel(level)))
+        }
+        keys.append(KeyDefinition(index: back, label: "BACK", colorHex: DeckCues.backColour, sfSymbol: "arrow.uturn.backward",
+                                  action: .deckChoice(.back)))
+        return DeckPage(name: master.map { "\($0.name) \(percentText($0.level))" } ?? "Master", keys: keys)
+    }
 
     /// The Slate page: what's showing (slate, take, day or night, FX) and the
     /// buttons that move it on, each logging the look on stage in the Host's

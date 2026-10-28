@@ -18,6 +18,9 @@ struct PlaybackHandleState: Equatable {
     /// handleLocation: page and position on it, both 0-based.
     var page: Int? = nil
     var index: Int? = nil
+    /// The fader's level, 0...1, if Titan says (a "level" at the top or in
+    /// `properties`: undocumented, so any key with "level" in it).
+    var level: Double? = nil
 }
 
 enum TitanHandlesParser {
@@ -39,9 +42,33 @@ enum TitanHandlesParser {
                 active: boolValue(value(in: handle, key: "active")) ?? false,
                 legend: value(in: handle, key: "legend") as? String ?? "",
                 page: intValue(self.value(in: location, key: "page")),
-                index: intValue(self.value(in: location, key: "index"))
+                index: intValue(self.value(in: location, key: "index")),
+                level: levelValue(handle)
             )
         }
+    }
+
+    /// A fader level from anywhere in the handle, as 0...1 (a percentage over 1 is scaled).
+    static func levelValue(_ handle: [String: Any]) -> Double? {
+        // "level", "faderLevel"... but not a flag such as "levelMatched".
+        func isLevel(_ key: String) -> Bool {
+            key.localizedCaseInsensitiveContains("level") && !key.localizedCaseInsensitiveContains("match")
+        }
+        var candidates: [Any] = handle.filter { isLevel($0.key) }.map(\.value)
+        if let properties = handle["properties"] as? [[String: Any]] {
+            for property in properties {
+                if let key = property["Key"] as? String, isLevel(key), let value = property["Value"] {
+                    candidates.append(value)
+                }
+            }
+        }
+        for candidate in candidates {
+            if let flag = candidate as? NSNumber, String(cString: flag.objCType) == "c" { continue }   // a JSON true/false
+            let number = (candidate as? NSNumber)?.doubleValue ?? (candidate as? String).flatMap(Double.init)
+            guard let number, number.isFinite, number >= 0 else { continue }
+            return number > 1 ? min(number / 100, 1) : number
+        }
+        return nil
     }
 
     /// Legends by user number (workspace names, for instance).

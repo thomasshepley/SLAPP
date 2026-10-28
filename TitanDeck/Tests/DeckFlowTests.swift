@@ -176,9 +176,67 @@ final class DeckFlowTests: XCTestCase {
     func testMenuPageListsEveryPage() {
         let profile = DeckProfile.makeDefault()
         let menu = DeckFlow.menuPage(profile: profile)
-        XCTAssertEqual(menu.keys.map(\.label), profile.pages.map(\.name) + ["SLATES"], "every page, then the Slate Book")
-        XCTAssertEqual(menu.keys.dropLast().last?.action, .switchPage(profile.pages.count - 1))
-        XCTAssertEqual(menu.keys.last?.action, .deckChoice(.openSlates))
+        XCTAssertEqual(menu.keys.map(\.label), profile.pages.map(\.name) + ["RIG", "MASTERS", "SLATES"],
+                       "every page, then Rig, Masters and the Slate Book")
+        XCTAssertEqual(menu.keys.dropLast(3).last?.action, .switchPage(profile.pages.count - 1))
+        XCTAssertEqual(menu.keys.suffix(3).map(\.action), [.deckChoice(.openRig), .deckChoice(.openMasters), .deckChoice(.openSlates)])
+        XCTAssertEqual(Set(menu.keys.map(\.index)).count, menu.keys.count, "no two keys in one spot")
+    }
+
+    func testMenuKeepsRigMastersAndSlatesWhenThePagesFillTheDeck() {
+        var profile = DeckProfile.makeDefault(keyCount: 6)
+        while profile.pages.count < 8 { profile.pages.append(DeckPage(name: "P\(profile.pages.count)", keys: [])) }
+        let menu = DeckFlow.menuPage(profile: profile)
+        XCTAssertEqual(menu.keys.count, 6)
+        XCTAssertEqual(menu.keys.suffix(3).map(\.label), ["RIG", "MASTERS", "SLATES"])
+        XCTAssertEqual(menu.keys.map(\.index), Array(0 ..< 6))
+    }
+
+    func testRigPageIsPrevHighlightNext() {
+        let profile = DeckProfile.makeDefault()
+        let page = DeckFlow.rigPage(profile: profile, returnTo: 0, highlightOn: false)
+        XCTAssertEqual(page.key(at: 0)?.action, .previousFixture)
+        XCTAssertEqual(page.key(at: 1)?.action, .toggleHighlight)
+        XCTAssertEqual(page.key(at: 2)?.action, .nextFixture)
+        XCTAssertEqual(page.key(at: 0)?.label, "FIX -1")
+        XCTAssertEqual(page.key(at: 2)?.label, "FIX +1")
+        XCTAssertTrue(page.keys.contains { $0.action == .mainMenu }, "a way back to the keypad")
+        let lit = DeckFlow.rigPage(profile: profile, returnTo: 0, highlightOn: true)
+        XCTAssertEqual(lit.key(at: 1)?.label, "HI LIGHT\nON")
+    }
+
+    func testGroupMastersAreFaders1To10OfPage60() {
+        let cues = [
+            CueChoice(titanId: 9, userNumber: nil, page: 59, index: 1, legend: "Backs", isActive: false),
+            CueChoice(titanId: 8, userNumber: nil, page: 59, index: 0, legend: " Fronts ", isActive: false, level: 0.8),
+            CueChoice(titanId: 7, userNumber: nil, page: 59, index: 2, legend: "", isActive: false),
+            CueChoice(titanId: 6, userNumber: nil, page: 59, index: 10, legend: "Fader 11", isActive: false),
+            CueChoice(titanId: 5, userNumber: nil, page: 0, index: 0, legend: "Cue", isActive: false),
+        ]
+        let masters = DeckFlow.groupMasters(cues, levels: [9: 0.4, 8: 0.1])
+        XCTAssertEqual(masters.map(\.titanId), [8, 9, 7], "page 60 faders 1-10 only, in fader order")
+        XCTAssertEqual(masters.map(\.name), ["Fronts", "Backs", "Fader 3"])
+        XCTAssertEqual(masters.map(\.fader), [1, 2, 3])
+        XCTAssertEqual(masters.map(\.level), [0.8, 0.4, nil], "Titan's own level first, else the one the deck set")
+
+        let profile = DeckProfile.makeDefault()
+        let page = DeckFlow.mastersPage(profile: profile, masters: masters)
+        XCTAssertEqual(page.key(at: 0)?.label, "Fronts\n80%")
+        XCTAssertEqual(page.key(at: 2)?.label, "Fader 3\n-")
+        XCTAssertEqual(page.key(at: 1)?.action, .deckChoice(.pickMaster(titanId: 9)))
+        XCTAssertTrue(page.keys.contains { $0.action == .mainMenu })
+        let empty = DeckFlow.mastersPage(profile: profile, masters: [])
+        XCTAssertEqual(empty.key(at: 0)?.label, "No masters\non page 60")
+    }
+
+    func testMasterLevelsGoUpInTens() {
+        let master = DeckFlow.GroupMaster(titanId: 8, fader: 1, name: "Fronts", level: 0.3)
+        let page = DeckFlow.masterLevelPage(master: master, keyCount: 15)
+        XCTAssertEqual(page.keys.prefix(11).map(\.label), ["0%", "10%", "20%", "30%", "40%", "50%", "60%", "70%", "80%", "90%", "100%"])
+        XCTAssertEqual(page.key(at: 3)?.colorHex, DeckProfile.goColor, "the current level is lit")
+        XCTAssertEqual(page.key(at: 10)?.action, .deckChoice(.masterLevel(1)))
+        XCTAssertEqual(page.key(at: 14)?.action, .deckChoice(.back))
+        XCTAssertEqual(page.name, "Fronts 30%")
     }
 }
 

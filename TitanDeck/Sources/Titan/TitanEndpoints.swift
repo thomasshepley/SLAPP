@@ -82,7 +82,13 @@ enum TitanEndpoints {
             ])
         case .recallWorkspace(let n):
             return script(host, port, "Workspace/Apply", [("handle_userNumber", "\(n)")])
-        case .keypadEnter, .keypadClear, .colourTemperature, .setCueFade, .dimmerFlash:
+        case .toggleHighlight:
+            return script(host, port, "Programmer/Editor/Fixtures/ToggleHighlight", [])
+        case .nextFixture:
+            return script(host, port, "Selection/Context/Global/PatternNext", [])
+        case .previousFixture:
+            return script(host, port, "Selection/Context/Global/PatternPrevious", [])
+        case .keypadEnter, .keypadClear, .colourTemperature, .setCueFade, .dimmerFlash, .setGroupMaster:
             return nil   // several requests - TitanClient runs them
         case .switchPage, .openSettings, .nextPage, .previousPage, .mainMenu, .colourPresets,
              .cueGo, .cueFade, .connectCue, .deckChoice, .flashSelection:
@@ -162,6 +168,20 @@ enum TitanEndpoints {
         guard !cleanHost.isEmpty else { return nil }
         let verb = write ? "set" : "get"
         return URL(string: "http://\(authority(host, port))/titan/\(verb)/2/Playbacks/Editor/Times/\(fadeOut ? "CueFadeOutTime" : "CueFadeInTime")")
+    }
+
+    // MARK: Group masters
+
+    /// The ways to set a group master (a group on a playback fader) to a
+    /// level, 0...1, tried in turn: Titan's group handle fader, then the
+    /// playback level the fader sets.
+    static func groupMasterURLs(titanId: Int, level: Double, host: String, port: Int = defaultPort) -> [URL] {
+        let value = format(number: min(max(level, 0), 1))
+        return [
+            script(host, port, "Group/SetGroupHandleFaderLevel",
+                   [("handle_titanId", "\(titanId)"), ("value_level", value), ("accuracy", "1")]),
+            script(host, port, "Playbacks/SetPlaybackLevel", [("srcHandle_titanId", "\(titanId)"), ("level_level", value)]),
+        ].compactMap { $0 }
     }
 
     // MARK: Flash (hold to 0%)

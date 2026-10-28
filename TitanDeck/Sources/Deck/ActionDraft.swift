@@ -31,6 +31,9 @@ struct ActionDraft: Equatable {
         case cueFade
         case connectCue
         case flashSelection
+        case highlight
+        case nextFixture
+        case previousFixture
 
         var id: String { rawValue }
 
@@ -61,6 +64,9 @@ struct ActionDraft: Equatable {
             case .cueFade: return "Fade time for a connected cue"
             case .connectCue: return "Connect Cue"
             case .flashSelection: return "Flash selection to 0% (hold)"
+            case .highlight: return "Highlight on/off"
+            case .nextFixture: return "Next fixture (Fix +1)"
+            case .previousFixture: return "Previous fixture (Fix -1)"
             }
         }
     }
@@ -105,7 +111,10 @@ struct ActionDraft: Equatable {
         case .cueFade(let s, let out): kind = .cueFade; slot = s + 1; fadeOut = out
         case .connectCue: kind = .connectCue
         case .flashSelection: kind = .flashSelection
-        case .deckChoice, .fireHandle, .releaseHandle, .setCueFade, .dimmerFlash: kind = .none
+        case .toggleHighlight: kind = .highlight
+        case .nextFixture: kind = .nextFixture
+        case .previousFixture: kind = .previousFixture
+        case .deckChoice, .fireHandle, .releaseHandle, .setCueFade, .dimmerFlash, .setGroupMaster: kind = .none
         }
     }
 
@@ -143,6 +152,9 @@ struct ActionDraft: Equatable {
         case .cueFade: return .cueFade(slot: max(slot, 1) - 1, fadeOut: fadeOut)
         case .connectCue: return .connectCue
         case .flashSelection: return .flashSelection
+        case .highlight: return .toggleHighlight
+        case .nextFixture: return .nextFixture
+        case .previousFixture: return .previousFixture
         }
     }
 }

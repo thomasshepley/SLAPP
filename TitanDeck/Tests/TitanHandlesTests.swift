@@ -35,4 +35,17 @@ final class TitanHandlesTests: XCTestCase {
                        "http://10.0.0.1:4430/titan/handles/Playbacks")
         XCTAssertNil(TitanEndpoints.handlesURL(group: "Playbacks", host: " "))
     }
+
+    func testReadsAFaderLevelWhenTitanGivesOne() throws {
+        let json = """
+        [{"handleLocation":{"group":"Playbacks","index":0,"page":59},"properties":[{"Key":"FaderLevel","Value":"0.45"}],
+          "titanId":3001,"Active":true,"Legend":"Fronts"},
+         {"handleLocation":{"group":"Playbacks","index":1,"page":59},"properties":[{"Key":"levelMatched","Value":true}],
+          "titanId":3002,"level":75,"Active":false,"Legend":"Backs"},
+         {"handleLocation":{"group":"Playbacks","index":2,"page":59},"properties":[],"titanId":3003,"Active":false,"Legend":""}]
+        """
+        let handles = try XCTUnwrap(TitanHandlesParser.parse(Data(json.utf8)))
+        XCTAssertEqual(handles.map(\.level), [0.45, 0.75, nil], "a percentage is scaled; a level-match flag isn't a level")
+        XCTAssertEqual(handles.first?.page, 59)
+    }
 }
