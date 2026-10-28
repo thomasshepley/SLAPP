@@ -178,6 +178,9 @@ final class AppState: ObservableObject {
                 }
             }
         }
+        deck.onNeedMasters = { [weak self] in
+            Task { await self?.refreshMasters() }
+        }
         deck.flashFadeRules = flashFadeRules
         deck.heldColorHex = heldKeyColour
         deskLink.citpSelection = { [weak self] in
@@ -699,6 +702,26 @@ final class AppState: ObservableObject {
         }
     }
     static let heldColourKey = "deck.heldColour"
+
+    /// Reads Titan's page 60 for the Masters page. A grand master isn't a
+    /// playback, so the page is asked for on its own; if Titan has nothing
+    /// there, every handle Titan has is looked through for page 60. What
+    /// Titan sent goes in Recent events.
+    private func refreshMasters() async {
+        let page = DeckFlow.mastersTitanPage
+        guard var handles = await titan.handles(group: "Playbacks", page: page) else {
+            connectionLog.record(.app, .info, "Masters: Titan didn't answer for page \(page + 1)")
+            if let all = await titan.playbackHandles() { deck.setAvailableCues(Self.cueChoices(all)) }
+            return
+        }
+        var from = "handles/Playbacks/\(page)"
+        if handles.isEmpty, let all = await titan.handles(group: "") {
+            handles = TitanHandlesParser.onPage(page, of: all)
+            from = "every handle"
+        }
+        connectionLog.record(.app, .info, TitanHandlesParser.pageNote(handles, page: page, from: from))
+        deck.setPageMasters(Self.cueChoices(handles).map { var cue = $0; cue.page = page; return cue })
+    }
 
     /// Titan's playback handles as the deck's Connect Cue choices.
     static func cueChoices(_ handles: [PlaybackHandleState]) -> [CueChoice] {

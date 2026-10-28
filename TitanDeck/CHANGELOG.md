@@ -7,10 +7,12 @@ the GitHub Actions run that built it. The top entry is shown in the app
 so add an entry - and bump `MARKETING_VERSION` in `project.yml` to match -
 with every change that goes to `main`.
 
-## 0.34.0 - 2026-10-28 - The current CCT on the deck
+## 0.34.0 - 2026-10-28 - The current CCT on the deck, grand masters on MASTERS
 
 - **The CCT keys show the current colour temperature:** on the colour temperature page the current one says NOW, and the CCT key on Quick Keys carries it ("CCT 3200K"). It's the CCT palette Titan shows as active for the selection when Titan says, else the last one applied from the deck for this selection; a new selection starts blank until one of those is known.
 - CLEAR on Titan 19 needs TitanDeck Host 0.15, which clears the desk's selection over CITP.
+- **Fixed: MASTERS said "No masters on page 60" with a grand master there.** A grand master isn't a playback, so it wasn't in the playback list the page was built from. MASTERS now asks Titan for page 60 itself (and if that comes back empty, looks through every handle Titan has for page 60), and sets a level with Titan's own master call first (Masters.SetMaster), then the group and playback calls as before.
+- Opening MASTERS puts what Titan has on page 60 in Settings > Recent events (each fader's legend, handle type and id), so if one's still missing, that line says why.
 
 ## 0.33.1 - 2026-10-28 - Titan keeps working when the Host is down
 

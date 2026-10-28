@@ -31,6 +31,8 @@ final class DeckSessionController: ObservableObject {
     var onProfileChanged: ((DeckProfile) -> Void)?
     /// Called when Connect Cue needs Titan's playback list fresh.
     var onNeedCues: (() -> Void)?
+    /// Called when the Masters page needs Titan's page 60 fresh.
+    var onNeedMasters: (() -> Void)?
 
     /// Per-key press/failure highlight. Published so the on-screen deck mirrors it.
     @Published private(set) var overlays: [Int: DeckRenderer.Overlay] = [:]
@@ -105,8 +107,11 @@ final class DeckSessionController: ObservableObject {
     /// Group master levels set from the deck (titanId: 0...1), shown when
     /// Titan doesn't report the fader's level itself.
     @Published private(set) var masterLevels: [Int: Double] = [:]
+    /// What's on Titan's page 60, read when Masters opens (nil until Titan
+    /// answers; then Titan's whole playback list is used).
+    @Published private(set) var pageMasters: [CueChoice]?
     /// The group masters on Titan's page 60.
-    var groupMasters: [DeckFlow.GroupMaster] { DeckFlow.groupMasters(availableCues, levels: masterLevels) }
+    var groupMasters: [DeckFlow.GroupMaster] { DeckFlow.groupMasters(pageMasters ?? availableCues, levels: masterLevels) }
     private var deskSelection: [Int] = []
     private var follower = DeckFlow.SelectionFollower()
 
@@ -289,7 +294,8 @@ final class DeckSessionController: ObservableObject {
 
     private func show(_ overlay: DeckFlow.Overlay?) {
         switch overlay {
-        case .titanPages?, .masters?: onNeedCues?()
+        case .titanPages?: onNeedCues?()
+        case .masters?: if let onNeedMasters { onNeedMasters() } else { onNeedCues?() }
         case .colour?: onColourShown?()
         default: break
         }
@@ -588,6 +594,13 @@ final class DeckSessionController: ObservableObject {
         activeTitanIds.insert(titanId)
         redraw()
         return .fireHandle(titanId: titanId)
+    }
+
+    /// The handles on Titan's page 60, for the Masters page.
+    func setPageMasters(_ cues: [CueChoice]) {
+        guard cues != pageMasters else { return }
+        pageMasters = cues
+        if flowOverlay.map(Self.showsCues) == true { redraw() }
     }
 
     /// Titan's playbacks, for Connect Cue and for lighting connected GOs.
