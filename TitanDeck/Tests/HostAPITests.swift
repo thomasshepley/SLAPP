@@ -162,6 +162,19 @@ final class HostAPITests: XCTestCase {
         XCTAssertTrue(off.fixtures.isEmpty)
     }
 
+    func testTitanActionsTalkToTheHost() throws {
+        // As Host 0.14's actions/cue-fade answers (camelCase, like every Host answer).
+        let answer = try decode(HostTitanAction.self,
+                                #"{"ok":false,"message":"handle 1903 fade in 2s not set","steps":["Titan reads the time as 0","SetProperty value_time: HTTP 500"]}"#)
+        XCTAssertFalse(answer.ok)
+        XCTAssertEqual(answer.steps.count, 2)
+        let body = try XCTUnwrap(String(data: HostAPI.encoder.encode(HostCueFadeRequest(titanId: 1903, fadeOut: true, seconds: 2.5)),
+                                        encoding: .utf8))
+        XCTAssertTrue(body.contains(#""titanId":1903"#), body)
+        XCTAssertTrue(body.contains(#""fadeOut":true"#), body)
+        XCTAssertTrue(body.contains(#""seconds":2.5"#), body)
+    }
+
     func testAddressesLoseTheirInterfaceEnding() {
         XCTAssertEqual(HostAPI.cleanAddress(" 192.168.1.20%en0 "), "192.168.1.20", "what discovery used to fill in")
         XCTAssertEqual(HostAPI.cleanAddress("192.168.1.20%en0:5000"), "192.168.1.20:5000")

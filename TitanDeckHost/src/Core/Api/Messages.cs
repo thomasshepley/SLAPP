@@ -176,3 +176,10 @@ public sealed record SlateNoteRequest(string Day, long Id, string? Note);
 
 /// <summary>`GET /api/v1/slate/match`: what's different now from a line of the book (Before = then, After = now).</summary>
 public sealed record SlateMatchDto(SlateEntryDto Entry, IReadOnlyList<LookChangeDto> Differences, bool Listening);
+
+/// <summary>`POST /api/v1/actions/cue-fade`: a cue's fade time, set by the Host (Host 0.14+).</summary>
+public sealed record CueFadeRequest(int TitanId, bool FadeOut, double Seconds);
+
+/// <summary>What the Host did for a Titan action: whether it worked (checked), in a
+/// line, and every step with Titan's answer.</summary>
+public sealed record TitanActionDto(bool Ok, string Message, IReadOnlyList<string> Steps);

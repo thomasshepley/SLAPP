@@ -44,6 +44,7 @@ builder.Services.AddSingleton<DeskKeyQueue>();
 builder.Services.AddSingleton<SlateService>();
 builder.Services.AddHostedService(services => services.GetRequiredService<SlateService>());
 builder.Services.AddSingleton<CitpService>();
+builder.Services.AddSingleton<TitanActions>();
 builder.Services.AddHostedService(services => services.GetRequiredService<CitpService>());
 
 var app = builder.Build();
@@ -172,6 +173,17 @@ network.MapPost("/desk/keys", (DeskKeysRequest request, DeskKeyQueue queue, Tita
         "typed on the PC for Titan", null, false, DateTimeOffset.Now);
     return Results.Ok(new { typed = request.Keys.Count });
 });
+
+// TitanDeck's cue fade and Clear keys, done here so a better way only needs a
+// Host update. Every call goes in the Titan log; the answer says what worked.
+network.MapPost("/actions/cue-fade", async (CueFadeRequest request, TitanActions actions, HttpContext http) =>
+{
+    if (request.TitanId <= 0 || request.Seconds is < 0 or > 3600 || double.IsNaN(request.Seconds))
+        return Results.BadRequest(new { error = "That isn't a playback and a fade time." });
+    return Results.Ok(await actions.CueFade(request, http.RequestAborted));
+});
+network.MapPost("/actions/clear-selection", async (TitanActions actions, HttpContext http) =>
+    Results.Ok(await actions.ClearSelection(http.RequestAborted)));
 
 // The desk's selection over CITP (experimental, Test mode only).
 network.MapGet("/citp/selection", (CitpService citp) => citp.Selection());
