@@ -202,13 +202,16 @@ support posts):
   keeps Titan's error body for Recent calls.
 - **Keypad types on the desk** (`DeskKeys`, `AppState.typeOnDesk`, on by default,
   `deck.keypadTypesOnDesk`): keypad actions become Titan's PC keyboard shortcuts
-  (number keys, number-pad * = @, / = Thro, Enter, Esc = Exit, Alt+C = Clear),
+  (number keys, number-pad * = @, / = Thro, Enter, Esc = Exit),
   typed by the Host window (`POST /api/v1/desk/keys`) or over RDP, so they reach
   the desk's own command line. On the default keypad, Clear shows as THRU
   (`.keypadThro`, `DeckFlow.keypadKey`) while nothing is selected;
-  `KeypadBuffer` turns "1>10 Enter" into a selection of 1-10. **Never Alt or
-  any modifier from the app:** Alt+C for Clear left the desk's own Clear and
-  wheels dead (0.24). On Titan 19 the paired Host does CLEAR: since Host 0.15 an
+  `KeypadBuffer` turns "1>10 Enter" into a selection of 1-10. **No Alt or
+  other modifier from the app, except RIG's** (`DeskKeys.shortcut`, the
+  user's call in 0.35: FIX +1 / FIX -1 / HI LIGHT as Alt+Right / Alt+Left /
+  Alt+Down, which the Host 0.15.1+ types as one burst; with an older Host they
+  fall back to the WebAPI). Alt+C for Clear left the desk's own Clear and
+  wheels dead (0.24). Never add another shortcut without the user asking. On Titan 19 the paired Host does CLEAR: since Host 0.15 an
   empty CITP selection, only with a desk selection (see TitanDeckHost/CLAUDE.md).
   Clear types Exit if something's typed, then
   `TitanClient.clearSelection` on the 4430 client AND the desk link client

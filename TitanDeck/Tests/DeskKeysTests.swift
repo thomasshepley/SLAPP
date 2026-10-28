@@ -56,4 +56,16 @@ final class DeskKeysTests: XCTestCase {
         XCTAssertEqual(DeskKeys.level(54.6), ["@", "5", "5", "enter"])
         for name in DeskKeys.level(73) { XCTAssertNotNil(DeskKeys.table[name]) }
     }
+
+    func testRigKeysAreTitansAltArrowShortcuts() {
+        XCTAssertEqual(DeskKeys.shortcut(for: .nextFixture), ["next"])
+        XCTAssertEqual(DeskKeys.shortcut(for: .previousFixture), ["prev"])
+        XCTAssertEqual(DeskKeys.shortcut(for: .toggleHighlight), ["highlight"])
+        XCTAssertNil(DeskKeys.shortcut(for: .keypadClear), "no Alt+C: CLEAR goes over CITP")
+        XCTAssertEqual(Set(DeskKeys.shortcuts.keys), ["next", "prev", "highlight"], "RIG's three and nothing else")
+        XCTAssertEqual(DeskKeys.strokes(for: "next"), [
+            .key(0x38, down: true), .key(0x14D, down: true), .key(0x14D, down: false), .key(0x38, down: false),
+        ], "over remote desktop: Alt held for Right, then let go")
+        XCTAssertEqual(DeskKeys.strokes(for: "highlight")[1], .key(0x150, down: true))
+    }
 }

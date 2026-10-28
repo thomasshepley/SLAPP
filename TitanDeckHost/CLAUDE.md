@@ -105,16 +105,20 @@ TitanDeckHost/
   while), and CLEAR (`TitanActions.RunClear`) checks CITP for at most 1 s with
   no WebAPI clears after a CITP clear, because the deck's keys after CLEAR
   wait for it.
+  If Titan ever runs elevated, SendInput from the (non-elevated) window can't
+  reach it (UIPI): the iPad falls back to typing over RDP. **No Alt or other
+  modifier, except `DeskKeys.Shortcuts`.** Host 0.11 typed Alt+C for Clear key
+  by key and the desk's own Clear and wheels died; 0.14.1-0.14.3 typed it as
+  one burst and it didn't clear Titan 19's selection. TitanDeck's CLEAR goes
+  over CITP (below) since 0.15. The only exception (the user's call, 0.15.1):
+  RIG's Next / Previous / Highlight as Alt+Right / Alt+Left / Alt+Down, each
+  one SendInput burst with every modifier let go after. Never add to it without
+  the user asking.
 - **Cue fade checks must read the cue, not the editor** (0.15.1): Titan's
   `Playbacks.Editor.Times.*` read back whatever was just set even when the
   cue kept 0 (0.14-0.15 reported OK wrongly). `TitanActions.ReadFromCue` lets
   go of the cue (`CueSelection/Clear`), opens another playback
   (`TitanRecipes.OtherPlayback`) and then the cue again before reading.
-  If Titan ever runs elevated, SendInput from the (non-elevated) window can't
-  reach it (UIPI): the iPad falls back to typing over RDP. **Never Alt or any
-  modifier.** Host 0.11 typed Alt+C for Clear key by key and the desk's own
-  Clear and wheels died; 0.14.1-0.14.3 typed it as one burst and it didn't clear
-  Titan 19's selection. TitanDeck's CLEAR goes over CITP (below) since 0.15.
 - **Patch from CITP** (`Core/Citp/CitpPatch`, `PatchReader.UseCitp`): Titan's
   CAEX FixtureList (read only, asked for again after a FixtureModify) becomes the
   patch, so live levels need no report. Universe/channel are taken as 0-based

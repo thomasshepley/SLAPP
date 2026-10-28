@@ -279,6 +279,9 @@ final class AppState: ObservableObject {
         let keys: [String]
         let keypadLine: UUID?
         let keyIndex: Int?
+        /// Done through Titan's WebAPI instead when it can't be typed (RIG's
+        /// keys with a Host older than 0.15.1, which doesn't type shortcuts).
+        var webAPIIfNotTyped = false
     }
     /// Presses waiting for the desk, in the order pressed.
     private var deskPresses: [DeskPress] = []
@@ -346,6 +349,11 @@ final class AppState: ObservableObject {
             queueOnDesk(action, keys: keys, keypadLine: keypadLine, keyIndex: keyIndex)
             return
         }
+        if keypadTypesOnDesk, let keys = DeskKeys.shortcut(for: action) {
+            // RIG on the desk's own selection, as Titan's Alt shortcuts.
+            queueOnDesk(action, keys: keys, keypadLine: keypadLine, keyIndex: keyIndex, webAPIIfNotTyped: true)
+            return
+        }
         // Linked to the desk, commands act on the desk's own programmer. Cue
         // times are the show's, so they're set through the WebAPI's own
         // editor, leaving the operator's editor as it is.
@@ -372,8 +380,10 @@ final class AppState: ObservableObject {
     }
 
     /// Keys typed on the desk go in the order pressed.
-    private func queueOnDesk(_ action: TitanAction, keys: [String], keypadLine: UUID?, keyIndex: Int?) {
-        deskPresses.append(DeskPress(action: action, keys: keys, keypadLine: keypadLine, keyIndex: keyIndex))
+    private func queueOnDesk(_ action: TitanAction, keys: [String], keypadLine: UUID?, keyIndex: Int?,
+                             webAPIIfNotTyped: Bool = false) {
+        deskPresses.append(DeskPress(action: action, keys: keys, keypadLine: keypadLine, keyIndex: keyIndex,
+                                     webAPIIfNotTyped: webAPIIfNotTyped))
         guard deskTyping == nil else { return }
         deskTyping = Task { [weak self] in
             await self?.typeWaitingPresses()
@@ -401,6 +411,11 @@ final class AppState: ObservableObject {
             }
             let result = await typeOnDesk(batch[0].action, keys: keys)
             for press in batch {
+                if !result.ok, press.webAPIIfNotTyped {
+                    finish(await (deskLink.commandClient ?? titan).perform(press.action),
+                           keypadLine: press.keypadLine, keyIndex: press.keyIndex)
+                    continue
+                }
                 finish(TitanResult(action: press.action, ok: result.ok, statusCode: result.statusCode,
                                    milliseconds: result.milliseconds, error: result.error, date: result.date),
                        keypadLine: press.keypadLine, keyIndex: press.keyIndex)

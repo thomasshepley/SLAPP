@@ -7,6 +7,11 @@ the GitHub Actions run that built it. The top entry is shown in the app
 so add an entry - and bump `MARKETING_VERSION` in `project.yml` to match -
 with every change that goes to `main`.
 
+## 0.35.0 - 2026-10-28 - RIG steps the desk's own selection
+
+- **RIG's FIX +1, FIX -1 and HI LIGHT now work on the desk itself**, not just Titan's WebAPI user: they're typed on the Titan PC as Titan's own shortcuts (Alt+Right, Alt+Left and Alt+Down), so the desk steps through its selection and shows the fixture it's on, as its own Next, Prev and Highlight do. Needs TitanDeck Host 0.15.1; with an older Host they work as before.
+- They're the only Alt shortcuts TitanDeck types, each as one quick burst with Alt let go straight after. If the desk's own buttons ever act oddly afterwards, say so and they go back to the WebAPI.
+
 ## 0.34.0 - 2026-10-28 - Snappier keys, the current CCT, grand masters on MASTERS
 
 - **Fixed: keypad and intensity keys sometimes reached the desk 3-15 seconds late.** Three things added up:
