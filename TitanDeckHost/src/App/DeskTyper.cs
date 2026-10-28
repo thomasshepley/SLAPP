@@ -44,9 +44,25 @@ internal static class DeskTyper
     }
 
     /// One key, as a hand would press it: down and up as separate events with
-    /// a short gap. No modifiers are ever held (see <see cref="DeskKeys"/>).
+    /// a short gap. The Host's own shortcut (Alt+C, see <see cref="DeskKeys.Chords"/>)
+    /// goes as one SendInput burst, so nothing can come between Alt going down
+    /// and coming up, and every modifier is let go again after it.
     private static void Type(string name)
     {
+        if (DeskKeys.Chords.TryGetValue(name, out var chord))
+        {
+            Input[] burst =
+            [
+                Scan(chord.Modifier.Scancode, chord.Modifier.Extended, up: false),
+                Scan(chord.Key.Scancode, chord.Key.Extended, up: false),
+                Scan(chord.Key.Scancode, chord.Key.Extended, up: true),
+                Scan(chord.Modifier.Scancode, chord.Modifier.Extended, up: true),
+            ];
+            SendInput((uint)burst.Length, burst, Marshal.SizeOf<Input>());
+            Thread.Sleep(30);
+            ReleaseModifiers();
+            return;
+        }
         if (!DeskKeys.All.TryGetValue(name, out var key)) return;
         Send(Scan(key.Scancode, key.Extended, up: false));
         Thread.Sleep(20);
