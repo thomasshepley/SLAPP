@@ -95,9 +95,15 @@ TitanDeckHost/
   keyboard. Only `DeskKeys.All` keys can be typed (never letters); refused when
   the window isn't polling or Titan isn't running; keys older than 2 s dropped.
   If Titan ever runs elevated, SendInput from the (non-elevated) window can't
-  reach it (UIPI): the iPad falls back to typing over RDP. **Never Alt (or any
-  modifier) shortcuts:** after Host 0.11 typed Alt+C for Clear, the desk's own
-  Clear and wheels stopped working; Clear goes through the WebAPI.
+  reach it (UIPI): the iPad falls back to typing over RDP. **No modifiers from
+  the iPad, ever.** The one exception (user's call, Host 0.14.1): Alt+C for
+  TitanDeck's CLEAR, typed only by `TitanActions` (`DeskKeys.Chords`, never in
+  `All`), only when CITP shows the desk has a selection (`TitanRecipes.PlanClear`:
+  with nothing selected the desk's Clear would clear the programmer), as one
+  SendInput burst (Alt down, C down, C up, Alt up) then `ReleaseModifiers()`.
+  Host 0.11 typed it key by key and the desk's own Clear and wheels died (held
+  Alt suspected). If that happens again: the user's fallback is CITP clear
+  (an empty FixtureSelection only), which needs the CITP allowlist changed.
 - **Patch from CITP** (`Core/Citp/CitpPatch`, `PatchReader.UseCitp`): Titan's
   CAEX FixtureList (read only, asked for again after a FixtureModify) becomes the
   patch, so live levels need no report. Universe/channel are taken as 0-based

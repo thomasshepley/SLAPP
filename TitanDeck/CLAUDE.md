@@ -207,8 +207,10 @@ support posts):
   the desk's own command line. On the default keypad, Clear shows as THRU
   (`.keypadThro`, `DeckFlow.keypadKey`) while nothing is selected;
   `KeypadBuffer` turns "1>10 Enter" into a selection of 1-10. **Never Alt or
-  any modifier:** Alt+C for Clear left the desk's own Clear and wheels dead
-  (0.24); Clear types Exit if something's typed, then
+  any modifier from the app:** Alt+C for Clear left the desk's own Clear and
+  wheels dead (0.24). On Titan 19 the paired Host does CLEAR (Host 0.14.1 types
+  Alt+C itself, one burst, only with a desk selection; see TitanDeckHost/CLAUDE.md).
+  Clear types Exit if something's typed, then
   `TitanClient.clearSelection` on the 4430 client AND the desk link client
   (`Programmer/Editor/ClearSelection?disable=false&clearAllProgrammers=false`,
   falling back to `Selection/Context/Global/Clear`): the user wants the deck's
