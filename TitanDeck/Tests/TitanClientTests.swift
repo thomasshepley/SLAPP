@@ -28,4 +28,16 @@ final class TitanClientTests: XCTestCase {
         XCTAssertFalse(result.ok)
         XCTAssertLessThan(result.milliseconds, 15_000)
     }
+
+    func testThroughTheHostFallsBackToTitanItself() throws {
+        let viaHost = try XCTUnwrap(TitanEndpoints.url(for: .fireHandle(titanId: 77), host: "10.0.0.5", port: TitanEndpoints.viaHostPort))
+        var request = URLRequest(url: viaHost)
+        request.httpMethod = "POST"
+        let direct = try XCTUnwrap(TitanClient.direct(request))
+        XCTAssertEqual(direct.url?.absoluteString,
+                       "http://10.0.0.5:4430/titan/script/2/Playbacks/FirePlaybackAtLevel?handle_titanId=77&level_level=1&alwaysRefire=false")
+        XCTAssertEqual(direct.httpMethod, "POST", "the same request, only the port changes")
+        let straight = try XCTUnwrap(TitanEndpoints.url(for: .fireHandle(titanId: 77), host: "10.0.0.5"))
+        XCTAssertNil(TitanClient.direct(URLRequest(url: straight)), "already straight to Titan: nothing to fall back to")
+    }
 }

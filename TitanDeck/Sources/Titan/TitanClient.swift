@@ -47,6 +47,44 @@ actor TitanClient {
 
     func setPort(_ newPort: Int) {
         port = newPort
+        hostDownUntil = nil
+    }
+
+    /// Through TitanDeck Host and it didn't answer: calls go straight to Titan
+    /// until then, so the deck keeps working while the Host is down or updating.
+    private var hostDownUntil: Date?
+
+    /// A request, through TitanDeck Host when set to, else (or when the Host
+    /// doesn't answer at all) straight to Titan's WebAPI.
+    private func fetch(_ request: URLRequest) async throws -> (Data, URLResponse) {
+        if let until = hostDownUntil, until > Date(), let direct = Self.direct(request) {
+            return try await session.data(for: direct)
+        }
+        do {
+            return try await session.data(for: request)
+        } catch {
+            guard let direct = Self.direct(request) else { throw error }
+            if (hostDownUntil ?? .distantPast) <= Date() {
+                Log.titan("TitanDeck Host isn't answering on \(TitanEndpoints.viaHostPort) (\(error.localizedDescription)); calls go straight to Titan for now")
+            }
+            hostDownUntil = Date().addingTimeInterval(10)
+            return try await session.data(for: direct)
+        }
+    }
+
+    private func fetch(_ url: URL) async throws -> (Data, URLResponse) {
+        try await fetch(URLRequest(url: url))
+    }
+
+    /// The same request to Titan's own WebAPI (4430), when it was going through the Host.
+    static func direct(_ request: URLRequest) -> URLRequest? {
+        guard let url = request.url, var parts = URLComponents(url: url, resolvingAgainstBaseURL: false),
+              parts.port == TitanEndpoints.viaHostPort else { return nil }
+        parts.port = TitanEndpoints.defaultPort
+        guard let directURL = parts.url else { return nil }
+        var direct = request
+        direct.url = directURL
+        return direct
     }
 
     /// Nil for a 200; otherwise "HTTP 500: <what Titan said>", since Titan
@@ -76,7 +114,7 @@ actor TitanClient {
         }
         let result: TitanResult
         do {
-            let (data, response) = try await session.data(from: url)
+            let (data, response) = try await fetch(url)
             let status = (response as? HTTPURLResponse)?.statusCode
             result = TitanResult(action: action, ok: status == 200, statusCode: status,
                                  milliseconds: Self.elapsed(since: start), error: Self.errorText(status: status, body: data),
@@ -94,7 +132,7 @@ actor TitanClient {
     /// The text currently on Titan's command line, or nil if Titan didn't answer.
     func commandLineText() async -> String? {
         guard let url = TitanEndpoints.commandLineTextURL(host: host, port: port),
-              let (data, response) = try? await session.data(from: url),
+              let (data, response) = try? await fetch(url),
               (response as? HTTPURLResponse)?.statusCode == 200 else { return nil }
         if let decoded = try? JSONDecoder().decode(String.self, from: data) {
             return decoded.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -216,7 +254,7 @@ actor TitanClient {
         var lastStatus: Int?
         for attempt in attempts {
             do {
-                let (data, response) = try await session.data(for: attempt.request)
+                let (data, response) = try await fetch(attempt.request)
                 let status = (response as? HTTPURLResponse)?.statusCode
                 lastStatus = status
                 if status == 200 {
@@ -334,7 +372,7 @@ actor TitanClient {
     private func get(_ url: URL?) async -> (ok: Bool, status: Int?, error: String?) {
         guard let url else { return (false, nil, "No Titan host set") }
         do {
-            let (data, response) = try await session.data(from: url)
+            let (data, response) = try await fetch(url)
             let status = (response as? HTTPURLResponse)?.statusCode
             return (status == 200, status, Self.errorText(status: status, body: data))
         } catch {
@@ -353,7 +391,7 @@ actor TitanClient {
     /// Returns the Titan software version string, or nil if Titan didn't answer.
     func softwareVersion() async -> String? {
         guard let url = TitanEndpoints.softwareVersionURL(host: host, port: port),
-              let (data, response) = try? await session.data(from: url),
+              let (data, response) = try? await fetch(url),
               (response as? HTTPURLResponse)?.statusCode == 200 else { return nil }
         let text = String(decoding: data, as: UTF8.self)
             .trimmingCharacters(in: CharacterSet(charactersIn: "\" \n\r"))
@@ -369,7 +407,7 @@ actor TitanClient {
     /// if Titan didn't answer.
     func handles(group: String) async -> [PlaybackHandleState]? {
         guard let url = TitanEndpoints.handlesURL(group: group, host: host, port: port),
-              let (data, response) = try? await session.data(from: url),
+              let (data, response) = try? await fetch(url),
               (response as? HTTPURLResponse)?.statusCode == 200 else { return nil }
         return TitanHandlesParser.parse(data)
     }
@@ -418,7 +456,7 @@ actor TitanClient {
     }
 
     private func body(_ url: URL?) async -> Data? {
-        guard let url, let (data, response) = try? await session.data(from: url),
+        guard let url, let (data, response) = try? await fetch(url),
               (response as? HTTPURLResponse)?.statusCode == 200 else { return nil }
         return data
     }

@@ -65,7 +65,7 @@ struct SettingsView: View {
             Text("Connection")
         } footer: {
             Text(appState.titanViaHost
-                 ? "Titan's WebAPI through TitanDeck Host (0.9+, port \(TitanEndpoints.viaHostPort)), so the Host's Titan log shows every call and what Titan answered. Needs the Host running."
+                 ? "Titan's WebAPI through TitanDeck Host (0.9+, port \(TitanEndpoints.viaHostPort)), so the Host's Titan log shows every call and what Titan answered. If the Host doesn't answer, calls go straight to Titan."
                  : "WebAPI on port \(TitanEndpoints.defaultPort). Turn on Through TitanDeck Host to see every call in the Host's Titan log.")
         }
     }

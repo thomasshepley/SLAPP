@@ -6,6 +6,10 @@ until it's show-ready (1.0): MINOR for features, PATCH for fixes. Keep
 (ChangelogTests checks). Each version is published as a GitHub release
 `host-v<version>` with the installer attached.
 
+## 0.14.3 - 2026-10-28 - Installer can't wait on an old window
+
+- **Fixed: an update could wait forever.** The installer asks the window app to close with `--quit`; a window app older than 0.14.2 doesn't know that, and if no copy was already running it simply opened and the installer waited on it. It no longer waits on it (the forced close afterwards still makes sure it's gone).
+
 ## 0.14.2 - 2026-10-28 - Updates that finish properly
 
 - **Fixed: after an update the window couldn't find the service.** The window keeps a request open to the service (waiting for desk keys to type), which held a service stop up for 20 seconds; the installer only gave it 2, so files could still be in use, the update fail and the service be left stopped. The service now stops in about 2 seconds, and the installer waits until it really has stopped (forcing it only after 30 s) and then waits for it to start again.
