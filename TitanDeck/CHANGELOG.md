@@ -9,7 +9,7 @@ with every change that goes to `main`.
 
 ## 0.33.1 - 2026-10-28 - Titan keeps working when the Host is down
 
-- **Fixed: no commands reached Titan while TitanDeck Host was down.** With Settings > Titan > Through TitanDeck Host on, every call went via the Host, so with the Host stopped (as after a failed update) nothing worked at all. Now, when the Host doesn't answer, calls go straight to Titan's WebAPI instead (and keep doing so for a few seconds before trying the Host again), so GO, intensity and the rest carry on.
+- **Fixed: no commands reached Titan while TitanDeck Host was down.** With Settings > Through TitanDeck Host on, every call went via the Host, so with the Host stopped (as after a failed update) nothing worked at all. Now, when the Host doesn't answer, calls go straight to Titan's WebAPI instead (and keep doing so for a few seconds before trying the Host again), so GO, intensity and the rest carry on.
 
 - **When the keypad can't be typed on the desk, the key goes red and says why** (TitanDeck Host's window isn't running on the PC, Titan isn't running, the Host can't be reached...), in Settings > Recent calls and Recent events. Before, it quietly sent the key to Titan's WebAPI instead, which on Titan 19 is a separate user, so nothing showed on the desk and the keypad just seemed dead.
 - Settings > Desk link > Keypad types on the desk, switched off, still sends the keypad to the WebAPI as before.
