@@ -229,7 +229,11 @@ support posts):
   CLEAR keeps its place in the order (later keys wait, so it can't clear their
   selection), so keep CLEAR quick: Host 0.15 answers within about 1 s and no
   longer tries the WebAPI clears after a CITP clear. Keys used to queue behind
-  a failing CLEAR's 2 s checks and fallbacks and showed on the desk 3-15 s late. +/- nudges are current level + nudge (`DeskKeys.nudged`), from
+  a failing CLEAR's 2 s checks and fallbacks and showed on the desk 3-15 s late.
+  **Flash fades on the desk (0.35):** Titan's keyboard has no fade time, so a
+  hold-for-0% with a fade (`FlashFadeRule`) is typed as levels in steps
+  (`DeskKeys.rampSteps`, about 5 a second, at most 20; `AppState.rampOnDesk`).
+  0.23-0.34 typed "@ 0 Enter" at once and the fade was ignored. +/- nudges are current level + nudge (`DeskKeys.nudged`), from
   `currentLevel` (typed in the last 2 s, else sACN live level, else the level
   last typed for the same selection); unknown = refused, never the WebAPI
   wheel. Typing is serial (one Task chain). The WebAPI user

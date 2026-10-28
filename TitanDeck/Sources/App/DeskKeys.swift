@@ -37,6 +37,27 @@ enum DeskKeys {
         }
     }
 
+    /// One level of a faded flash typed on the desk: `percent` at `at` seconds
+    /// after the press.
+    struct RampStep: Equatable {
+        let at: Double
+        let percent: Double
+    }
+
+    /// A flash fade typed on the desk as levels in steps (Titan's keyboard has
+    /// no fade time): about five a second, as fast as "@ 50 Enter" is typed,
+    /// whole percents, ending exactly on `to`. The first step goes straight away.
+    static func rampSteps(from: Double, to: Double, seconds: Double) -> [RampStep] {
+        let count = max(1, min(Int(seconds / 0.2), 20))
+        var steps: [RampStep] = []
+        for index in 1 ... count {
+            let percent = min(max((from + (to - from) * Double(index) / Double(count)).rounded(), 0), 100)
+            guard percent != (steps.last?.percent ?? from.rounded()) else { continue }   // never the same level twice
+            steps.append(RampStep(at: seconds * Double(index - 1) / Double(count), percent: percent))
+        }
+        return steps
+    }
+
     /// The arrow key of each shortcut (set-1 scan codes, 0x100 = extended); Alt is held for it.
     static let shortcuts: [String: UInt32] = [
         "next": 0x14D,        // Right

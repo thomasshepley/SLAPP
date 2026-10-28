@@ -7,7 +7,9 @@ the GitHub Actions run that built it. The top entry is shown in the app
 so add an entry - and bump `MARKETING_VERSION` in `project.yml` to match -
 with every change that goes to `main`.
 
-## 0.35.0 - 2026-10-28 - RIG steps the desk's own selection
+## 0.35.0 - 2026-10-28 - RIG steps the desk's own selection, flash fades on the desk
+
+- **Fixed: flash fades snapped.** With the keypad typing on the desk (Titan 19), hold-for-0% typed "@ 0 Enter" straight away and ignored the fade time set for the fixture (Settings > Deck). Titan's keyboard has no fade time, so the level is now typed in steps over the fade, about five a second ("@ 80", "@ 60"... "@ 0"), and back up the same way when you let go. Let go mid-fade and it fades back up from where it got to.
 
 - **RIG's FIX +1, FIX -1 and HI LIGHT now work on the desk itself**, not just Titan's WebAPI user: they're typed on the Titan PC as Titan's own shortcuts (Alt+Right, Alt+Left and Alt+Down), so the desk steps through its selection and shows the fixture it's on, as its own Next, Prev and Highlight do. Needs TitanDeck Host 0.15.1; with an older Host they work as before.
 - They're the only Alt shortcuts TitanDeck types, each as one quick burst with Alt let go straight after. If the desk's own buttons ever act oddly afterwards, say so and they go back to the WebAPI.
