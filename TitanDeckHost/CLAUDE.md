@@ -100,6 +100,11 @@ TitanDeckHost/
   scan codes): the deck's keypad typed on the PC for Titan, which captures the
   keyboard. Only `DeskKeys.All` keys can be typed (never letters); refused when
   the window isn't polling or Titan isn't running; keys older than 2 s dropped.
+  Keep `/desk/keys` instant: `WindowsProbe.IsTitanRunning` answers from its
+  last look and refreshes in the background (walking every process took a
+  while), and CLEAR (`TitanActions.RunClear`) checks CITP for at most 1 s with
+  no WebAPI clears after a CITP clear, because the deck's keys after CLEAR
+  wait for it.
   If Titan ever runs elevated, SendInput from the (non-elevated) window can't
   reach it (UIPI): the iPad falls back to typing over RDP. **Never Alt or any
   modifier.** Host 0.11 typed Alt+C for Clear key by key and the desk's own

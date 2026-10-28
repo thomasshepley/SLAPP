@@ -97,9 +97,12 @@ public sealed class TitanActions(TitanLog titanLog, CitpService citp)
                 {
                     steps.Add($"CITP: told Titan nothing is selected ({before.Fixtures.Count} were)");
                     if (await DeskCleared(token)) return new TitanActionDto(true, "Cleared over CITP, checked over CITP", steps);
+                    // No WebAPI clears after this: on Titan 19 they don't reach
+                    // the desk's selection (0.13-0.14), and each one only held
+                    // up the keys pressed after CLEAR by seconds.
                     var left = citp.Selection().Fixtures.Count;
-                    errors.Add($"CITP clear: sent, but the desk still has {left} selected");
                     steps.Add($"CITP clear: the desk still has {left} selected");
+                    return new TitanActionDto(false, $"Sent the clear over CITP, but the desk still has {left} selected", steps);
                 }
                 else
                 {
@@ -128,11 +131,15 @@ public sealed class TitanActions(TitanLog titanLog, CitpService citp)
         return new TitanActionDto(false, "The desk's selection didn't clear. Tried " + string.Join(" | ", errors), steps);
     }
 
-    /// <summary>The desk's selection (CITP) is empty, or goes empty within 2 s.</summary>
+    /// <summary>
+    /// The desk's selection (CITP) is empty, or goes empty within a second
+    /// (Titan sends a new selection as it changes). Short, because the keys
+    /// pressed after CLEAR wait for it.
+    /// </summary>
     private async Task<bool> DeskCleared(CancellationToken token)
     {
-        for (var wait = 0; wait < 8 && citp.Selection().Fixtures.Count > 0; wait++)
-            await Task.Delay(250, token);
+        for (var wait = 0; wait < 10 && citp.Selection().Fixtures.Count > 0; wait++)
+            await Task.Delay(100, token);
         return citp.Selection().Fixtures.Count == 0;
     }
 

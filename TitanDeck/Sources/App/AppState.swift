@@ -273,7 +273,16 @@ final class AppState: ObservableObject {
     var keypadTypesOnDesk: Bool {
         UserDefaults.standard.object(forKey: SettingsKeys.keypadTypesOnDesk) as? Bool ?? true
     }
-    /// Keys typed on the desk go one after another, in the order pressed.
+    /// A key press waiting to be typed on the desk.
+    private struct DeskPress {
+        let action: TitanAction
+        let keys: [String]
+        let keypadLine: UUID?
+        let keyIndex: Int?
+    }
+    /// Presses waiting for the desk, in the order pressed.
+    private var deskPresses: [DeskPress] = []
+    /// Typing what's waiting; nil when there's nothing to type.
     private var deskTyping: Task<Void, Never>?
     /// The level (0-1) a desk-typed hold-for-0% puts back when let go.
     private var flashRestore: Double?
@@ -362,15 +371,42 @@ final class AppState: ObservableObject {
         }
     }
 
-    /// Keys typed on the desk go one after another, in the order pressed.
+    /// Keys typed on the desk go in the order pressed.
     private func queueOnDesk(_ action: TitanAction, keys: [String], keypadLine: UUID?, keyIndex: Int?) {
-        let previous = deskTyping
+        deskPresses.append(DeskPress(action: action, keys: keys, keypadLine: keypadLine, keyIndex: keyIndex))
+        guard deskTyping == nil else { return }
         deskTyping = Task { [weak self] in
-            await previous?.value
-            guard let self else { return }
-            let result = await self.typeOnDesk(action, keys: keys)
-            self.finish(result, keypadLine: keypadLine, keyIndex: keyIndex)
+            await self?.typeWaitingPresses()
         }
+    }
+
+    /// Types every press that's waiting, in order. The keys pressed while one
+    /// lot was on its way to the PC go together in the next request, so typing
+    /// fast never builds a queue of round trips (a backlog showed on the desk
+    /// seconds late). CLEAR goes in its place in the order: the keys after it
+    /// wait for it, so it can't clear what they select.
+    private func typeWaitingPresses() async {
+        while !deskPresses.isEmpty {
+            if deskPresses[0].action == .keypadClear {
+                let press = deskPresses.removeFirst()
+                finish(await typeOnDesk(press.action, keys: press.keys), keypadLine: press.keypadLine, keyIndex: press.keyIndex)
+                continue
+            }
+            var batch: [DeskPress] = []
+            var keys: [String] = []
+            while let next = deskPresses.first, next.action != .keypadClear,
+                  batch.isEmpty || keys.count + next.keys.count <= HostClient.maxDeskKeys {
+                batch.append(deskPresses.removeFirst())
+                keys += next.keys
+            }
+            let result = await typeOnDesk(batch[0].action, keys: keys)
+            for press in batch {
+                finish(TitanResult(action: press.action, ok: result.ok, statusCode: result.statusCode,
+                                   milliseconds: result.milliseconds, error: result.error, date: result.date),
+                       keypadLine: press.keypadLine, keyIndex: press.keyIndex)
+            }
+        }
+        deskTyping = nil
     }
 
     /// Calls whose way of working is worth a line in Recent events when they
@@ -470,8 +506,8 @@ final class AppState: ObservableObject {
             // programmer), then CITP shows whether the desk's went too.
             let cleared = await titan.clearSelection(everyUser: true)
             guard cleared.ok, case .linkedViaCitp = deskLink.state else { return cleared }
-            for _ in 0 ..< 8 where !deskLink.selection.isEmpty {
-                try? await Task.sleep(nanoseconds: 250_000_000)
+            for _ in 0 ..< 10 where !deskLink.selection.isEmpty {
+                try? await Task.sleep(nanoseconds: 100_000_000)
             }
             guard deskLink.selection.isEmpty else {
                 return TitanResult(action: action, ok: false, statusCode: cleared.statusCode,

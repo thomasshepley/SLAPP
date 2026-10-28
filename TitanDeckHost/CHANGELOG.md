@@ -6,11 +6,13 @@ until it's show-ready (1.0): MINOR for features, PATCH for fixes. Keep
 (ChangelogTests checks). Each version is published as a GitHub release
 `host-v<version>` with the installer attached.
 
-## 0.15.0 - 2026-10-28 - CLEAR over CITP
+## 0.15.0 - 2026-10-28 - CLEAR over CITP, keys without the wait
 
 - **TitanDeck's CLEAR now clears the desk's selection over CITP**, the way a visualiser like Capture tells the console what's selected: the Host tells Titan nothing is selected. Typing Alt+C (0.14.1) didn't clear Titan 19's selection, so it's gone, and the Host is back to never typing a modifier.
 - **It can only clear:** the safety catch lets out an empty selection and nothing else, so the Host still can't select anything, patch anything or send DMX.
 - It's only sent when CITP shows the desk has something selected, and CITP is how the Host checks it worked. Without CITP, the WebAPI clears are tried as before.
+- **Fixed: keypad and intensity keys sometimes reached the desk 3-15 seconds late.** TitanDeck types keys in the order pressed, so the keys after CLEAR waited for it, and a CLEAR that didn't take spent 2 seconds checking, then tried the WebAPI clears with 2 more seconds each. Now CLEAR answers within about a second: if the CITP clear doesn't show on the desk by then it says so, without the WebAPI clears (on Titan 19 they never reached the desk's selection anyway).
+- Typing a key no longer waits on the Host checking that Titan is running (it walks every process on the PC): the last answer comes straight back and is refreshed in the background.
 
 ## 0.14.3 - 2026-10-28 - Installer can't wait on an old window
 
