@@ -5,8 +5,10 @@ namespace TitanDeckHost.Core.Titan;
 /// <param name="From">Who sent it (the iPad's address).</param>
 /// <param name="State">What changed after the call, when known.</param>
 /// <param name="Flagged">Something TitanDeck should never do, or a refused call.</param>
+/// <param name="Routine">Background chatter (polling, CITP's handshake): hidden
+/// unless the log is showing everything.</param>
 public sealed record TitanLogEntry(long Id, DateTimeOffset Time, string Who, string From, string Method, string Path,
-    string Query, int Status, int Milliseconds, string? Note, string? State, bool Flagged);
+    string Query, int Status, int Milliseconds, string? Note, string? State, bool Flagged, bool Routine = false);
 
 /// <summary>A polling call, counted rather than listed.</summary>
 public sealed record TitanPollSummary(string Who, string Path, int Count, int LastStatus, DateTimeOffset Last);
@@ -17,6 +19,9 @@ public sealed record TitanPollSummary(string Who, string Path, int Count, int La
 /// polls a few calls several times a second (the command line, playback and
 /// fixture handles, the desk's selection); those are counted, and only listed
 /// again when their answer changes, so they can't push real commands out.
+/// CITP's handshake is the same: Titan goes through it again every time it
+/// reconnects, so each message is listed once and its repeats counted.
+/// Anything flagged and CITP's selection lines are always listed.
 /// Thread-safe; keeps the last 2000 calls.
 /// </summary>
 public sealed class TitanLog
@@ -41,6 +46,12 @@ public sealed class TitanLog
     public static bool IsPoll(string method, string path) =>
         method == "GET" && PollPaths.Contains(path.TrimEnd('/'), StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>A CITP message that's part of the link's routine (hello,
+    /// show, fixture list, the answers to them) rather than the selection.</summary>
+    public static bool IsCitpChatter(string who, string path, bool flagged) =>
+        who == "CITP" && !flagged && !path.Contains("Selection", StringComparison.OrdinalIgnoreCase)
+        && !path.StartsWith("FSEL", StringComparison.OrdinalIgnoreCase);
+
     /// <summary>Adds a call. A repeated poll with the same answer is only
     /// counted; returns the entry when one was listed.</summary>
     public TitanLogEntry? Add(string who, string from, string method, string path, string query, int status,
@@ -48,6 +59,7 @@ public sealed class TitanLog
     {
         lock (gate)
         {
+            var routine = false;
             if (IsPoll(method, path))
             {
                 var key = (who, path);
@@ -55,8 +67,17 @@ public sealed class TitanLog
                 polls[key] = new TitanPollSummary(who, path, (summary?.Count ?? 0) + 1, status, now);
                 if (seen && summary!.LastStatus == status) return null;
                 note ??= seen ? $"polling: answer changed to {status}" : "polling (repeats are counted, not listed)";
+                routine = true;
             }
-            var entry = new TitanLogEntry(nextId++, now, who, from, method, path, query, status, milliseconds, note, state, flagged);
+            else if (IsCitpChatter(who, path, flagged))
+            {
+                var key = (who, $"{method} {path}");
+                var seen = polls.TryGetValue(key, out var summary);
+                polls[key] = new TitanPollSummary(who, key.Item2, (summary?.Count ?? 0) + 1, status, now);
+                if (seen) return null;
+                routine = true;
+            }
+            var entry = new TitanLogEntry(nextId++, now, who, from, method, path, query, status, milliseconds, note, state, flagged, routine);
             entries.AddLast(entry);
             while (entries.Count > Capacity) entries.RemoveFirst();
             return entry;

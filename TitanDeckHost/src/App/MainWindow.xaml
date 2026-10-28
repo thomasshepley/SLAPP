@@ -234,15 +234,19 @@
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <TextBlock Text="Titan log" Style="{StaticResource CardTitle}" Margin="0" VerticalAlignment="Center" />
-                            <CheckBox Grid.Column="1" Content="Follow" IsChecked="{Binding AutoScroll}" Foreground="{StaticResource Text}"
+                            <CheckBox Grid.Column="1" Content="Everything" IsChecked="{Binding ShowEverything}" Foreground="{StaticResource Text}"
+                                      VerticalAlignment="Center" Margin="0,0,12,0"
+                                      ToolTip="Off: TitanDeck's calls, the desk's selection and anything red. On: the polling and CITP handshake chatter as well." />
+                            <CheckBox Grid.Column="2" Content="Follow" IsChecked="{Binding AutoScroll}" Foreground="{StaticResource Text}"
                                       VerticalAlignment="Center" Margin="0,0,12,0" />
-                            <Button Grid.Column="2" Content="Copy" Command="{Binding CopyLogCommand}" Style="{StaticResource QuietButton}" Margin="0,0,8,0" />
-                            <Button Grid.Column="3" Content="Clear" Command="{Binding ClearLogCommand}" Style="{StaticResource QuietButton}" />
+                            <Button Grid.Column="3" Content="Copy" Command="{Binding CopyLogCommand}" Style="{StaticResource QuietButton}" Margin="0,0,8,0" />
+                            <Button Grid.Column="4" Content="Clear" Command="{Binding ClearLogCommand}" Style="{StaticResource QuietButton}" />
                         </Grid>
                         <TextBlock Foreground="{StaticResource SecondaryText}" TextWrapping="Wrap" Margin="0,0,0,8"
-                                   Text="Every call TitanDeck makes to Titan through the Host, and every CITP message: who sent it, what Titan answered and how long it took. Red is something refused or TitanDeck shouldn't do." />
+                                   Text="Every call TitanDeck makes to Titan through the Host, and the CITP messages that matter: who sent it, what Titan answered and how long it took. Red is something refused or TitanDeck shouldn't do. Polling and CITP's handshake (Titan repeats it every time it reconnects) are counted below rather than listed: tick Everything to see their first lines too." />
                         <TextBlock Text="{Binding PollText}" Foreground="{StaticResource SecondaryText}" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,8" />
                         <ListBox x:Name="LogList" ItemsSource="{Binding LogRows}" Height="360" Background="#FF1C1C1E"
                                  BorderBrush="{StaticResource CardBorder}" Foreground="{StaticResource Text}"
