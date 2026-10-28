@@ -26,7 +26,11 @@ OutputBaseFilename=TitanDeckHost-Setup-{#AppVersion}
 WizardStyle=modern
 Compression=lzma2
 SolidCompression=yes
-CloseApplications=yes
+; The Host closes its own window and service in PrepareToInstall (Windows'
+; Restart Manager would force-close the window, leaving a dead tray icon, and
+; reopen it as well as the Host doing so).
+CloseApplications=no
+RestartApplications=no
 SetupIconFile=..\src\App\Assets\TitanDeckHost.ico
 UninstallDisplayIcon={app}\TitanDeckHost.exe
 UninstallDisplayName=TitanDeck Host
@@ -66,12 +70,14 @@ Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=
 Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall add rule name=""TitanDeck - Titan WebAPI through the Host"" dir=in action=allow protocol=TCP localport=4436 profile=private,domain"; Flags: runhidden
 ; Fake Titan is gone (Host 0.11.0): take away the firewall rule older versions added.
 Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=""TitanDeck - Fake Titan"""; Flags: runhidden
-Filename: "{sys}\sc.exe"; Parameters: "start TitanDeckHost"; Flags: runhidden; StatusMsg: "Starting the service..."
+; net start waits until the service is running (sc start only asks).
+Filename: "{sys}\net.exe"; Parameters: "start TitanDeckHost"; Flags: runhidden; StatusMsg: "Starting the service..."
 Filename: "{app}\TitanDeckHost.exe"; Description: "Open TitanDeck Host"; Flags: postinstall nowait skipifsilent
 ; Updating from the Host window (/UPDATE=1, silent): open it again, as the signed-in user.
 Filename: "{app}\TitanDeckHost.exe"; Flags: nowait runasoriginaluser; Check: IsUpdate
 
 [UninstallRun]
+Filename: "{app}\TitanDeckHost.exe"; Parameters: "--quit"; Flags: runhidden waituntilterminated skipifdoesntexist; RunOnceId: "QuitTray"
 Filename: "{sys}\taskkill.exe"; Parameters: "/F /IM TitanDeckHost.exe"; Flags: runhidden; RunOnceId: "KillTray"
 Filename: "{sys}\sc.exe"; Parameters: "stop TitanDeckHost"; Flags: runhidden; RunOnceId: "StopService"
 Filename: "{sys}\sc.exe"; Parameters: "delete TitanDeckHost"; Flags: runhidden; RunOnceId: "DeleteService"
@@ -88,13 +94,27 @@ begin
   Result := ExpandConstant('{param:UPDATE|0}') = '1';
 end;
 
-// Upgrades: stop the service and close the tray app before files are replaced.
+// Upgrades: close the window app and stop the service, and wait for both,
+// before files are replaced. (Host 0.14.1 and older: the installer only gave
+// the service 2 s, while it could take 20 s to stop, so files could be in use
+// and the update fail with the service left stopped.)
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 var
   ResultCode: Integer;
 begin
-  Exec(ExpandConstant('{sys}\sc.exe'), 'stop TitanDeckHost', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  // The window app first, politely, so its tray icon goes with it (0.14.2+;
+  // an older one just starts and exits again).
+  if FileExists(ExpandConstant('{app}\TitanDeckHost.exe')) then
+    ExecAsOriginalUser(ExpandConstant('{app}\TitanDeckHost.exe'), '--quit', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  // The service, waited for until it has really stopped (up to 30 s).
+  Exec(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'),
+    '-NoProfile -ExecutionPolicy Bypass -Command "$s = Get-Service TitanDeckHost -ErrorAction SilentlyContinue; ' +
+    'if ($s -and $s.Status -ne ''Stopped'') { Stop-Service TitanDeckHost -Force -ErrorAction SilentlyContinue; ' +
+    'try { $s.WaitForStatus(''Stopped'', ''00:00:30'') } catch {} }"',
+    '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  // Anything still running, by force.
+  Exec(ExpandConstant('{sys}\taskkill.exe'), '/F /IM TitanDeckHost.Service.exe', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
   Exec(ExpandConstant('{sys}\taskkill.exe'), '/F /IM TitanDeckHost.exe', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
-  Sleep(2000);
+  Sleep(1000);
   Result := '';
 end;

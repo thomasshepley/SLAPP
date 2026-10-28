@@ -6,6 +6,13 @@ until it's show-ready (1.0): MINOR for features, PATCH for fixes. Keep
 (ChangelogTests checks). Each version is published as a GitHub release
 `host-v<version>` with the installer attached.
 
+## 0.14.2 - 2026-10-28 - Updates that finish properly
+
+- **Fixed: after an update the window couldn't find the service.** The window keeps a request open to the service (waiting for desk keys to type), which held a service stop up for 20 seconds; the installer only gave it 2, so files could still be in use, the update fail and the service be left stopped. The service now stops in about 2 seconds, and the installer waits until it really has stopped (forcing it only after 30 s) and then waits for it to start again.
+- **Fixed: extra TitanDeck Host icons in the taskbar.** Updates force-closed the window app, which leaves its tray icon behind until the mouse passes over it. The installer now asks it to close (TitanDeckHost.exe --quit), so the icon goes with it, and no longer has Windows close and reopen it as well. Opening TitanDeck Host when it's already running now brings up the running copy's window.
+- **Start the service from the window:** if the window can't find the service, it now has a Start the service button (Windows asks for permission).
+- This update itself is installed by the old installer, so you may see one leftover icon once; it goes when the mouse passes over it.
+
 ## 0.14.1 - 2026-10-28 - CLEAR types Alt+C on the desk
 
 - **TitanDeck's CLEAR now clears the desk's selection** by typing Titan's own Clear shortcut (Alt+C) on the desk, as it did before 0.24, when the clear through Titan's WebAPI didn't reach the desk.

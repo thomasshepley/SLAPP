@@ -10,7 +10,12 @@ namespace TitanDeckHost.App;
 /// at login (installer's Run key) with --tray, so only the icon appears.</summary>
 public partial class App : Application
 {
+    private const string InstanceName = @"Local\TitanDeckHost.App";
+    private const string QuitName = @"Local\TitanDeckHost.App.Quit";
+    private const string ShowName = @"Local\TitanDeckHost.App.Show";
     private Mutex? _singleInstance;
+    private EventWaitHandle? _quitSignal;
+    private EventWaitHandle? _showSignal;
     private Forms.NotifyIcon? _tray;
     private MainWindow? _window;
     private readonly HostClient _client = new();
@@ -19,13 +24,29 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
-        _singleInstance = new Mutex(true, @"Local\TitanDeckHost.App", out var first);
-        if (!first)
+        _singleInstance = new Mutex(true, InstanceName, out var first);
+        if (e.Args.Contains("--quit"))
         {
-            // Already running: the existing copy's icon is in the tray.
+            // The installer: asks the running copy to close (taking its tray
+            // icon with it) and waits until it has.
+            if (!first)
+            {
+                Signal(QuitName);
+                try { _singleInstance.WaitOne(TimeSpan.FromSeconds(5)); }
+                catch (AbandonedMutexException) { }
+            }
             Shutdown();
             return;
         }
+        if (!first)
+        {
+            // Already running: bring its window up (from the tray at login, just stay out of the way).
+            if (!e.Args.Contains("--tray")) Signal(ShowName);
+            Shutdown();
+            return;
+        }
+        _quitSignal = Listen(QuitName, Quit);
+        _showSignal = Listen(ShowName, ShowWindow);
 
         _tray = new Forms.NotifyIcon
         {
@@ -71,9 +92,40 @@ public partial class App : Application
     protected override void OnExit(ExitEventArgs e)
     {
         _typing.Cancel();
+        // Hidden before it's disposed, so Windows takes the icon away now
+        // rather than leaving it until the mouse passes over it.
+        if (_tray is not null) _tray.Visible = false;
         _tray?.Dispose();
+        _quitSignal?.Dispose();
+        _showSignal?.Dispose();
         _singleInstance?.Dispose();
         base.OnExit(e);
+    }
+
+    /// <summary>Sets another copy's named signal, if it's listening.</summary>
+    private static void Signal(string name)
+    {
+        if (EventWaitHandle.TryOpenExisting(name, out var handle))
+        {
+            using (handle) handle.Set();
+        }
+    }
+
+    /// <summary>Runs <paramref name="act"/> on the window's thread each time the named signal is set.</summary>
+    private EventWaitHandle Listen(string name, Action act)
+    {
+        var handle = new EventWaitHandle(false, EventResetMode.AutoReset, name);
+        var thread = new Thread(() =>
+        {
+            try
+            {
+                while (handle.WaitOne()) Dispatcher.Invoke(act);
+            }
+            catch (ObjectDisposedException) { }
+            catch (TaskCanceledException) { }   // the app is closing
+        }) { IsBackground = true, Name = name };
+        thread.Start();
+        return handle;
     }
 
     /// <summary>A small blue rounded square with "TD", drawn at runtime.</summary>
