@@ -200,6 +200,7 @@ final class DeckFlowTests: XCTestCase {
         XCTAssertEqual(page.key(at: 2)?.action, .nextFixture)
         XCTAssertEqual(page.key(at: 0)?.label, "FIX -1")
         XCTAssertEqual(page.key(at: 2)?.label, "FIX +1")
+        XCTAssertEqual(page.key(at: 3)?.action, .allFixtures, "ALL under them, back to the whole selection")
         XCTAssertTrue(page.keys.contains { $0.action == .mainMenu }, "a way back to the keypad")
         let lit = DeckFlow.rigPage(profile: profile, returnTo: 0, highlightOn: true)
         XCTAssertEqual(lit.key(at: 1)?.label, "HI LIGHT\nON")

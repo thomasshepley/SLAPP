@@ -44,25 +44,9 @@ internal static class DeskTyper
     }
 
     /// One key, as a hand would press it: down and up as separate events with
-    /// a short gap. Titan's Alt shortcuts (<see cref="DeskKeys.Shortcuts"/>)
-    /// go as one SendInput burst, so nothing can come between Alt going down
-    /// and coming up, and every modifier is let go again after it.
+    /// a short gap. No modifiers are ever held (see <see cref="DeskKeys"/>).
     private static void Type(string name)
     {
-        if (DeskKeys.Shortcuts.TryGetValue(name, out var shortcut))
-        {
-            Input[] burst =
-            [
-                Scan(shortcut.Modifier.Scancode, shortcut.Modifier.Extended, up: false),
-                Scan(shortcut.Key.Scancode, shortcut.Key.Extended, up: false),
-                Scan(shortcut.Key.Scancode, shortcut.Key.Extended, up: true),
-                Scan(shortcut.Modifier.Scancode, shortcut.Modifier.Extended, up: true),
-            ];
-            SendInput((uint)burst.Length, burst, Marshal.SizeOf<Input>());
-            Thread.Sleep(30);
-            ReleaseModifiers();
-            return;
-        }
         if (!DeskKeys.All.TryGetValue(name, out var key)) return;
         Send(Scan(key.Scancode, key.Extended, up: false));
         Thread.Sleep(20);

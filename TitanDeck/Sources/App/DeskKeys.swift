@@ -5,11 +5,12 @@ import Foundation
 /// lands on the desk's command line and the selection shows on the desk
 /// (Titan 19's WebAPI is a separate user with its own selection). Titan
 /// captures the PC keyboard while it runs; its shortcuts: number keys,
-/// number-pad * = @, / = Thro, + = And, - = Not, Enter, Esc = Exit. No other
-/// Alt shortcuts than RIG's (`shortcuts`, the user's call in 0.35): typing
-/// Alt+C for Clear left the desk's own Clear and wheels not working, so CLEAR
-/// goes through the Host (CITP). TitanDeck Host types them (Host 0.10+; the
-/// RIG shortcuts 0.15.1+), or the remote desktop does when it's connected.
+/// number-pad * = @, / = Thro, + = And, - = Not, Enter, Esc = Exit. Never
+/// Alt shortcuts: Alt+C for Clear left the desk's own Clear and wheels not
+/// working, and Titan 19 ignored Alt+C and RIG's Alt+arrows (0.35) anyway, so
+/// CLEAR goes through the Host (CITP) and RIG types fixture numbers.
+/// TitanDeck Host types them (Host 0.10+), or the remote desktop does when
+/// it's connected.
 /// Keep the names and keys in step with
 /// TitanDeckHost/src/Core/Titan/DeskKeys.cs. Pure, so it's tested.
 enum DeskKeys {
@@ -25,16 +26,30 @@ enum DeskKeys {
         }
     }
 
-    /// RIG's keys as Titan's own Alt shortcuts (Alt+Right next fixture,
-    /// Alt+Left previous, Alt+Down Highlight), so they step the desk's own
-    /// selection. Nil for any other action.
-    static func shortcut(for action: TitanAction) -> [String]? {
-        switch action {
-        case .nextFixture: ["next"]
-        case .previousFixture: ["prev"]
-        case .toggleHighlight: ["highlight"]
-        default: nil
+    /// Fixtures selected on the desk's command line: "1 THRU 10 AND 15
+    /// Enter" (runs of three or more as THRU). Empty for no fixtures.
+    static func selecting(_ fixtures: [Int]) -> [String] {
+        let numbers = Array(Set(fixtures.filter { $0 > 0 })).sorted()
+        guard !numbers.isEmpty else { return [] }
+        var runs: [ClosedRange<Int>] = []
+        for number in numbers {
+            if let last = runs.last, last.upperBound + 1 == number {
+                runs[runs.count - 1] = last.lowerBound ... number
+            } else {
+                runs.append(number ... number)
+            }
         }
+        var keys: [String] = []
+        for run in runs {
+            if !keys.isEmpty { keys.append("and") }
+            let digits = { (n: Int) in String(n).map(String.init) }
+            switch run.count {
+            case 1: keys += digits(run.lowerBound)
+            case 2: keys += digits(run.lowerBound) + ["and"] + digits(run.upperBound)
+            default: keys += digits(run.lowerBound) + ["thro"] + digits(run.upperBound)
+            }
+        }
+        return keys + ["enter"]
     }
 
     /// One level of a faded flash typed on the desk: `percent` at `at` seconds
@@ -58,16 +73,6 @@ enum DeskKeys {
         return steps
     }
 
-    /// The arrow key of each shortcut (set-1 scan codes, 0x100 = extended); Alt is held for it.
-    static let shortcuts: [String: UInt32] = [
-        "next": 0x14D,        // Right
-        "prev": 0x14B,        // Left
-        "highlight": 0x150,   // Down
-    ]
-
-    /// Left Alt.
-    static let alt: UInt32 = 0x38
-
     /// "@ <level> Enter", for a level in percent (0-100, whole numbers):
     /// the selection to that level on the desk's own command line.
     static func level(_ percent: Double) -> [String] {
@@ -77,7 +82,6 @@ enum DeskKeys {
 
     /// The same key as remote desktop keystrokes (set-1 scan codes, 0x100 = extended).
     static func strokes(for name: String) -> [RDPKeyStroke] {
-        if let arrow = shortcuts[name] { return RDPTyping.tap(arrow, holding: [alt]) }
         guard let scancode = table[name] else { return [] }
         return RDPTyping.tap(scancode, holding: [])
     }

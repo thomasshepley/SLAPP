@@ -314,6 +314,18 @@ actor TitanClient {
                       error: errors.isEmpty ? last.error : "Tried " + errors.joined(separator: " | "))
     }
 
+    /// A master's level (0...1) as Titan has it, and Titan's answer as text
+    /// (for Recent events when it can't be read). See `masterLevelURLs`.
+    func masterLevel(titanId: Int) async -> (level: Double?, answer: String) {
+        let urls = TitanEndpoints.masterLevelURLs(titanId: titanId, host: host, port: port)
+        guard await body(urls.connect) != nil else { return (nil, "ConnectToMaster wasn't taken") }
+        let data = await body(urls.read)
+        _ = await body(urls.disconnect)
+        guard let data else { return (nil, "ConnectedMasterLevel wasn't answered") }
+        let answer = String(decoding: data.prefix(200), as: UTF8.self)
+        return (TitanHandlesParser.level(fromAnswer: data), answer)
+    }
+
     // MARK: - Flash (hold to 0%)
 
     /// Down with no fade: Titan's own FlashOut, and back with ClearFlash, which

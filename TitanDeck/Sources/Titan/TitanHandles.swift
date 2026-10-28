@@ -87,6 +87,29 @@ enum TitanHandlesParser {
         }
     }
 
+    /// A level from a property Titan read: a bare number ("0.75", 75), or an
+    /// object holding one (a key with "level" or "value" in it). 0...1; a
+    /// percentage over 1 is scaled. Nil if there's no number in it.
+    static func level(fromAnswer data: Data) -> Double? {
+        func number(_ value: Any?) -> Double? {
+            switch value {
+            case let flag as NSNumber where String(cString: flag.objCType) == "c": return nil   // true/false
+            case let n as NSNumber: return n.doubleValue
+            case let text as String: return Double(text.trimmingCharacters(in: CharacterSet(charactersIn: "\" \n\r%")))
+            case let object as [String: Any]:
+                for (key, inner) in object where key.localizedCaseInsensitiveContains("level") || key.localizedCaseInsensitiveContains("value") {
+                    if let found = number(inner) { return found }
+                }
+                return nil
+            default: return nil
+            }
+        }
+        let parsed = (try? JSONSerialization.jsonObject(with: data, options: [.fragmentsAllowed]))
+            ?? String(decoding: data, as: UTF8.self)
+        guard let level = number(parsed), level.isFinite, level >= 0 else { return nil }
+        return level > 1 ? min(level / 100, 1) : level
+    }
+
     /// What's on a page, for Recent events: "Masters: page 60
     /// (handles/Playbacks/59) has 1: fader 1 Grand Master (masterHandle, id 1895)".
     static func pageNote(_ handles: [PlaybackHandleState], page: Int, from: String) -> String {

@@ -7,14 +7,11 @@ namespace TitanDeckHost.Core.Titan;
 /// manual, Front panel buttons, keyboard shortcuts): number keys, number-pad
 /// * = @, / = Thro, + = And, - = Not, Enter, Esc = Exit.
 /// Only these keys can be sent: a paired iPad can't type anything else on the PC.
-/// No other Alt or modifier key: after Host 0.11 typed Alt+C (Clear) key by
-/// key the desk's own Clear and wheels stopped working, and Host
-/// 0.14.1-0.14.3's Alt+C didn't clear Titan 19's selection anyway (TitanDeck's
-/// CLEAR goes over CITP). The one exception, asked for by the user in 0.15.1,
-/// is <see cref="Shortcuts"/>: the RIG page's Next, Previous and Highlight,
-/// which Titan only has as Alt shortcuts. Each goes as one uninterruptible
-/// burst (Alt down, key down, key up, Alt up), and every modifier is let go
-/// again straight after.
+/// Never Alt or any modifier: after Host 0.11 typed Alt+C (Clear) the desk's
+/// own Clear and wheels stopped working, Host 0.14.1-0.14.3's Alt+C didn't
+/// clear Titan 19's selection, and 0.15.1's Alt+arrows for RIG (Next,
+/// Previous, Highlight) did nothing on Titan 19 either. TitanDeck's CLEAR goes
+/// over CITP; RIG types fixture numbers.
 /// Scan codes are PC set 1 (Extended = the E0 prefix). Keep in step with
 /// TitanDeck's DeskKeys.swift.
 /// </summary>
@@ -38,23 +35,12 @@ public static class DeskKeys
         ["backspace"] = new(0x0E),
     };
 
-    /// <summary>
-    /// Titan's Alt shortcuts the deck may ask for (Avolites manual, Front
-    /// panel buttons, keyboard shortcuts): Alt + arrow keys. Nothing else.
-    /// </summary>
-    public static readonly IReadOnlyDictionary<string, (Key Modifier, Key Key)> Shortcuts = new Dictionary<string, (Key, Key)>
-    {
-        ["next"] = (new Key(0x38), new Key(0x4D, Extended: true)),        // Alt+Right: next fixture
-        ["prev"] = (new Key(0x38), new Key(0x4B, Extended: true)),        // Alt+Left: previous fixture
-        ["highlight"] = (new Key(0x38), new Key(0x50, Extended: true)),   // Alt+Down: Highlight
-    };
-
     /// <summary>Why these keys can't be typed, or null when they all can.</summary>
     public static string? Problem(IReadOnlyList<string>? keys)
     {
         if (keys is null || keys.Count == 0) return "No keys.";
         if (keys.Count > MaxPerRequest) return $"At most {MaxPerRequest} keys at a time.";
-        var unknown = keys.FirstOrDefault(k => !All.ContainsKey(k) && !Shortcuts.ContainsKey(k));
+        var unknown = keys.FirstOrDefault(k => !All.ContainsKey(k));
         return unknown is null ? null : $"\"{unknown}\" isn't a keypad key TitanDeck Host types.";
     }
 }

@@ -6,6 +6,11 @@ until it's show-ready (1.0): MINOR for features, PATCH for fixes. Keep
 (ChangelogTests checks). Each version is published as a GitHub release
 `host-v<version>` with the installer attached.
 
+## 0.15.2 - 2026-10-28 - CLEAR shows as cleared
+
+- **Fixed: after CLEAR, TitanDeck still showed the fixtures as selected.** Titan clears the desk's selection when told over CITP but doesn't send the now-empty selection back to whoever cleared it, so the Host kept the old one. The Host now empties its own copy once the clear is sent, and CLEAR answers straight away. The desk's next selection comes through as usual.
+- **RIG's Alt shortcuts are gone again:** Alt+Right, Alt+Left and Alt+Down did nothing on Titan 19, like Alt+C before them, so the Host is back to never typing Alt or any other modifier. TitanDeck 0.36 types fixture numbers for FIX +1 / FIX -1 instead.
+
 ## 0.15.1 - 2026-10-28 - Cue fades checked on the cue itself, RIG on the desk
 
 - **Fixed: a cue fade said "checked on the cue" while the cue still had 0.** Titan took the new time and read it back, but what it read back was its times editor still holding the time just set, not the cue (Edit Times on the desk showed 0 / 0). The Host now reads a cue's time only after opening another playback and then the cue again, so it really comes from the cue. Until a way is found that the cue keeps, a fade now goes red and says so instead of claiming it worked.

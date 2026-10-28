@@ -88,6 +88,8 @@ enum TitanEndpoints {
             return script(host, port, "Selection/Context/Global/PatternNext", [])
         case .previousFixture:
             return script(host, port, "Selection/Context/Global/PatternPrevious", [])
+        case .allFixtures:
+            return script(host, port, "Selection/Context/Global/ClearPatternSelect", [])
         case .keypadEnter, .keypadClear, .colourTemperature, .setCueFade, .dimmerFlash, .setGroupMaster:
             return nil   // several requests - TitanClient runs them
         case .switchPage, .openSettings, .nextPage, .previousPage, .mainMenu, .colourPresets,
@@ -183,6 +185,16 @@ enum TitanEndpoints {
                    [("handle_titanId", "\(titanId)"), ("value_level", value), ("accuracy", "1")]),
             script(host, port, "Playbacks/SetPlaybackLevel", [("srcHandle_titanId", "\(titanId)"), ("level_level", value)]),
         ].compactMap { $0 }
+    }
+
+    /// Reading a master's level: Titan has no getter for a fader's level, but
+    /// its Masters menu has the connected master's (as the desk's wheel
+    /// edits it). This user (4430) connects to the master, reads it and lets
+    /// go; the desk's own connection isn't touched.
+    static func masterLevelURLs(titanId: Int, host: String, port: Int = defaultPort) -> (connect: URL?, read: URL?, disconnect: URL?) {
+        (script(host, port, "Masters/ConnectToMaster", [("handle_titanId", "\(titanId)")]),
+         URL(string: "http://\(authority(host, port))/titan/get/2/Masters/ConnectedMasterLevel"),
+         script(host, port, "Masters/DisconnectMaster", []))
     }
 
     // MARK: Flash (hold to 0%)
