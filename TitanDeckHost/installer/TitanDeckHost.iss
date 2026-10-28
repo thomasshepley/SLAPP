@@ -102,10 +102,14 @@ function PrepareToInstall(var NeedsRestart: Boolean): String;
 var
   ResultCode: Integer;
 begin
-  // The window app first, politely, so its tray icon goes with it (0.14.2+;
-  // an older one just starts and exits again).
+  // The window app first, politely, so its tray icon goes with it. Not
+  // waited for: a window app older than 0.14.2 doesn't know --quit, and with
+  // no copy already running it would just stay open and hold the update up.
   if FileExists(ExpandConstant('{app}\TitanDeckHost.exe')) then
-    ExecAsOriginalUser(ExpandConstant('{app}\TitanDeckHost.exe'), '--quit', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  begin
+    ExecAsOriginalUser(ExpandConstant('{app}\TitanDeckHost.exe'), '--quit', '', SW_HIDE, ewNoWait, ResultCode);
+    Sleep(3000);
+  end;
   // The service, waited for until it has really stopped (up to 30 s).
   Exec(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'),
     '-NoProfile -ExecutionPolicy Bypass -Command "$s = Get-Service TitanDeckHost -ErrorAction SilentlyContinue; ' +

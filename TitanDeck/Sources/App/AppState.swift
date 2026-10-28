@@ -458,8 +458,17 @@ final class AppState: ObservableObject {
         }
         let (typed, why) = await typeKeys(keys)
         guard typed else {
-            if let why { Log.titan("Keypad not typed on the desk (\(why)); using the WebAPI") }
-            return await titan.perform(action)
+            // Not quietly on the WebAPI's own command line: on Titan 19 that's a
+            // separate user, so nothing showed on the desk and the keys just
+            // seemed dead. Red, with the reason. (Settings > Desk link > Keypad types
+            // on the desk off still sends the keypad to the WebAPI.)
+            let reason = why ?? (host.client == nil
+                ? "TitanDeck isn't paired with TitanDeck Host, and the remote desktop isn't connected"
+                : "TitanDeck Host didn't answer, and the remote desktop isn't connected")
+            Log.titan("Keypad not typed on the desk: \(reason)")
+            return TitanResult(action: action, ok: false, statusCode: nil,
+                               milliseconds: Int((Date().timeIntervalSince(start) * 1000).rounded()),
+                               error: "Not typed on the desk: \(reason)", date: start)
         }
         return TitanResult(action: action, ok: true, statusCode: nil,
                           milliseconds: Int((Date().timeIntervalSince(start) * 1000).rounded()), error: nil, date: start)

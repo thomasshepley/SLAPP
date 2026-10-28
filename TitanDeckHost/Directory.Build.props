@@ -2,7 +2,7 @@
   <!-- One version for every TitanDeck Host project. Keep it in step with the
        top entry of CHANGELOG.md (ChangelogTests checks). -->
   <PropertyGroup>
-    <Version>0.14.2</Version>
+    <Version>0.14.3</Version>
     <Product>TitanDeck Host</Product>
     <Company>Elex Productions</Company>
     <Copyright>Thomas Shepley</Copyright>
