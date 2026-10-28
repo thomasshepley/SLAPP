@@ -37,6 +37,12 @@ TitanDeckHost/
 
 ## Rules
 
+- **Updates (0.14.2):** the installer closes the window app with `TitanDeckHost.exe --quit` (named events
+  `Local\TitanDeckHost.App.Quit` / `.Show`; a force-kill leaves a dead tray icon), stops the service and
+  waits for Stopped (PowerShell, 30 s) before taskkill, `CloseApplications=no`, then `net start` (waits).
+  The service must stop fast: `HostOptions.ShutdownTimeout` 5 s, and long-polls (`/local/desk/keys/wait`)
+  end on `ApplicationStopping`. With the service down, the window's Start the service button runs
+  `net start TitanDeckHost` elevated (UAC), as Update runs the installer: the one admin step the window asks for.
 - **Anything that needs admin happens in the service**, never the window app.
 - **The iPad's API is paired.** Only `/api/v1/hello` and `/api/v1/pair` work
   without a token; match them exactly. Fixes that weaken the PC (Defender

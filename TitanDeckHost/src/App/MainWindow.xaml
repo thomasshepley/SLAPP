@@ -29,6 +29,8 @@
                     </Border>
                 </Grid>
                 <TextBlock Text="{Binding Subtitle}" Foreground="{StaticResource SecondaryText}" Margin="30,0,0,20" TextWrapping="Wrap" />
+                <Button Content="Start the service" Command="{Binding StartServiceCommand}" HorizontalAlignment="Left" Margin="30,-10,0,20"
+                        Visibility="{Binding ServiceDown, Converter={StaticResource Visible}}" />
 
                 <!-- Test or Show -->
                 <Border Style="{StaticResource CardStyle}">

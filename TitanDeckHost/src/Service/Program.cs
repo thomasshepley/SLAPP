@@ -14,6 +14,13 @@ var builder = WebApplication.CreateBuilder(new WebApplicationOptions
     ContentRootPath = AppContext.BaseDirectory,
 });
 builder.Host.UseWindowsService(options => options.ServiceName = "TitanDeckHost");
+// Stops promptly (the installer waits for it before replacing files), and one
+// background job failing is logged rather than stopping the whole service.
+builder.Services.Configure<HostOptions>(options =>
+{
+    options.ShutdownTimeout = TimeSpan.FromSeconds(5);
+    options.BackgroundServiceExceptionBehavior = BackgroundServiceExceptionBehavior.Ignore;
+});
 if (OperatingSystem.IsWindows()) builder.Logging.AddEventLog(settings => settings.SourceName = "TitanDeck Host");
 builder.WebHost.ConfigureKestrel(kestrel =>
 {
@@ -266,7 +273,12 @@ local.MapGet("/citp", (CitpService citp) => citp.Status());
 local.MapPost("/citp", (CitpEnableRequest request, CitpService citp) => citp.SetEnabled(request.Enabled));
 
 // The Host window waits here for keypad keys to type (long poll).
-local.MapGet("/desk/keys/wait", (DeskKeyQueue queue, CancellationToken cancel) => queue.Next(TimeSpan.FromSeconds(20), cancel));
+// Ends at once when the service stops: the window's 20 s wait otherwise held a stop up for 20 s.
+local.MapGet("/desk/keys/wait", async (DeskKeyQueue queue, IHostApplicationLifetime life, CancellationToken cancel) =>
+{
+    using var either = CancellationTokenSource.CreateLinkedTokenSource(cancel, life.ApplicationStopping);
+    return await queue.Next(TimeSpan.FromSeconds(20), either.Token);
+});
 
 local.MapGet("/pairing", () => PairingInfo(pairing));
 

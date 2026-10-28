@@ -72,6 +72,36 @@ public sealed partial class MainViewModel : INotifyPropertyChanged
     /// <summary>"482 913" while a pairing code is live.</summary>
     public string? Code { get => _code; set { Set(ref _code, value); OnPropertyChanged(nameof(HasCode)); } }
     public bool HasCode => Code is not null;
+
+    private bool _serviceDown;
+    /// <summary>The window can't reach the service: offer to start it.</summary>
+    public bool ServiceDown { get => _serviceDown; set => Set(ref _serviceDown, value); }
+
+    private ICommand? _startServiceCommand;
+    /// <summary>Starts the service (Windows asks for permission: the window runs as the signed-in user).</summary>
+    public ICommand StartServiceCommand => _startServiceCommand ??= new RelayCommand(async () =>
+    {
+        try
+        {
+            using var start = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(
+                Environment.ExpandEnvironmentVariables(@"%SystemRoot%\System32\net.exe"), "start TitanDeckHost")
+            {
+                UseShellExecute = true,
+                Verb = "runas",
+                WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden,
+            });
+            Message = "Starting the TitanDeck Host service...";
+            if (start is not null) await start.WaitForExitAsync();
+            await Refresh();
+            Message = ServiceDown
+                ? "The service didn't start. Windows' Event Viewer (Windows Logs > Application, source \"TitanDeck Host\") says why."
+                : "The TitanDeck Host service is running.";
+        }
+        catch (System.ComponentModel.Win32Exception)
+        {
+            Message = "Starting the service needs Windows' permission. Press Start the service again and choose Yes.";
+        }
+    });
     public string CodeHint { get => _codeHint; set => Set(ref _codeHint, value); }
     public string Message { get => _message; set => Set(ref _message, value); }
     public bool Busy { get => _busy; set => Set(ref _busy, value); }
@@ -89,11 +119,13 @@ public sealed partial class MainViewModel : INotifyPropertyChanged
         if (status is null)
         {
             Headline = "The TitanDeck Host service isn't running";
-            Subtitle = "Restart the PC, or start \"TitanDeck Host\" in Services.";
+            Subtitle = "Press Start the service (Windows asks for permission), or start \"TitanDeck Host\" in Services.";
             HeadlineColour = BrushFor("problem");
+            ServiceDown = true;
             Checks.Clear();
             return;
         }
+        ServiceDown = false;
 
         Headline = status.Overall switch
         {
