@@ -22,9 +22,20 @@ public class DeskKeysTests
         Assert.Null(DeskKeys.Problem(["1", "0", "2", "@", "5", "0", "enter"]));
         Assert.NotNull(DeskKeys.Problem(["a"]));             // no letters: nothing else can be typed on the PC
         Assert.NotNull(DeskKeys.Problem(["enter", "win"]));
-        Assert.NotNull(DeskKeys.Problem(["clear"]));         // no Alt shortcuts (Alt+C): CLEAR goes over CITP
+        Assert.NotNull(DeskKeys.Problem(["clear"]));         // no Alt+C: CLEAR goes over CITP
+        Assert.Null(DeskKeys.Problem(["next", "prev", "highlight"]));   // RIG's Alt + arrows, the only shortcuts
         Assert.NotNull(DeskKeys.Problem([]));
         Assert.NotNull(DeskKeys.Problem(null));
         Assert.NotNull(DeskKeys.Problem(Enumerable.Repeat("1", DeskKeys.MaxPerRequest + 1).ToList()));
+    }
+
+    [Fact]
+    public void RigShortcutsAreAltAndAnArrowOnly()
+    {
+        Assert.Equal(["highlight", "next", "prev"], DeskKeys.Shortcuts.Keys.Order());
+        Assert.All(DeskKeys.Shortcuts.Values, s => Assert.Equal(new DeskKeys.Key(0x38), s.Modifier));   // left Alt
+        Assert.Equal(new DeskKeys.Key(0x4D, Extended: true), DeskKeys.Shortcuts["next"].Key);       // Right
+        Assert.Equal(new DeskKeys.Key(0x4B, Extended: true), DeskKeys.Shortcuts["prev"].Key);       // Left
+        Assert.Equal(new DeskKeys.Key(0x50, Extended: true), DeskKeys.Shortcuts["highlight"].Key);  // Down
     }
 }

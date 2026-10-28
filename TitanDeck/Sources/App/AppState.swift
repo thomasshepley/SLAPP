@@ -279,6 +279,9 @@ final class AppState: ObservableObject {
         let keys: [String]
         let keypadLine: UUID?
         let keyIndex: Int?
+        /// Done through Titan's WebAPI instead when it can't be typed (RIG's
+        /// keys with a Host older than 0.15.1, which doesn't type shortcuts).
+        var webAPIIfNotTyped = false
     }
     /// Presses waiting for the desk, in the order pressed.
     private var deskPresses: [DeskPress] = []
@@ -286,6 +289,10 @@ final class AppState: ObservableObject {
     private var deskTyping: Task<Void, Never>?
     /// The level (0-1) a desk-typed hold-for-0% puts back when let go.
     private var flashRestore: Double?
+    /// A faded flash being typed on the desk in steps, and the last level
+    /// (0-1) it typed, so letting go mid-fade fades back up from there.
+    private var flashRamp: Task<Void, Never>?
+    private var rampLevel: Double?
     /// The level last typed on the desk for a selection, for quick nudges in a
     /// row (the sACN reading takes a moment to catch up) and for when there's
     /// no live reading at all.
@@ -342,8 +349,18 @@ final class AppState: ObservableObject {
            !deck.selectedFixtures.isEmpty {
             return   // the press was refused (level unknown): nothing to put back
         }
+        if keypadTypesOnDesk, case .dimmerFlash(let down, let seconds?) = action, seconds > 0,
+           !deck.selectedFixtures.isEmpty, let levels = flashFadeLevels(down: down) {
+            rampOnDesk(action, from: levels.from, to: levels.to, seconds: seconds, keypadLine: keypadLine, keyIndex: keyIndex)
+            return
+        }
         if keypadTypesOnDesk, let keys = DeskKeys.names(for: action) ?? deskLevelKeys(for: action) {
             queueOnDesk(action, keys: keys, keypadLine: keypadLine, keyIndex: keyIndex)
+            return
+        }
+        if keypadTypesOnDesk, let keys = DeskKeys.shortcut(for: action) {
+            // RIG on the desk's own selection, as Titan's Alt shortcuts.
+            queueOnDesk(action, keys: keys, keypadLine: keypadLine, keyIndex: keyIndex, webAPIIfNotTyped: true)
             return
         }
         // Linked to the desk, commands act on the desk's own programmer. Cue
@@ -372,8 +389,10 @@ final class AppState: ObservableObject {
     }
 
     /// Keys typed on the desk go in the order pressed.
-    private func queueOnDesk(_ action: TitanAction, keys: [String], keypadLine: UUID?, keyIndex: Int?) {
-        deskPresses.append(DeskPress(action: action, keys: keys, keypadLine: keypadLine, keyIndex: keyIndex))
+    private func queueOnDesk(_ action: TitanAction, keys: [String], keypadLine: UUID?, keyIndex: Int?,
+                             webAPIIfNotTyped: Bool = false) {
+        deskPresses.append(DeskPress(action: action, keys: keys, keypadLine: keypadLine, keyIndex: keyIndex,
+                                     webAPIIfNotTyped: webAPIIfNotTyped))
         guard deskTyping == nil else { return }
         deskTyping = Task { [weak self] in
             await self?.typeWaitingPresses()
@@ -401,6 +420,11 @@ final class AppState: ObservableObject {
             }
             let result = await typeOnDesk(batch[0].action, keys: keys)
             for press in batch {
+                if !result.ok, press.webAPIIfNotTyped {
+                    finish(await (deskLink.commandClient ?? titan).perform(press.action),
+                           keypadLine: press.keypadLine, keyIndex: press.keyIndex)
+                    continue
+                }
                 finish(TitanResult(action: press.action, ok: result.ok, statusCode: result.statusCode,
                                    milliseconds: result.milliseconds, error: result.error, date: result.date),
                        keypadLine: press.keypadLine, keyIndex: press.keyIndex)
@@ -449,6 +473,53 @@ final class AppState: ObservableObject {
             if !result.ok {
                 connectionLog.record(.key, .info, "Key \(keyIndex + 1) \(result.action.summary) failed: \(result.error ?? "HTTP \(result.statusCode ?? 0)")")
             }
+        }
+    }
+
+    /// Where a faded hold-for-0% goes from and to (0-1): down from the
+    /// current level to 0, back up from wherever it got to the level it had.
+    /// Nil when the level isn't known (the press is refused in `fire`).
+    private func flashFadeLevels(down: Bool) -> (from: Double, to: Double)? {
+        if down {
+            guard let level = currentLevel else { return nil }
+            flashRestore = level
+            rememberTyped(0)
+            return (rampLevel ?? level, 0)
+        }
+        guard let level = flashRestore else { return nil }
+        flashRestore = nil
+        rememberTyped(level)
+        return (rampLevel ?? 0, level)
+    }
+
+    /// A faded flash on the desk: Titan's keyboard has no fade time, so the
+    /// level is typed in steps over the fade ("@ 90 Enter", "@ 80 Enter"...).
+    /// Letting go mid-fade stops it and fades back up from where it got to.
+    /// Only the first step reports on the key, so one press is one result.
+    private func rampOnDesk(_ action: TitanAction, from: Double, to: Double, seconds: Double,
+                            keypadLine: UUID?, keyIndex: Int?) {
+        flashRamp?.cancel()
+        let steps = DeskKeys.rampSteps(from: from * 100, to: to * 100, seconds: seconds)
+        guard !steps.isEmpty else {
+            // Already there: nothing to type.
+            rampLevel = nil
+            finish(TitanResult(action: action, ok: true, statusCode: nil, milliseconds: 0, error: nil, date: Date()),
+                   keypadLine: keypadLine, keyIndex: keyIndex)
+            return
+        }
+        flashRamp = Task { [weak self] in
+            let start = Date()
+            for (index, step) in steps.enumerated() {
+                let wait = step.at - Date().timeIntervalSince(start)
+                if wait > 0 { try? await Task.sleep(nanoseconds: UInt64(wait * 1_000_000_000)) }
+                guard !Task.isCancelled, let self else { return }
+                self.rampLevel = step.percent / 100
+                self.queueOnDesk(action, keys: DeskKeys.level(step.percent),
+                                 keypadLine: index == 0 ? keypadLine : nil, keyIndex: index == 0 ? keyIndex : nil)
+            }
+            guard !Task.isCancelled, let self else { return }
+            self.rampLevel = nil
+            self.flashRamp = nil
         }
     }
 

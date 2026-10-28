@@ -49,38 +49,63 @@ public sealed class TitanActions(TitanLog titanLog, CitpService citp)
     {
         var steps = new List<string>();
         var what = $"handle {titanId} fade {(fadeOut ? "out" : "in")} {TitanRecipes.Number(seconds)}s";
+        var other = await Read(TitanRecipes.PlaybackHandles(), token) is { } handles ? TitanRecipes.OtherPlayback(handles, titanId) : null;
+        steps.Add(other is null
+            ? "No other playback to open in between, so a time read back can't be told from the editor holding it"
+            : $"Reads go through playback {other} first, so they come from the cue and not the editor");
         if (!await Open(titanId, steps, token))
             return new TitanActionDto(false, $"Couldn't open cue 1 of handle {titanId} in Titan's editor: " + steps[^1], steps);
-        var current = await Read(TitanRecipes.ReadFade(fadeOut), token);
-        var other = fadeOut ? await Read(TitanRecipes.ReadFade(false), token) : null;
-        steps.Add("Titan reads the time as " + (current ?? "nothing"));
-        var currentSeconds = current is null ? null : TitanRecipes.Seconds(current);
-        if (currentSeconds is { } now && Math.Abs(now - seconds) < 0.05)
+        steps.Add("Selected cues: " + (await Read(TitanRecipes.SelectedCues(), token) ?? "Titan didn't say"));
+        var (current, currentSeconds) = await ReadFromCue(titanId, other, fadeOut, steps, token);
+        var otherSeconds = fadeOut ? TitanRecipes.Seconds(await Read(TitanRecipes.ReadFade(false), token) ?? "") : null;
+        steps.Add("The cue has " + (current ?? "nothing Titan could read"));
+        if (other is not null && currentSeconds is { } now && Math.Abs(now - seconds) < 0.05)
             return new TitanActionDto(true, $"{what}: the cue already has it", steps);
 
         var errors = new List<string>();
-        foreach (var attempt in TitanRecipes.CueFadeAttempts(titanId, fadeOut, seconds,
-                     other is null ? null : TitanRecipes.Seconds(other), current))
+        foreach (var attempt in TitanRecipes.CueFadeAttempts(titanId, fadeOut, seconds, otherSeconds, current))
         {
+            if (!await Open(titanId, steps, token)) break;
             var refused = await Run(attempt, steps, token);
             if (refused is not null)
             {
                 errors.Add($"{attempt.Name}: {refused}");
                 continue;
             }
-            var first = await ReadSeconds(fadeOut, token);
-            await Open(titanId, steps, token);
-            var again = await ReadSeconds(fadeOut, token);
-            if (first is { } a && again is { } b && Math.Abs(a - seconds) < 0.05 && Math.Abs(b - seconds) < 0.05)
-                return new TitanActionDto(true, $"{what}: set with {attempt.Name}, checked on the cue", steps);
-            var why = first is null ? "taken, but the time couldn't be read back"
-                : Math.Abs(first.Value - seconds) >= 0.05 ? $"taken, but the time stayed {TitanRecipes.Number(first.Value)}s"
-                : $"the editor showed {TitanRecipes.Number(first.Value)}s, but the cue still has {(again is null ? "an unreadable time" : TitanRecipes.Number(again.Value) + "s")}";
+            var editor = await ReadSeconds(fadeOut, token);
+            var (_, onCue) = await ReadFromCue(titanId, other, fadeOut, steps, token);
+            if (onCue is { } got && Math.Abs(got - seconds) < 0.05)
+            {
+                if (other is not null)
+                    return new TitanActionDto(true, $"{what}: set with {attempt.Name}, checked on the cue", steps);
+                return new TitanActionDto(true, $"{what}: set with {attempt.Name} (read back, but with no other playback to open in between it may only be Titan's editor: check the cue)", steps);
+            }
+            var why = editor is { } e && Math.Abs(e - seconds) < 0.05
+                ? $"Titan's editor showed {TitanRecipes.Number(e)}s, but the cue still has {(onCue is null ? "a time Titan couldn't read" : TitanRecipes.Number(onCue.Value) + "s")}"
+                : editor is null ? "taken, but the time couldn't be read back" : $"taken, but the time stayed {TitanRecipes.Number(editor.Value)}s";
             errors.Add($"{attempt.Name}: {why}");
             steps.Add($"{attempt.Name}: {why}");
         }
         return new TitanActionDto(false,
-            $"{what} not set. Tried {string.Join(" | ", errors)}. Titan read the time as {current ?? "nothing"}.", steps);
+            $"{what} not set. Tried {string.Join(" | ", errors)}. The cue had {current ?? "nothing Titan could read"}.", steps);
+    }
+
+    /// <summary>
+    /// The cue's time as Titan reads it once the editor has let go of the cue
+    /// and opened another playback (when there is one) before opening the cue
+    /// again: then it can't be the editor still holding what was just set.
+    /// </summary>
+    private async Task<(string? Text, double? Seconds)> ReadFromCue(int titanId, int? other, bool fadeOut, List<string> steps, CancellationToken token)
+    {
+        await Send(TitanRecipes.LetGo(), token);
+        if (other is { } elsewhere)
+        {
+            await Open(elsewhere, steps, token);
+            await Send(TitanRecipes.LetGo(), token);
+        }
+        await Open(titanId, steps, token);
+        var text = await Read(TitanRecipes.ReadFade(fadeOut), token);
+        return (text, text is null ? null : TitanRecipes.Seconds(text));
     }
 
     private async Task<TitanActionDto> RunClear(CancellationToken token)

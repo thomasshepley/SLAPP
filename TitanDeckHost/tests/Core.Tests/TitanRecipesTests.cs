@@ -34,6 +34,35 @@ public class TitanRecipesTests
     }
 
     [Fact]
+    public void FindsAnotherPlaybackToOpenInBetween()
+    {
+        const string handles = """
+            [{"handleLocation":{"group":"Playbacks","index":0,"page":0},"titanId":1903,"type":"playbackHandle"},
+             {"handleLocation":{"group":"Playbacks","index":0,"page":59},"titanId":1895,"type":"masterHandle"},
+             {"handleLocation":{"group":"Playbacks","index":1,"page":0},"titanId":1904,"type":"playbackHandle"}]
+            """;
+        Assert.Equal(1904, TitanRecipes.OtherPlayback(handles, 1903));
+        Assert.Equal(1903, TitanRecipes.OtherPlayback(handles, 1904));
+        Assert.Equal(1895, TitanRecipes.OtherPlayback("""[{"titanId":1903},{"titanId":1895,"type":"masterHandle"}]""", 1903));
+        Assert.Null(TitanRecipes.OtherPlayback("""[{"titanId":1903,"type":"playbackHandle"}]""", 1903));
+        Assert.Null(TitanRecipes.OtherPlayback("not json", 1903));
+    }
+
+    [Fact]
+    public void TriesTheCueSelectedBeforeTheTimesAreFilled()
+    {
+        var attempts = TitanRecipes.CueFadeAttempts(1903, fadeOut: false, 2.5, null, null);
+        var picked = attempts.Single(a => a.Name.StartsWith("cue selected"));
+        Assert.Equal(
+        [
+            "/titan/script/2/Playbacks/Editor/CueSelection/SelectCueByNumber?handle_titanId=1903&cueNumber=1",
+            "/titan/script/2/Playbacks/TimesEdit/FillTimes?handle_titanId=1903",
+            "/titan/script/2/ActionScript/SetProperty?id=Playbacks.Editor.Times.CueFadeInTime&value_time=2.5",
+        ], picked.Calls.Select(c => c.PathAndQuery));
+        Assert.Contains(attempts, a => a.Calls.Any(c => c.PathAndQuery.Contains("Playbacks.TimesEdit.CueNumber")));
+    }
+
+    [Fact]
     public void FadeOutOnTheCommandLineKeepsTheFadeIn()
     {
         var withIn = TitanRecipes.CueFadeAttempts(7, fadeOut: true, 3, otherSeconds: 1.5, current: null);

@@ -5,11 +5,12 @@ import Foundation
 /// lands on the desk's command line and the selection shows on the desk
 /// (Titan 19's WebAPI is a separate user with its own selection). Titan
 /// captures the PC keyboard while it runs; its shortcuts: number keys,
-/// number-pad * = @, / = Thro, + = And, - = Not, Enter, Esc = Exit. Never
-/// Alt shortcuts: typing Alt+C for Clear left the desk's own Clear and wheels
-/// not working, so Clear goes through the WebAPI (every programmer) after an
-/// Exit to back out what's typed. TitanDeck Host types them (Host 0.10+), or the remote
-/// desktop does when it's connected. Keep the names and keys in step with
+/// number-pad * = @, / = Thro, + = And, - = Not, Enter, Esc = Exit. No other
+/// Alt shortcuts than RIG's (`shortcuts`, the user's call in 0.35): typing
+/// Alt+C for Clear left the desk's own Clear and wheels not working, so CLEAR
+/// goes through the Host (CITP). TitanDeck Host types them (Host 0.10+; the
+/// RIG shortcuts 0.15.1+), or the remote desktop does when it's connected.
+/// Keep the names and keys in step with
 /// TitanDeckHost/src/Core/Titan/DeskKeys.cs. Pure, so it's tested.
 enum DeskKeys {
     /// The Host's names for the keys an action types, or nil for one that isn't a keypad key.
@@ -24,6 +25,49 @@ enum DeskKeys {
         }
     }
 
+    /// RIG's keys as Titan's own Alt shortcuts (Alt+Right next fixture,
+    /// Alt+Left previous, Alt+Down Highlight), so they step the desk's own
+    /// selection. Nil for any other action.
+    static func shortcut(for action: TitanAction) -> [String]? {
+        switch action {
+        case .nextFixture: ["next"]
+        case .previousFixture: ["prev"]
+        case .toggleHighlight: ["highlight"]
+        default: nil
+        }
+    }
+
+    /// One level of a faded flash typed on the desk: `percent` at `at` seconds
+    /// after the press.
+    struct RampStep: Equatable {
+        let at: Double
+        let percent: Double
+    }
+
+    /// A flash fade typed on the desk as levels in steps (Titan's keyboard has
+    /// no fade time): about five a second, as fast as "@ 50 Enter" is typed,
+    /// whole percents, ending exactly on `to`. The first step goes straight away.
+    static func rampSteps(from: Double, to: Double, seconds: Double) -> [RampStep] {
+        let count = max(1, min(Int(seconds / 0.2), 20))
+        var steps: [RampStep] = []
+        for index in 1 ... count {
+            let percent = min(max((from + (to - from) * Double(index) / Double(count)).rounded(), 0), 100)
+            guard percent != (steps.last?.percent ?? from.rounded()) else { continue }   // never the same level twice
+            steps.append(RampStep(at: seconds * Double(index - 1) / Double(count), percent: percent))
+        }
+        return steps
+    }
+
+    /// The arrow key of each shortcut (set-1 scan codes, 0x100 = extended); Alt is held for it.
+    static let shortcuts: [String: UInt32] = [
+        "next": 0x14D,        // Right
+        "prev": 0x14B,        // Left
+        "highlight": 0x150,   // Down
+    ]
+
+    /// Left Alt.
+    static let alt: UInt32 = 0x38
+
     /// "@ <level> Enter", for a level in percent (0-100, whole numbers):
     /// the selection to that level on the desk's own command line.
     static func level(_ percent: Double) -> [String] {
@@ -33,6 +77,7 @@ enum DeskKeys {
 
     /// The same key as remote desktop keystrokes (set-1 scan codes, 0x100 = extended).
     static func strokes(for name: String) -> [RDPKeyStroke] {
+        if let arrow = shortcuts[name] { return RDPTyping.tap(arrow, holding: [alt]) }
         guard let scancode = table[name] else { return [] }
         return RDPTyping.tap(scancode, holding: [])
     }

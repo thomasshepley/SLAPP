@@ -6,6 +6,13 @@ until it's show-ready (1.0): MINOR for features, PATCH for fixes. Keep
 (ChangelogTests checks). Each version is published as a GitHub release
 `host-v<version>` with the installer attached.
 
+## 0.15.1 - 2026-10-28 - Cue fades checked on the cue itself, RIG on the desk
+
+- **Fixed: a cue fade said "checked on the cue" while the cue still had 0.** Titan took the new time and read it back, but what it read back was its times editor still holding the time just set, not the cue (Edit Times on the desk showed 0 / 0). The Host now reads a cue's time only after opening another playback and then the cue again, so it really comes from the cue. Until a way is found that the cue keeps, a fade now goes red and says so instead of claiming it worked.
+- **Two more ways to set the time are tried:** picking the cue before the times are filled in (as pressing the cue in Edit Times does), and setting the times menu's cue number first.
+- The Titan log shows which cues Titan's editor had selected, for working out the next step.
+- **RIG on the desk:** TitanDeck 0.35's FIX +1, FIX -1 and HI LIGHT are typed as Titan's own shortcuts (Alt+Right, Alt+Left, Alt+Down), so the desk's own selection steps. They're the only Alt shortcuts the Host types, each as one burst with every modifier let go straight after.
+
 ## 0.15.0 - 2026-10-28 - CLEAR over CITP, keys without the wait
 
 - **TitanDeck's CLEAR now clears the desk's selection over CITP**, the way a visualiser like Capture tells the console what's selected: the Host tells Titan nothing is selected. Typing Alt+C (0.14.1) didn't clear Titan 19's selection, so it's gone, and the Host is back to never typing a modifier.

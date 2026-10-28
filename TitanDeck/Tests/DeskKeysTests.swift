@@ -56,4 +56,27 @@ final class DeskKeysTests: XCTestCase {
         XCTAssertEqual(DeskKeys.level(54.6), ["@", "5", "5", "enter"])
         for name in DeskKeys.level(73) { XCTAssertNotNil(DeskKeys.table[name]) }
     }
+
+    func testRigKeysAreTitansAltArrowShortcuts() {
+        XCTAssertEqual(DeskKeys.shortcut(for: .nextFixture), ["next"])
+        XCTAssertEqual(DeskKeys.shortcut(for: .previousFixture), ["prev"])
+        XCTAssertEqual(DeskKeys.shortcut(for: .toggleHighlight), ["highlight"])
+        XCTAssertNil(DeskKeys.shortcut(for: .keypadClear), "no Alt+C: CLEAR goes over CITP")
+        XCTAssertEqual(Set(DeskKeys.shortcuts.keys), ["next", "prev", "highlight"], "RIG's three and nothing else")
+        XCTAssertEqual(DeskKeys.strokes(for: "next"), [
+            .key(0x38, down: true), .key(0x14D, down: true), .key(0x14D, down: false), .key(0x38, down: false),
+        ], "over remote desktop: Alt held for Right, then let go")
+        XCTAssertEqual(DeskKeys.strokes(for: "highlight")[1], .key(0x150, down: true))
+    }
+
+    func testAFadedFlashIsTypedInSteps() {
+        let down = DeskKeys.rampSteps(from: 80, to: 0, seconds: 1)
+        XCTAssertEqual(down.map(\.percent), [64, 48, 32, 16, 0], "five a second, ending on 0")
+        XCTAssertEqual(down.map(\.at), [0, 0.2, 0.4, 0.6, 0.8], "the first straight away")
+        XCTAssertEqual(DeskKeys.rampSteps(from: 0, to: 75, seconds: 0.4).map(\.percent), [38, 75])
+        XCTAssertEqual(DeskKeys.rampSteps(from: 50, to: 0, seconds: 0.1).map(\.percent), [0], "too short to step: one go")
+        XCTAssertEqual(DeskKeys.rampSteps(from: 100, to: 0, seconds: 60).count, 20, "never more than 20 steps")
+        XCTAssertEqual(DeskKeys.rampSteps(from: 3, to: 0, seconds: 2).map(\.percent), [2, 1, 0], "no level typed twice")
+        XCTAssertTrue(DeskKeys.rampSteps(from: 40, to: 40, seconds: 2).isEmpty, "already there")
+    }
 }
