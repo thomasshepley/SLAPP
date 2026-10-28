@@ -6,6 +6,11 @@ until it's show-ready (1.0): MINOR for features, PATCH for fixes. Keep
 (ChangelogTests checks). Each version is published as a GitHub release
 `host-v<version>` with the installer attached.
 
+## 0.13.1 - 2026-10-28 - A quieter Titan log
+
+- **The Titan log no longer fills up with CITP's handshake.** Titan goes through the whole CITP hello again every time it reconnects (EnterShow, FixtureListRequest, SetFixtureTransformationSpace and the Host's polite NACKs), which buried everything else. Those are normal, not errors: each one is now listed once and its repeats counted on the line above the log, the way polling already was. The desk's selection and anything red are always listed.
+- **Everything / important:** the log shows the important lines by default (TitanDeck's calls, the desk's selection, anything refused). Tick Everything to see the first polling and handshake lines too.
+
 ## 0.13.0 - 2026-10-27 - Slate Book
 
 - **Slate Book:** the Host logs the whole of Titan's sACN output for each slate and take, when TitanDeck's NEW SLATE, TAKE + or LETTER is pressed, with Day/Night, FX and the time. In between, a change is logged once the output has been still for 3 seconds, ignoring channels that keep moving (an effect). Each line says what changed since the one before, by fixture and attribute when Titan's patch is known (every attribute in its personality), else by DMX address.

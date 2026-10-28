@@ -40,4 +40,29 @@ public class TitanLogTests
         log.Clear();
         Assert.Empty(log.Since(0).Entries);
     }
+
+    [Fact]
+    public void CitpHandshakeRepeatsAreCountedButSelectionAndProblemsAreListed()
+    {
+        var log = new TitanLog();
+        for (int round = 0; round < 5; round++)
+        {
+            log.Add("CITP", "2.0.0.200", "IN", "CAEX EnterShow", "", 200, 0, "\"Show Test\"", null, false, T0.AddSeconds(round));
+            log.Add("CITP", "2.0.0.200", "IN", "CAEX FixtureListRequest", "", 200, 0, null, null, false, T0.AddSeconds(round));
+            log.Add("CITP", "2.0.0.200", "OUT", "CAEX NACK", "", 200, 0, "refused: TitanDeck Host never sends Titan a patch", null, false, T0.AddSeconds(round));
+        }
+        var (entries, polls) = log.Since(0);
+        Assert.Equal(3, entries.Count);
+        Assert.All(entries, e => Assert.True(e.Routine));
+        Assert.Equal(5, polls.Single(p => p.Path == "OUT CAEX NACK").Count);
+
+        Assert.NotNull(log.Add("CITP", "2.0.0.200", "IN", "CAEX FixtureSelection", "", 200, 0, "901", null, false, T0));
+        Assert.NotNull(log.Add("CITP", "2.0.0.200", "IN", "CAEX FixtureSelection", "", 200, 0, "902", null, false, T0));
+        var lost = log.Add("CITP", "2.0.0.200", "IN", "TCP connection", "", 200, 0, "link lost", null, true, T0);
+        Assert.NotNull(lost);
+        Assert.False(lost!.Routine);
+        Assert.NotNull(log.Add("CITP", "2.0.0.200", "IN", "TCP connection", "", 200, 0, "link lost", null, true, T0));
+        // Calls from TitanDeck are never routine.
+        Assert.False(log.Add("TitanDeck - WebAPI", "10.0.0.9", "GET", "/titan/script/2/Playbacks/FirePlaybackAtLevel", "", 200, 1, null, null, false, T0)!.Routine);
+    }
 }

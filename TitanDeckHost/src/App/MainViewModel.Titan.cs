@@ -42,6 +42,8 @@ public sealed partial class MainViewModel
     private string _updateButton = "Update";
     private string _pollText = "";
     private bool _autoScroll = true;
+    private bool _showEverything;
+    private readonly List<LogRow> _allRows = [];
 
     public ObservableCollection<LogRow> LogRows { get; } = new();
 
@@ -141,10 +143,27 @@ public sealed partial class MainViewModel
     public string PollText { get => _pollText; set => Set(ref _pollText, value); }
     public bool AutoScroll { get => _autoScroll; set => Set(ref _autoScroll, value); }
 
+    /// <summary>Everything, or (the default) the important lines: TitanDeck's
+    /// calls, the desk's selection and anything red, without the polling and
+    /// CITP handshake chatter.</summary>
+    public bool ShowEverything
+    {
+        get => _showEverything;
+        set
+        {
+            Set(ref _showEverything, value);
+            LogRows.Clear();
+            foreach (var row in _allRows.Where(Shows)) LogRows.Add(row);
+        }
+    }
+
+    private bool Shows(LogRow row) => _showEverything || !row.Entry.Routine;
+
     private ICommand? _clearLogCommand;
     public ICommand ClearLogCommand => _clearLogCommand ??= new RelayCommand(async () =>
     {
         await _client.ClearTitanLog();
+        _allRows.Clear();
         LogRows.Clear();
         PollText = "";
     });
@@ -164,12 +183,17 @@ public sealed partial class MainViewModel
         {
             foreach (var entry in log.Entries)
             {
-                LogRows.Add(new LogRow { Entry = entry });
+                var row = new LogRow { Entry = entry };
+                _allRows.Add(row);
+                if (Shows(row)) LogRows.Add(row);
                 _lastLogId = Math.Max(_lastLogId, entry.Id);
             }
+            if (_allRows.Count > LogRowsShown) _allRows.RemoveRange(0, _allRows.Count - LogRowsShown);
             while (LogRows.Count > LogRowsShown) LogRows.RemoveAt(0);
-            PollText = log.Polls.Count == 0 ? "" : "Polling (counted, not listed): " +
-                string.Join("   ", log.Polls.Select(p => $"{p.Path.Split('/').Last()} x{p.Count:N0} ({p.LastStatus})"));
+            PollText = log.Polls.Count == 0 ? "" : "Repeats (counted, not listed): " +
+                string.Join("   ", log.Polls.Select(p => p.Who == "CITP"
+                    ? $"CITP {p.Path} x{p.Count:N0}"
+                    : $"{p.Path.Split('/').Last()} x{p.Count:N0} ({p.LastStatus})"));
         }
         if (CitpEnabled) await RefreshCitp();
         if (_installWhenReady || UpdateText.StartsWith("Downloading", StringComparison.Ordinal)) await RefreshUpdate();
