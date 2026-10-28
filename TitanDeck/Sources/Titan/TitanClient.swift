@@ -66,6 +66,7 @@ actor TitanClient {
         case .colourTemperature(let kelvin): return await runColourTemperature(kelvin)
         case .setCueFade(let id, let fadeOut, let seconds): return await runCueFade(titanId: id, fadeOut: fadeOut, seconds: seconds)
         case .dimmerFlash(let down, let seconds): return await runFlash(down: down, seconds: seconds)
+        case .setGroupMaster(let id, let level): return await runGroupMaster(titanId: id, level: level)
         default: break
         }
         let start = Date()
@@ -253,6 +254,26 @@ actor TitanClient {
         }
         _ = await get(TitanEndpoints.fillTimesURL(titanId: titanId, host: host, port: port))
         return await get(TitanEndpoints.selectFirstCueURL(titanId: titanId, host: host, port: port))
+    }
+
+    // MARK: - Group masters
+
+    /// Sets a group master, trying Titan's group handle call first and then
+    /// the playback level (the first Titan takes counts).
+    private func runGroupMaster(titanId: Int, level: Double) async -> TitanResult {
+        let action = TitanAction.setGroupMaster(titanId: titanId, level: level)
+        let start = Date()
+        var errors: [String] = []
+        var last: (ok: Bool, status: Int?, error: String?) = (false, nil, "No Titan host set")
+        for url in TitanEndpoints.groupMasterURLs(titanId: titanId, level: level, host: host, port: port) {
+            last = await get(url)
+            if last.ok {
+                return finish(action, start, ok: true, status: last.status, error: nil, detail: "set with \(url.path.split(separator: "/").suffix(2).joined(separator: "."))")
+            }
+            errors.append("\(url.path.split(separator: "/").last ?? ""): \(last.error ?? "HTTP \(last.status ?? 0)")")
+        }
+        return finish(action, start, ok: false, status: last.status,
+                      error: errors.isEmpty ? last.error : "Tried " + errors.joined(separator: " | "))
     }
 
     // MARK: - Flash (hold to 0%)

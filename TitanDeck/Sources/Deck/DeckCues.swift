@@ -36,6 +36,8 @@ struct CueChoice: Hashable {
     var index: Int
     var legend: String
     var isActive: Bool
+    /// The fader's level (0...1) when Titan reports one.
+    var level: Double? = nil
 
     var ref: CueRef {
         CueRef(titanId: titanId, userNumber: userNumber, page: page, index: index, legend: legend)

@@ -674,7 +674,8 @@ final class AppState: ObservableObject {
         handles.compactMap { handle in
             guard let id = handle.titanId else { return nil }
             return CueChoice(titanId: id, userNumber: handle.userNumber, page: handle.page ?? 0,
-                             index: handle.index ?? 0, legend: handle.legend, isActive: handle.active)
+                             index: handle.index ?? 0, legend: handle.legend, isActive: handle.active,
+                             level: handle.level)
         }
     }
 
