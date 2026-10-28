@@ -118,9 +118,10 @@ actor TitanClient {
     /// is, like the desk's own first Clear (Titan's Programmer.Editor.
     /// ClearSelection; the global selection context if that isn't there).
     /// Sent to the desk link, it's the operator's selection. Never Alt+C.
-    func clearSelection() async -> TitanResult {
+    /// `everyUser`: every user's selection, the desk's too (Titan 19).
+    func clearSelection(everyUser: Bool = false) async -> TitanResult {
         let start = Date()
-        var result = await get(TitanEndpoints.clearDeskSelectionURL(host: host, port: port))
+        var result = await get(TitanEndpoints.clearDeskSelectionURL(host: host, port: port, everyUser: everyUser))
         if !result.ok, result.status != nil {
             result = await get(TitanEndpoints.clearSelectionURL(host: host, port: port))
         }

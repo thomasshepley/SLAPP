@@ -184,8 +184,10 @@ enum TitanEndpoints {
 
     /// The desk's first Clear: the selection only, every programmer left as it
     /// is. On the UI WebAPI (desk link) that's the operator's own selection.
-    static func clearDeskSelectionURL(host: String, port: Int = defaultPort) -> URL? {
-        script(host, port, "Programmer/Editor/ClearSelection", [("disable", "false"), ("clearAllProgrammers", "false")])
+    /// `everyUser`: every user's selection, the desk's included (Titan 19,
+    /// where the 4430 WebAPI is a separate user and CITP only listens).
+    static func clearDeskSelectionURL(host: String, port: Int = defaultPort, everyUser: Bool = false) -> URL? {
+        script(host, port, "Programmer/Editor/ClearSelection", [("disable", "false"), ("clearAllProgrammers", everyUser ? "true" : "false")])
     }
 
     /// Empties that WebAPI user's own selection.

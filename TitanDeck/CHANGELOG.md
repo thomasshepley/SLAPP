@@ -7,6 +7,10 @@ the GitHub Actions run that built it. The top entry is shown in the app
 so add an entry - and bump `MARKETING_VERSION` in `project.yml` to match -
 with every change that goes to `main`.
 
+## 0.31.1 - 2026-10-28 - CLEAR on Titan 19
+
+- **Fixed: CLEAR saying "the desk link isn't up" on Titan 19.** Titan 19 follows the desk over CITP, which only listens, so there's no desk link to send the Clear down. CLEAR now asks Titan to clear the selection for every user, the desk's included (the selection only, never a programmer). TitanDeck then checks over CITP that the desk's selection really went, and if it didn't, the key goes red and says so.
+
 ## 0.31.0 - 2026-10-27 - CLEAR on the desk, fade times through the editor
 
 - **Fixed: CLEAR on the deck doing nothing on the desk.** Since 0.29 it cleared the selection of the WebAPI's own separate user, not the desk's. It now goes through the desk link and uses Titan's own "clear the selection" call (the desk's first Clear), so the desk's selection clears and every programmer stays as it is. If the desk link isn't up, the key goes red and says so.

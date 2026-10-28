@@ -211,7 +211,9 @@ support posts):
   falling back to `Selection/Context/Global/Clear`): the user wants the deck's
   CLEAR to clear the desk's selection, never the programmers. 0.26-0.28 also
   cleared every programmer; 0.29-0.30 only cleared the 4430 user's selection
-  (did nothing on the desk). Desk link down = red key with a message. +/- nudges are current level + nudge (`DeskKeys.nudged`), from
+  (did nothing on the desk). Titan 19 (CITP, no UI WebAPI): 4430
+  `ClearSelection?clearAllProgrammers=true` (every user's selection), then
+  `deskLink.selection` (CITP) must go empty within 2 s, else a red key. +/- nudges are current level + nudge (`DeskKeys.nudged`), from
   `currentLevel` (typed in the last 2 s, else sACN live level, else the level
   last typed for the same selection); unknown = refused, never the WebAPI
   wheel. Typing is serial (one Task chain). The WebAPI user

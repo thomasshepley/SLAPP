@@ -212,5 +212,7 @@ final class TitanEndpointsTests: XCTestCase {
     func testDeskClearClearsTheSelectionOnly() {
         XCTAssertEqual(TitanEndpoints.clearDeskSelectionURL(host: "10.0.0.5", port: 4434)?.absoluteString,
                        "http://10.0.0.5:4434/titan/script/2/Programmer/Editor/ClearSelection?disable=false&clearAllProgrammers=false")
+        XCTAssertEqual(TitanEndpoints.clearDeskSelectionURL(host: "10.0.0.5", everyUser: true)?.absoluteString,
+                       "http://10.0.0.5:4430/titan/script/2/Programmer/Editor/ClearSelection?disable=false&clearAllProgrammers=true")
     }
 }

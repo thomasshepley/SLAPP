@@ -403,15 +403,26 @@ final class AppState: ObservableObject {
         let start = Date()
         if action == .keypadClear {
             if !keys.isEmpty { _ = await typeKeys(keys) }
-            // The WebAPI's own selection too, where the deck's keys act when
-            // the desk isn't linked; the desk's own is through the desk link.
-            let own = await titan.clearSelection()
-            guard let desk = deskLink.commandClient else {
-                return TitanResult(action: action, ok: false, statusCode: own.statusCode, milliseconds: own.milliseconds,
-                                   error: "The desk link isn't up, so the desk's selection wasn't cleared (only TitanDeck's own)",
+            // Titan 14-18: the desk link is the operator's own selection.
+            if let desk = deskLink.commandClient {
+                _ = await titan.clearSelection()
+                return await desk.clearSelection()
+            }
+            // Titan 19: the WebAPI is a separate user and CITP only listens,
+            // so the selection is cleared for every user (never a programmer),
+            // then CITP shows whether the desk's went too.
+            let cleared = await titan.clearSelection(everyUser: true)
+            guard cleared.ok, case .linkedViaCitp = deskLink.state else { return cleared }
+            for _ in 0 ..< 8 where !deskLink.selection.isEmpty {
+                try? await Task.sleep(nanoseconds: 250_000_000)
+            }
+            guard deskLink.selection.isEmpty else {
+                return TitanResult(action: action, ok: false, statusCode: cleared.statusCode,
+                                   milliseconds: Int((Date().timeIntervalSince(start) * 1000).rounded()),
+                                   error: "Titan took the Clear, but the desk still has \(deskLink.selection.count) selected (seen over CITP)",
                                    date: start)
             }
-            return await desk.clearSelection()
+            return cleared
         }
         let (typed, why) = await typeKeys(keys)
         guard typed else {
