@@ -6,6 +6,14 @@ until it's show-ready (1.0): MINOR for features, PATCH for fixes. Keep
 (ChangelogTests checks). Each version is published as a GitHub release
 `host-v<version>` with the installer attached.
 
+## 0.14.1 - 2026-10-28 - CLEAR types Alt+C on the desk
+
+- **TitanDeck's CLEAR now clears the desk's selection** by typing Titan's own Clear shortcut (Alt+C) on the desk, as it did before 0.24, when the clear through Titan's WebAPI didn't reach the desk.
+- **Made safe this time:** Alt and C go down and up as one uninterruptible burst, so Alt can't be left held (the likely reason the desk's own Clear and wheels stopped working after 0.11), and every modifier is let go again straight after.
+- **Only with something selected:** it's only typed when CITP shows the desk has a selection, because the desk's Clear clears the selection first and the programmer after. With nothing selected nothing is typed, and without CITP the Host falls back to the WebAPI clears.
+- The iPad still can't ask the Host to type any shortcut: only the Host's own CLEAR does.
+- Works with TitanDeck 0.32 and later; no app update needed.
+
 ## 0.14.0 - 2026-10-28 - Cue fades and Clear for TitanDeck, done here
 
 - **The Host now does TitanDeck's cue fade and CLEAR keys** (TitanDeck 0.32+), through Titan's WebAPI on this PC. A better way of doing either only needs a Host update, not a new TitanDeck.
