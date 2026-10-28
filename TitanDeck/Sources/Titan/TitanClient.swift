@@ -13,6 +13,8 @@ struct TitanResult: Equatable {
     let milliseconds: Int
     let error: String?
     let date: Date
+    /// What Titan did, for calls worth explaining when they work (cue fades).
+    var detail: String? = nil
 }
 
 /// Fire-and-forget GETs to the Titan WebAPI with a short timeout, so a dead
@@ -118,9 +120,10 @@ actor TitanClient {
     /// is, like the desk's own first Clear (Titan's Programmer.Editor.
     /// ClearSelection; the global selection context if that isn't there).
     /// Sent to the desk link, it's the operator's selection. Never Alt+C.
-    func clearSelection() async -> TitanResult {
+    /// `everyUser`: every user's selection, the desk's too (Titan 19).
+    func clearSelection(everyUser: Bool = false) async -> TitanResult {
         let start = Date()
-        var result = await get(TitanEndpoints.clearDeskSelectionURL(host: host, port: port))
+        var result = await get(TitanEndpoints.clearDeskSelectionURL(host: host, port: port, everyUser: everyUser))
         if !result.ok, result.status != nil {
             result = await get(TitanEndpoints.clearSelectionURL(host: host, port: port))
         }
@@ -152,33 +155,39 @@ actor TitanClient {
     private func runCueFade(titanId: Int, fadeOut: Bool, seconds: Double) async -> TitanResult {
         let action = TitanAction.setCueFade(titanId: titanId, fadeOut: fadeOut, seconds: seconds)
         let start = Date()
-        // Without the playback in the editor, Titan's setters have no cue to
-        // change: the ActionScript ones error and the JSON one does nothing.
-        let loaded = await get(TitanEndpoints.selectEditorPlaybackURL(titanId: titanId, host: host, port: port))
-        if !loaded.ok {
-            Log.titan("Couldn't load handle \(titanId) into the editor (\(loaded.error ?? "HTTP \(loaded.status ?? 0)")); trying SetSelectedPlaybacks")
-            _ = await get(TitanEndpoints.setSelectedPlaybacksURL(titanId: titanId, host: host, port: port))
-        }
-        let select = await get(TitanEndpoints.selectFirstCueURL(titanId: titanId, host: host, port: port))
-        guard select.ok else {
-            return finish(action, start, ok: false, status: select.status, error: select.error ?? "Couldn't select the cue")
-        }
         guard let postURL = TitanEndpoints.cueFadePropertyURL(fadeOut: fadeOut, write: true, host: host, port: port),
               let readURL = TitanEndpoints.cueFadePropertyURL(fadeOut: fadeOut, write: false, host: host, port: port) else {
             return finish(action, start, ok: false, status: nil, error: "No Titan host set")
+        }
+        // Without the playback in the editor, Titan's setters have no cue to
+        // change: the ActionScript ones error and the JSON one does nothing.
+        let select = await openCueTimes(titanId: titanId)
+        guard select.ok else {
+            return finish(action, start, ok: false, status: select.status, error: select.error ?? "Couldn't select the cue")
         }
         let editing = await body(TitanEndpoints.editorPlaybackURL(host: host, port: port))
             .map { String(decoding: $0.prefix(120), as: UTF8.self) }
         let current = await body(readURL)
         let currentText = current.map { String(decoding: $0.prefix(200), as: UTF8.self) }
         if let currentText { Log.titan("Cue fade \(fadeOut ? "out" : "in") reads as \(currentText)") }
-        let canCheck = current.flatMap(TitanTimeSpan.seconds(from:)) != nil
 
-        /// Titan has the new time (or can't say, so the 200 has to do).
-        func took() async -> Bool {
-            guard canCheck else { return true }
-            guard let now = await body(readURL), let read = TitanTimeSpan.seconds(from: now) else { return false }
-            return abs(read - seconds) < 0.05
+        /// The time as Titan reads it now, in seconds.
+        func readSeconds() async -> Double? {
+            guard let now = await body(readURL) else { return nil }
+            return TitanTimeSpan.seconds(from: now)
+        }
+
+        /// Titan has the new time, and still has it once the cue is opened
+        /// afresh: the editor can show a time it never writes to the cue.
+        func took() async -> (ok: Bool, why: String) {
+            guard let first = await readSeconds() else { return (false, "taken, but Titan couldn't read the time back to check it") }
+            guard abs(first - seconds) < 0.05 else { return (false, "taken but the time didn't change") }
+            _ = await openCueTimes(titanId: titanId)
+            guard let again = await readSeconds() else { return (false, "taken, but the cue couldn't be read again to check it") }
+            guard abs(again - seconds) < 0.05 else {
+                return (false, "the editor showed \(TitanEndpoints.format(number: first))s, but the cue still has \(TitanEndpoints.format(number: again))s")
+            }
+            return (true, "")
         }
 
         // The URL setters first: a JSON body Titan takes but can't read may
@@ -209,10 +218,17 @@ actor TitanClient {
                 let (data, response) = try await session.data(for: attempt.request)
                 let status = (response as? HTTPURLResponse)?.statusCode
                 lastStatus = status
-                if status == 200, await took() {
-                    return finish(action, start, ok: true, status: status, error: nil, detail: "set with \(attempt.name)")
+                if status == 200 {
+                    let check = await took()
+                    if check.ok {
+                        return finish(action, start, ok: true, status: status, error: nil,
+                                      detail: "set with \(attempt.name), checked on the cue")
+                    }
+                    errors.append("\(attempt.name): \(check.why)")
+                    _ = await openCueTimes(titanId: titanId)
+                    continue
                 }
-                errors.append("\(attempt.name): " + (Self.errorText(status: status, body: data) ?? "taken but the time didn't change"))
+                errors.append("\(attempt.name): " + (Self.errorText(status: status, body: data) ?? "HTTP \(status ?? 0)"))
             } catch {
                 errors.append("\(attempt.name): \(error.localizedDescription)")
             }
@@ -224,6 +240,19 @@ actor TitanClient {
         let error = triedText + readText + ". Editor playback: \(editing ?? "unknown")"
         Log.titan("Cue fade not set. Tried: " + errors.joined(separator: " | "))
         return finish(action, start, ok: false, status: lastStatus, error: error)
+    }
+
+    /// Opens a playback's cue 1 for its times, as the desk's Edit Times
+    /// does: loads the playback into the editor (Titan's own macros do this
+    /// first), fills the times menu for it, then selects the cue.
+    private func openCueTimes(titanId: Int) async -> (ok: Bool, status: Int?, error: String?) {
+        let loaded = await get(TitanEndpoints.selectEditorPlaybackURL(titanId: titanId, host: host, port: port))
+        if !loaded.ok {
+            Log.titan("Couldn't load handle \(titanId) into the editor (\(loaded.error ?? "HTTP \(loaded.status ?? 0)")); trying SetSelectedPlaybacks")
+            _ = await get(TitanEndpoints.setSelectedPlaybacksURL(titanId: titanId, host: host, port: port))
+        }
+        _ = await get(TitanEndpoints.fillTimesURL(titanId: titanId, host: host, port: port))
+        return await get(TitanEndpoints.selectFirstCueURL(titanId: titanId, host: host, port: port))
     }
 
     // MARK: - Flash (hold to 0%)
@@ -295,7 +324,7 @@ actor TitanClient {
     private func finish(_ action: TitanAction, _ start: Date, ok: Bool, status: Int?, error: String?,
                         detail: String? = nil) -> TitanResult {
         let result = TitanResult(action: action, ok: ok, statusCode: status,
-                                 milliseconds: Self.elapsed(since: start), error: error, date: start)
+                                 milliseconds: Self.elapsed(since: start), error: error, date: start, detail: detail)
         Log.titan("\(action.summary)\(detail.map { " (\($0))" } ?? "") -> \(ok ? "OK" : "FAIL") in \(result.milliseconds) ms\(error.map { " - \($0)" } ?? "")")
         return result
     }

@@ -117,6 +117,12 @@ enum TitanEndpoints {
         script(host, port, "Playbacks/Editor/SetSelectedPlaybacks", [("handles_handleList", "\(titanId)")])
     }
 
+    /// The desk's Edit Times for a playback: fills the times menu for its cue
+    /// type and makes it the playback whose times are being edited.
+    static func fillTimesURL(titanId: Int, host: String, port: Int = defaultPort) -> URL? {
+        script(host, port, "Playbacks/TimesEdit/FillTimes", [("handle_titanId", "\(titanId)")])
+    }
+
     /// The playback loaded into the editor (read to say what Titan was editing).
     static func editorPlaybackURL(host: String, port: Int = defaultPort) -> URL? {
         let cleanHost = host.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -184,8 +190,10 @@ enum TitanEndpoints {
 
     /// The desk's first Clear: the selection only, every programmer left as it
     /// is. On the UI WebAPI (desk link) that's the operator's own selection.
-    static func clearDeskSelectionURL(host: String, port: Int = defaultPort) -> URL? {
-        script(host, port, "Programmer/Editor/ClearSelection", [("disable", "false"), ("clearAllProgrammers", "false")])
+    /// `everyUser`: every user's selection, the desk's included (Titan 19,
+    /// where the 4430 WebAPI is a separate user and CITP only listens).
+    static func clearDeskSelectionURL(host: String, port: Int = defaultPort, everyUser: Bool = false) -> URL? {
+        script(host, port, "Programmer/Editor/ClearSelection", [("disable", "false"), ("clearAllProgrammers", everyUser ? "true" : "false")])
     }
 
     /// Empties that WebAPI user's own selection.
