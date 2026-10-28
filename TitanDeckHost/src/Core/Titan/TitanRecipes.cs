@@ -41,6 +41,39 @@ public static class TitanRecipes
         TitanCall.Script("Playbacks/Editor/CueSelection/SelectCueByNumber", ("handle_titanId", Id(titanId)), ("cueNumber", "1")),
     ];
 
+    /// <summary>The cues the editor has selected (Edit Times changes the selected cues), for the Titan log.</summary>
+    public static TitanCall SelectedCues() => TitanCall.Script("Playbacks/Editor/CueSelection/GetSelectedCues");
+
+    /// <summary>Lets go of the cue in the editor, so opening it again has to read it from the cue.</summary>
+    public static TitanCall LetGo() => TitanCall.Script("Playbacks/Editor/CueSelection/Clear");
+
+    /// <summary>Every playback handle, to find another one to open in between.</summary>
+    public static TitanCall PlaybackHandles() => new("GET", "/titan/handles/Playbacks");
+
+    /// <summary>
+    /// A playback other than <paramref name="titanId"/> from Titan's handles
+    /// (<c>/titan/handles/Playbacks</c>). The time is read back after opening
+    /// this one and then the cue again, so it can't just be the editor still
+    /// holding what was set: Host 0.14-0.15 read 3 s back while the cue on the
+    /// desk still had 0. Null if there isn't one.
+    /// </summary>
+    public static int? OtherPlayback(string handlesJson, int titanId)
+    {
+        JsonArray? handles;
+        try { handles = JsonNode.Parse(handlesJson) as JsonArray; }
+        catch (JsonException) { return null; }
+        if (handles is null) return null;
+        int? any = null;
+        foreach (var handle in handles.OfType<JsonObject>())
+        {
+            if (Find(handle, "titanId") is not JsonValue v || !v.TryGetValue(out int id) || id == titanId) continue;
+            var type = Find(handle, "type") is JsonValue t && t.TryGetValue(out string? text) ? text : "";
+            if (type.Contains("playback", StringComparison.OrdinalIgnoreCase)) return id;
+            any ??= id;
+        }
+        return any;
+    }
+
     /// <summary>
     /// The ways to set a cue's fade, safest first: the property setters,
     /// then Titan's command line on the connected playback ("CUE 1 TIME 2"),
@@ -53,9 +86,24 @@ public static class TitanRecipes
     {
         var id = "Playbacks.Editor.Times." + FadeProperty(fadeOut);
         var value = Number(seconds);
+        var setTime = TitanCall.Script("ActionScript/SetProperty", ("id", id), ("value_time", value));
         var attempts = new List<TitanAttempt>
         {
-            new("SetProperty value_time", [TitanCall.Script("ActionScript/SetProperty", ("id", id), ("value_time", value))]),
+            new("SetProperty value_time", [setTime]),
+            // The cue picked before the times are filled, as pressing the
+            // playback's cue in Edit Times would, then the time.
+            new("cue selected, then times filled, then SetProperty value_time",
+            [
+                TitanCall.Script("Playbacks/Editor/CueSelection/SelectCueByNumber", ("handle_titanId", Id(titanId)), ("cueNumber", "1")),
+                TitanCall.Script("Playbacks/TimesEdit/FillTimes", ("handle_titanId", Id(titanId))),
+                setTime,
+            ]),
+            // The times menu's own cue number set to 1, then the time.
+            new("TimesEdit.CueNumber 1, then SetProperty value_time",
+            [
+                TitanCall.Script("ActionScript/SetProperty/Float", ("id", "Playbacks.TimesEdit.CueNumber"), ("value", "1")),
+                setTime,
+            ]),
             new("SetProperty.Float", [TitanCall.Script("ActionScript/SetProperty/Float", ("id", id), ("value", value))]),
             new("SetProperty.Double", [TitanCall.Script("ActionScript/SetProperty/Double", ("id", id), ("value", value))]),
         };
