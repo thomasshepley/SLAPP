@@ -228,9 +228,10 @@ final class TitanEndpointsTests: XCTestCase {
                        "http://10.0.0.5:4430/titan/script/2/Selection/Context/Global/PatternPrevious")
         XCTAssertNil(TitanEndpoints.url(for: .setGroupMaster(titanId: 3001, level: 0.5), host: host), "TitanClient tries the ways in turn")
         XCTAssertEqual(TitanEndpoints.groupMasterURLs(titanId: 3001, level: 0.5, host: host).map(\.absoluteString), [
+            "http://10.0.0.5:4430/titan/script/2/Masters/SetMaster?handle_titanId=3001&value_level=0.5",
             "http://10.0.0.5:4430/titan/script/2/Group/SetGroupHandleFaderLevel?handle_titanId=3001&value_level=0.5&accuracy=1",
             "http://10.0.0.5:4430/titan/script/2/Playbacks/SetPlaybackLevel?srcHandle_titanId=3001&level_level=0.5",
         ])
-        XCTAssertTrue(TitanEndpoints.groupMasterURLs(titanId: 1, level: 1.7, host: host)[0].absoluteString.contains("value_level=1&"))
+        XCTAssertTrue(TitanEndpoints.groupMasterURLs(titanId: 1, level: 1.7, host: host)[0].absoluteString.hasSuffix("value_level=1"))
     }
 }

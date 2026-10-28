@@ -79,25 +79,23 @@ public static class TitanRecipes
     /// <summary>How the Host goes about TitanDeck's CLEAR.</summary>
     public enum ClearPlan
     {
-        /// The desk has nothing selected (CITP): nothing to do. Alt+C now would clear the programmer.
+        /// The desk has nothing selected (CITP): nothing to do.
         AlreadyClear,
-        /// Type Alt+C on the desk: its first Clear clears the selection.
-        TypeAltC,
-        /// Only the WebAPI's clears: the Host can't tell the desk has a
-        /// selection (no CITP), or can't type (no window, no Titan).
+        /// Tell Titan over CITP that nothing is selected, as Capture would.
+        CitpClear,
+        /// No CITP link: only the WebAPI's clears.
         WebApiOnly,
     }
 
     /// <summary>
-    /// Alt+C only when CITP shows the desk has something selected: the desk's
-    /// Clear clears the selection first and the programmer after, so a Clear
-    /// with nothing selected would clear the programmer.
+    /// The CITP clear when CITP is linked and shows the desk has a selection
+    /// (it's also how the result is checked). Host 0.14.1-0.14.3 typed Alt+C
+    /// on the desk instead; on Titan 19 it didn't clear the selection.
     /// </summary>
-    public static ClearPlan PlanClear(bool citpLinked, int deskSelected, bool canType) =>
+    public static ClearPlan PlanClear(bool citpLinked, int deskSelected) =>
         !citpLinked ? ClearPlan.WebApiOnly
         : deskSelected == 0 ? ClearPlan.AlreadyClear
-        : canType ? ClearPlan.TypeAltC
-        : ClearPlan.WebApiOnly;
+        : ClearPlan.CitpClear;
 
     /// <summary>Clears the selection for every user, the desk's included, and never a programmer.</summary>
     public static IReadOnlyList<TitanAttempt> ClearSelectionAttempts() =>

@@ -15,6 +15,19 @@ struct HostClient: Sendable {
         return URLSession(configuration: configuration)
     }()
 
+    /// Desk keys have connections of their own, so a key never waits for a
+    /// free one behind a slow Host call (status, a cue fade, a file).
+    private static let keysSession: URLSession = {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.timeoutIntervalForRequest = 2
+        configuration.waitsForConnectivity = false
+        configuration.httpMaximumConnectionsPerHost = 2
+        #if os(iOS)
+        configuration.networkServiceType = .responsiveData
+        #endif
+        return URLSession(configuration: configuration)
+    }()
+
     // MARK: - Pairing
 
     /// Who's there. Works without a token; `paired` says whether ours is still good.
@@ -93,6 +106,9 @@ struct HostClient: Sendable {
         return try await send(request)
     }
 
+    /// The most keys the Host takes in one go.
+    static let maxDeskKeys = 32
+
     /// Types keypad keys on the PC for Titan (Host 0.10+). Throws when the
     /// Host can't (its window isn't open, Titan isn't running, an older Host).
     func typeOnDesk(_ keys: [String]) async throws {
@@ -100,7 +116,7 @@ struct HostClient: Sendable {
         request.timeoutInterval = 1.5
         request.httpBody = try HostAPI.encoder.encode(HostDeskKeysRequest(keys: keys))
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        let (data, response) = try await transport { try await Self.session.data(for: request) }
+        let (data, response) = try await transport { try await Self.keysSession.data(for: request) }
         try check(response, body: data)
     }
 
@@ -119,15 +135,17 @@ struct HostClient: Sendable {
         try await actionPost("actions/cue-fade", body: HostCueFadeRequest(titanId: titanId, fadeOut: fadeOut, seconds: seconds))
     }
 
-    /// Clears the desk's selection from the Host, checked over CITP.
+    /// Clears the desk's selection from the Host, checked over CITP. Short:
+    /// the keys pressed after CLEAR wait for it (Host 0.15 answers within a
+    /// second or so).
     func clearSelection() async throws -> HostTitanAction {
-        try await actionPost("actions/clear-selection", body: Optional<HostCueFadeRequest>.none)
+        try await actionPost("actions/clear-selection", body: Optional<HostCueFadeRequest>.none, timeout: 4)
     }
 
-    private func actionPost<Body: Encodable>(_ path: String, body: Body?) async throws -> HostTitanAction {
+    /// - Parameter timeout: a cue fade's several tries are each read back from Titan, so it gets time.
+    private func actionPost<Body: Encodable>(_ path: String, body: Body?, timeout: TimeInterval = 20) async throws -> HostTitanAction {
         var request = try request(path, method: "POST")
-        // Several tries, each read back from Titan: give it time.
-        request.timeoutInterval = 20
+        request.timeoutInterval = timeout
         if let body {
             request.httpBody = try HostAPI.encoder.encode(body)
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")

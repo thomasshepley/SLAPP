@@ -172,12 +172,13 @@ enum TitanEndpoints {
 
     // MARK: Group masters
 
-    /// The ways to set a group master (a group on a playback fader) to a
-    /// level, 0...1, tried in turn: Titan's group handle fader, then the
-    /// playback level the fader sets.
+    /// The ways to set a master on a playback fader (a group master, or a
+    /// grand master) to a level, 0...1, tried in turn: Titan's master on a
+    /// handle, then the group handle fader, then the playback level.
     static func groupMasterURLs(titanId: Int, level: Double, host: String, port: Int = defaultPort) -> [URL] {
         let value = format(number: min(max(level, 0), 1))
         return [
+            script(host, port, "Masters/SetMaster", [("handle_titanId", "\(titanId)"), ("value_level", value)]),
             script(host, port, "Group/SetGroupHandleFaderLevel",
                    [("handle_titanId", "\(titanId)"), ("value_level", value), ("accuracy", "1")]),
             script(host, port, "Playbacks/SetPlaybackLevel", [("srcHandle_titanId", "\(titanId)"), ("level_level", value)]),
@@ -287,14 +288,15 @@ enum TitanEndpoints {
     }
 
     /// GET /titan/handles/<group> - every handle in a group, with its Active flag.
-    static func handlesURL(group: String, host: String, port: Int = defaultPort) -> URL? {
+    static func handlesURL(group: String, page: Int? = nil, host: String, port: Int = defaultPort) -> URL? {
         let cleanHost = host.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleanHost.isEmpty else { return nil }
         var components = URLComponents()
         components.scheme = "http"
         components.host = cleanHost
         components.port = port
-        components.path = "/titan/handles/" + group
+        // An empty group is every handle Titan has.
+        components.path = "/titan/handles" + (group.isEmpty ? "" : "/" + group + (page.map { "/\($0)" } ?? ""))
         return components.url
     }
 

@@ -31,6 +31,8 @@ final class DeckSessionController: ObservableObject {
     var onProfileChanged: ((DeckProfile) -> Void)?
     /// Called when Connect Cue needs Titan's playback list fresh.
     var onNeedCues: (() -> Void)?
+    /// Called when the Masters page needs Titan's page 60 fresh.
+    var onNeedMasters: (() -> Void)?
 
     /// Per-key press/failure highlight. Published so the on-screen deck mirrors it.
     @Published private(set) var overlays: [Int: DeckRenderer.Overlay] = [:]
@@ -80,13 +82,36 @@ final class DeckSessionController: ObservableObject {
             redraw()
         }
     }
+    /// The selection's colour temperature, when known (Titan's active CCT
+    /// palette, or the last one the deck applied): shown on the CCT keys.
+    @Published private(set) var currentKelvin: Int?
+    /// Called when the colour temperature keys come up, to ask Titan for the current CCT.
+    var onColourShown: (() -> Void)?
+
+    func setCurrentKelvin(_ kelvin: Int?) {
+        guard kelvin != currentKelvin else { return }
+        currentKelvin = kelvin
+        guard let page = currentPage else { return }
+        for key in page.keys where Self.isCCT(key.action) { draw(logicalIndex: key.index) }
+    }
+
+    private static func isCCT(_ action: TitanAction?) -> Bool {
+        switch action {
+        case .colourTemperature?, .colourPresets?: true
+        default: false
+        }
+    }
+
     /// Highlight is on, as far as the deck knows (the Rig page's key).
     @Published private(set) var highlightOn = false
     /// Group master levels set from the deck (titanId: 0...1), shown when
     /// Titan doesn't report the fader's level itself.
     @Published private(set) var masterLevels: [Int: Double] = [:]
+    /// What's on Titan's page 60, read when Masters opens (nil until Titan
+    /// answers; then Titan's whole playback list is used).
+    @Published private(set) var pageMasters: [CueChoice]?
     /// The group masters on Titan's page 60.
-    var groupMasters: [DeckFlow.GroupMaster] { DeckFlow.groupMasters(availableCues, levels: masterLevels) }
+    var groupMasters: [DeckFlow.GroupMaster] { DeckFlow.groupMasters(pageMasters ?? availableCues, levels: masterLevels) }
     private var deskSelection: [Int] = []
     private var follower = DeckFlow.SelectionFollower()
 
@@ -173,6 +198,7 @@ final class DeckSessionController: ObservableObject {
                 return shown
             }
             .map { DeckFlow.slateKey($0, state: slateState) }
+            .map { DeckFlow.cctKey($0, current: currentKelvin) }
             .map { key in
                 // The flash key carries the selected fixture's live level.
                 let level = liveLevel ?? typedLevel
@@ -268,7 +294,9 @@ final class DeckSessionController: ObservableObject {
 
     private func show(_ overlay: DeckFlow.Overlay?) {
         switch overlay {
-        case .titanPages?, .masters?: onNeedCues?()
+        case .titanPages?: onNeedCues?()
+        case .masters?: if let onNeedMasters { onNeedMasters() } else { onNeedCues?() }
+        case .colour?: onColourShown?()
         default: break
         }
         flowOverlay = overlay
@@ -566,6 +594,13 @@ final class DeckSessionController: ObservableObject {
         activeTitanIds.insert(titanId)
         redraw()
         return .fireHandle(titanId: titanId)
+    }
+
+    /// The handles on Titan's page 60, for the Masters page.
+    func setPageMasters(_ cues: [CueChoice]) {
+        guard cues != pageMasters else { return }
+        pageMasters = cues
+        if flowOverlay.map(Self.showsCues) == true { redraw() }
     }
 
     /// Titan's playbacks, for Connect Cue and for lighting connected GOs.

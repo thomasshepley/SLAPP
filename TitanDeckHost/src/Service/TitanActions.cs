@@ -13,7 +13,7 @@ namespace TitanDeckHost.Service;
 /// every call is in the Titan log. One action at a time: the WebAPI user's
 /// editor is shared.
 /// </summary>
-public sealed class TitanActions(TitanLog titanLog, CitpService citp, DeskKeyQueue deskKeys)
+public sealed class TitanActions(TitanLog titanLog, CitpService citp)
 {
     private const string Who = "Host - Titan actions";
     private static readonly HttpClient Titan = new() { Timeout = TimeSpan.FromSeconds(3) };
@@ -88,25 +88,29 @@ public sealed class TitanActions(TitanLog titanLog, CitpService citp, DeskKeyQue
         var steps = new List<string>();
         var errors = new List<string>();
         var before = citp.Selection();
-        var canType = deskKeys.WindowListening && WindowsProbe.IsTitanRunning();
-        switch (TitanRecipes.PlanClear(before.Linked, before.Fixtures.Count, canType))
+        switch (TitanRecipes.PlanClear(before.Linked, before.Fixtures.Count))
         {
             case TitanRecipes.ClearPlan.AlreadyClear:
                 return new TitanActionDto(true, "Nothing selected on the desk (CITP), so nothing to clear", steps);
-            case TitanRecipes.ClearPlan.TypeAltC:
-                deskKeys.Enqueue(["clear"]);
-                titanLog.Add(Who, "Host", "TYPE", "Alt+C", "", 200, 0,
-                    $"Clear typed on the desk for TitanDeck ({before.Fixtures.Count} selected), as one burst with Alt let go", null, false,
-                    DateTimeOffset.Now);
-                steps.Add($"Alt+C typed on the desk ({before.Fixtures.Count} selected)");
-                if (await DeskCleared(token)) return new TitanActionDto(true, "Cleared with Alt+C on the desk, checked over CITP", steps);
-                var left = citp.Selection().Fixtures.Count;
-                errors.Add($"Alt+C: typed, but the desk still has {left} selected");
-                steps.Add($"Alt+C: the desk still has {left} selected (CITP)");
+            case TitanRecipes.ClearPlan.CitpClear:
+                if (citp.ClearDeskSelection())
+                {
+                    steps.Add($"CITP: told Titan nothing is selected ({before.Fixtures.Count} were)");
+                    if (await DeskCleared(token)) return new TitanActionDto(true, "Cleared over CITP, checked over CITP", steps);
+                    // No WebAPI clears after this: on Titan 19 they don't reach
+                    // the desk's selection (0.13-0.14), and each one only held
+                    // up the keys pressed after CLEAR by seconds.
+                    var left = citp.Selection().Fixtures.Count;
+                    steps.Add($"CITP clear: the desk still has {left} selected");
+                    return new TitanActionDto(false, $"Sent the clear over CITP, but the desk still has {left} selected", steps);
+                }
+                else
+                {
+                    errors.Add("CITP clear: no CITP link to send it on");
+                }
                 break;
             default:
-                steps.Add(!before.Linked ? "CITP isn't linked, so the Host can't tell whether the desk has a selection: Alt+C isn't typed"
-                                         : "Can't type on the desk (the TitanDeck Host window or Titan isn't running): Alt+C isn't typed");
+                steps.Add("CITP isn't linked, so the Host can't clear the desk's selection over CITP or check it");
                 break;
         }
         foreach (var attempt in TitanRecipes.ClearSelectionAttempts())
@@ -127,11 +131,15 @@ public sealed class TitanActions(TitanLog titanLog, CitpService citp, DeskKeyQue
         return new TitanActionDto(false, "The desk's selection didn't clear. Tried " + string.Join(" | ", errors), steps);
     }
 
-    /// <summary>The desk's selection (CITP) is empty, or goes empty within 2 s.</summary>
+    /// <summary>
+    /// The desk's selection (CITP) is empty, or goes empty within a second
+    /// (Titan sends a new selection as it changes). Short, because the keys
+    /// pressed after CLEAR wait for it.
+    /// </summary>
     private async Task<bool> DeskCleared(CancellationToken token)
     {
-        for (var wait = 0; wait < 8 && citp.Selection().Fixtures.Count > 0; wait++)
-            await Task.Delay(250, token);
+        for (var wait = 0; wait < 10 && citp.Selection().Fixtures.Count > 0; wait++)
+            await Task.Delay(100, token);
         return citp.Selection().Fixtures.Count == 0;
     }
 

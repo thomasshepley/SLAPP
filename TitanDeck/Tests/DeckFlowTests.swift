@@ -229,6 +229,22 @@ final class DeckFlowTests: XCTestCase {
         XCTAssertEqual(empty.key(at: 0)?.label, "No masters\non page 60")
     }
 
+    func testTheCurrentCCTShowsOnItsKeys() {
+        let preset = KeyDefinition(index: 0, label: "3200K", colorHex: "#FFFFFF", action: .colourTemperature(kelvin: 3200))
+        let other = KeyDefinition(index: 1, label: "5600K", colorHex: "#FFFFFF", action: .colourTemperature(kelvin: 5600))
+        let cct = KeyDefinition(index: 2, label: "CCT", colorHex: "#FFFFFF", action: .colourPresets)
+        XCTAssertEqual(DeckFlow.cctKey(preset, current: 3200).label, "3200K\nNOW")
+        XCTAssertEqual(DeckFlow.cctKey(other, current: 3200).label, "5600K")
+        XCTAssertEqual(DeckFlow.cctKey(cct, current: 3200).label, "CCT\n3200K")
+        XCTAssertEqual(DeckFlow.cctKey(cct, current: nil).label, "CCT", "unknown: the key as it was")
+        XCTAssertEqual(DeckFlow.cctKey(DeckFlow.cctKey(cct, current: 5600), current: 3200).label, "CCT\n3200K")
+        XCTAssertEqual(DeckFlow.kelvin(inLegend: "Tungsten 3200K"), 3200)
+        XCTAssertEqual(DeckFlow.kelvin(inLegend: "5600 k"), 5600)
+        XCTAssertEqual(DeckFlow.kelvin(inLegend: "10000K"), 10000)
+        XCTAssertNil(DeckFlow.kelvin(inLegend: "Red"))
+        XCTAssertNil(DeckFlow.kelvin(inLegend: "Kiss 2"))
+    }
+
     func testMasterLevelsGoUpInTens() {
         let master = DeckFlow.GroupMaster(titanId: 8, fader: 1, name: "Fronts", level: 0.3)
         let page = DeckFlow.masterLevelPage(master: master, keyCount: 15)

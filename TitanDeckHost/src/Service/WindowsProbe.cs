@@ -110,25 +110,51 @@ public sealed class WindowsProbe
         return key.GetValueNames().Any(p => p.TrimEnd('\\').Equals(wanted, StringComparison.OrdinalIgnoreCase));
     }
 
-    private static (DateTimeOffset At, bool Running) _titanSeen;
+    private sealed record TitanSeen(DateTimeOffset At, bool Running);
+    private static TitanSeen? _titanSeen;
+    private static int _titanChecking;
 
-    /// <summary>Titan is running (checked at most every 2 s: it walks every process).</summary>
+    /// <summary>
+    /// Titan is running. Walking every process takes a while on a busy PC, so
+    /// it's only done the first time here: after that the last answer comes
+    /// straight back (a keypad key never waits on it) and, when it's over 2 s
+    /// old, a fresh one is fetched in the background.
+    /// </summary>
     public static bool IsTitanRunning()
     {
-        var seen = _titanSeen;
-        if (DateTimeOffset.UtcNow - seen.At < TimeSpan.FromSeconds(2)) return seen.Running;
+        if (Volatile.Read(ref _titanSeen) is not { } seen) return CheckTitan();
+        if (DateTimeOffset.UtcNow - seen.At >= TimeSpan.FromSeconds(2) && Interlocked.Exchange(ref _titanChecking, 1) == 0)
+            _ = Task.Run(() =>
+            {
+                try { CheckTitan(); }
+                finally { Volatile.Write(ref _titanChecking, 0); }
+            });
+        return seen.Running;
+    }
+
+    private static bool CheckTitan()
+    {
         var running = TitanRunning();
-        _titanSeen = (DateTimeOffset.UtcNow, running);
+        Volatile.Write(ref _titanSeen, new TitanSeen(DateTimeOffset.UtcNow, running));
         return running;
     }
 
     private static bool TitanRunning()
     {
-        var self = Process.GetCurrentProcess().ProcessName;
-        return Process.GetProcesses().Any(p =>
-            p.ProcessName.Contains("titan", StringComparison.OrdinalIgnoreCase)
-            && !p.ProcessName.StartsWith("TitanDeckHost", StringComparison.OrdinalIgnoreCase)
-            && p.ProcessName != self);
+        using var current = Process.GetCurrentProcess();
+        var self = current.ProcessName;
+        var processes = Process.GetProcesses();
+        try
+        {
+            return processes.Any(p =>
+                p.ProcessName.Contains("titan", StringComparison.OrdinalIgnoreCase)
+                && !p.ProcessName.StartsWith("TitanDeckHost", StringComparison.OrdinalIgnoreCase)
+                && p.ProcessName != self);
+        }
+        finally
+        {
+            foreach (var process in processes) process.Dispose();
+        }
     }
 
     public static string? ReadString(string key, string name)

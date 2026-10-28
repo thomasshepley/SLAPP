@@ -296,8 +296,8 @@ actor TitanClient {
 
     // MARK: - Group masters
 
-    /// Sets a group master, trying Titan's group handle call first and then
-    /// the playback level (the first Titan takes counts).
+    /// Sets a master on a fader, trying Titan's master call first, then the
+    /// group handle and the playback level (the first Titan takes counts).
     private func runGroupMaster(titanId: Int, level: Double) async -> TitanResult {
         let action = TitanAction.setGroupMaster(titanId: titanId, level: level)
         let start = Date()
@@ -403,10 +403,10 @@ actor TitanClient {
         await handles(group: "Playbacks")
     }
 
-    /// Every handle in a group ("Playbacks", "Colours", "Workspaces"), or nil
-    /// if Titan didn't answer.
-    func handles(group: String) async -> [PlaybackHandleState]? {
-        guard let url = TitanEndpoints.handlesURL(group: group, host: host, port: port),
+    /// Every handle in a group ("Playbacks", "Colours", "Workspaces"), or
+    /// just one page of it (from 0), or nil if Titan didn't answer.
+    func handles(group: String, page: Int? = nil) async -> [PlaybackHandleState]? {
+        guard let url = TitanEndpoints.handlesURL(group: group, page: page, host: host, port: port),
               let (data, response) = try? await fetch(url),
               (response as? HTTPURLResponse)?.statusCode == 200 else { return nil }
         return TitanHandlesParser.parse(data)

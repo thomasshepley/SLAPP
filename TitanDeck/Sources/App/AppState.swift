@@ -178,6 +178,9 @@ final class AppState: ObservableObject {
                 }
             }
         }
+        deck.onNeedMasters = { [weak self] in
+            Task { await self?.refreshMasters() }
+        }
         deck.flashFadeRules = flashFadeRules
         deck.heldColorHex = heldKeyColour
         deskLink.citpSelection = { [weak self] in
@@ -194,8 +197,13 @@ final class AppState: ObservableObject {
                 ? "Desk link up: following the desk's selection, deck commands go to the desk's programmer"
                 : "Desk link down: deck commands go to Titan's WebAPI user (4430)")
         }
+        deck.onColourShown = { [weak self] in
+            Task { await self?.refreshCurrentKelvin() }
+        }
         deck.onSelectionChanged = { [weak self] fixtures in
             guard let self else { return }
+            // A new selection's CCT isn't known until Titan says or one is applied.
+            if Set(fixtures) != self.kelvinFixtures { self.deck.setCurrentKelvin(nil) }
             self.intensity.setFixture(fixtures.first)
             self.showTypedLevel()
             // Typed on the desk: the deck's WebAPI user selects the same fixtures,
@@ -265,7 +273,16 @@ final class AppState: ObservableObject {
     var keypadTypesOnDesk: Bool {
         UserDefaults.standard.object(forKey: SettingsKeys.keypadTypesOnDesk) as? Bool ?? true
     }
-    /// Keys typed on the desk go one after another, in the order pressed.
+    /// A key press waiting to be typed on the desk.
+    private struct DeskPress {
+        let action: TitanAction
+        let keys: [String]
+        let keypadLine: UUID?
+        let keyIndex: Int?
+    }
+    /// Presses waiting for the desk, in the order pressed.
+    private var deskPresses: [DeskPress] = []
+    /// Typing what's waiting; nil when there's nothing to type.
     private var deskTyping: Task<Void, Never>?
     /// The level (0-1) a desk-typed hold-for-0% puts back when let go.
     private var flashRestore: Double?
@@ -354,15 +371,42 @@ final class AppState: ObservableObject {
         }
     }
 
-    /// Keys typed on the desk go one after another, in the order pressed.
+    /// Keys typed on the desk go in the order pressed.
     private func queueOnDesk(_ action: TitanAction, keys: [String], keypadLine: UUID?, keyIndex: Int?) {
-        let previous = deskTyping
+        deskPresses.append(DeskPress(action: action, keys: keys, keypadLine: keypadLine, keyIndex: keyIndex))
+        guard deskTyping == nil else { return }
         deskTyping = Task { [weak self] in
-            await previous?.value
-            guard let self else { return }
-            let result = await self.typeOnDesk(action, keys: keys)
-            self.finish(result, keypadLine: keypadLine, keyIndex: keyIndex)
+            await self?.typeWaitingPresses()
         }
+    }
+
+    /// Types every press that's waiting, in order. The keys pressed while one
+    /// lot was on its way to the PC go together in the next request, so typing
+    /// fast never builds a queue of round trips (a backlog showed on the desk
+    /// seconds late). CLEAR goes in its place in the order: the keys after it
+    /// wait for it, so it can't clear what they select.
+    private func typeWaitingPresses() async {
+        while !deskPresses.isEmpty {
+            if deskPresses[0].action == .keypadClear {
+                let press = deskPresses.removeFirst()
+                finish(await typeOnDesk(press.action, keys: press.keys), keypadLine: press.keypadLine, keyIndex: press.keyIndex)
+                continue
+            }
+            var batch: [DeskPress] = []
+            var keys: [String] = []
+            while let next = deskPresses.first, next.action != .keypadClear,
+                  batch.isEmpty || keys.count + next.keys.count <= HostClient.maxDeskKeys {
+                batch.append(deskPresses.removeFirst())
+                keys += next.keys
+            }
+            let result = await typeOnDesk(batch[0].action, keys: keys)
+            for press in batch {
+                finish(TitanResult(action: press.action, ok: result.ok, statusCode: result.statusCode,
+                                   milliseconds: result.milliseconds, error: result.error, date: result.date),
+                       keypadLine: press.keypadLine, keyIndex: press.keyIndex)
+            }
+        }
+        deskTyping = nil
     }
 
     /// Calls whose way of working is worth a line in Recent events when they
@@ -374,7 +418,24 @@ final class AppState: ObservableObject {
         }
     }
 
+    /// The fixtures the deck's current CCT is for.
+    private var kelvinFixtures: Set<Int> = []
+
+    /// The CCT Titan shows as active (its colour palette lit for the
+    /// selection), when it says; else what the deck last applied stays.
+    private func refreshCurrentKelvin() async {
+        guard let palettes = await titan.handles(group: "Colours") else { return }
+        let active = palettes.filter(\.active).compactMap { DeckFlow.kelvin(inLegend: $0.legend) }
+        guard active.count == 1, let kelvin = active.first else { return }
+        kelvinFixtures = Set(deck.selectedFixtures)
+        deck.setCurrentKelvin(kelvin)
+    }
+
     private func finish(_ result: TitanResult, keypadLine: UUID?, keyIndex: Int?) {
+        if result.ok, case .colourTemperature(let kelvin) = result.action {
+            kelvinFixtures = Set(deck.selectedFixtures)
+            deck.setCurrentKelvin(kelvin)
+        }
         if let keypadLine { keypad.markAnswered(keypadLine, ok: result.ok) }
         recentResults.insert(result, at: 0)
         if recentResults.count > Self.maxResults {
@@ -445,8 +506,8 @@ final class AppState: ObservableObject {
             // programmer), then CITP shows whether the desk's went too.
             let cleared = await titan.clearSelection(everyUser: true)
             guard cleared.ok, case .linkedViaCitp = deskLink.state else { return cleared }
-            for _ in 0 ..< 8 where !deskLink.selection.isEmpty {
-                try? await Task.sleep(nanoseconds: 250_000_000)
+            for _ in 0 ..< 10 where !deskLink.selection.isEmpty {
+                try? await Task.sleep(nanoseconds: 100_000_000)
             }
             guard deskLink.selection.isEmpty else {
                 return TitanResult(action: action, ok: false, statusCode: cleared.statusCode,
@@ -677,6 +738,26 @@ final class AppState: ObservableObject {
         }
     }
     static let heldColourKey = "deck.heldColour"
+
+    /// Reads Titan's page 60 for the Masters page. A grand master isn't a
+    /// playback, so the page is asked for on its own; if Titan has nothing
+    /// there, every handle Titan has is looked through for page 60. What
+    /// Titan sent goes in Recent events.
+    private func refreshMasters() async {
+        let page = DeckFlow.mastersTitanPage
+        guard var handles = await titan.handles(group: "Playbacks", page: page) else {
+            connectionLog.record(.app, .info, "Masters: Titan didn't answer for page \(page + 1)")
+            if let all = await titan.playbackHandles() { deck.setAvailableCues(Self.cueChoices(all)) }
+            return
+        }
+        var from = "handles/Playbacks/\(page)"
+        if handles.isEmpty, let all = await titan.handles(group: "") {
+            handles = TitanHandlesParser.onPage(page, of: all)
+            from = "every handle"
+        }
+        connectionLog.record(.app, .info, TitanHandlesParser.pageNote(handles, page: page, from: from))
+        deck.setPageMasters(Self.cueChoices(handles).map { var cue = $0; cue.page = page; return cue })
+    }
 
     /// Titan's playback handles as the deck's Connect Cue choices.
     static func cueChoices(_ handles: [PlaybackHandleState]) -> [CueChoice] {

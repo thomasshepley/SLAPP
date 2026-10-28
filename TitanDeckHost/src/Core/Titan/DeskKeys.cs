@@ -7,13 +7,9 @@ namespace TitanDeckHost.Core.Titan;
 /// manual, Front panel buttons, keyboard shortcuts): number keys, number-pad
 /// * = @, / = Thro, + = And, - = Not, Enter, Esc = Exit.
 /// Only these keys can be sent: a paired iPad can't type anything else on the PC.
-/// The one shortcut, Alt+C (Clear, in <see cref="Chords"/>), is only ever
-/// typed by the Host itself for TitanDeck's CLEAR (Titan 19's WebAPI can't
-/// reach the desk's selection), never asked for by the iPad. After Host 0.11
-/// typed it one key at a time, the desk's own Clear and wheels stopped
-/// working (a held Alt is the likely cause), so it's now sent as one
-/// uninterruptible burst (Alt down, C down, C up, Alt up) and every modifier
-/// is let go again straight after.
+/// Never Alt or any modifier: after Host 0.11 typed Alt+C (Clear) the desk's
+/// own Clear and wheels stopped working, and Host 0.14.1-0.14.3's Alt+C didn't
+/// clear Titan 19's selection anyway. TitanDeck's CLEAR goes over CITP.
 /// Scan codes are PC set 1 (Extended = the E0 prefix). Keep in step with
 /// TitanDeck's DeskKeys.swift.
 /// </summary>
@@ -35,12 +31,6 @@ public static class DeskKeys
         ["enter"] = new(0x1C),
         ["exit"] = new(0x01),                  // Esc
         ["backspace"] = new(0x0E),
-    };
-
-    /// <summary>Shortcuts the Host types for itself (never from <see cref="Problem"/>-checked iPad keys).</summary>
-    public static readonly IReadOnlyDictionary<string, (Key Modifier, Key Key)> Chords = new Dictionary<string, (Key, Key)>
-    {
-        ["clear"] = (new Key(0x38), new Key(0x2E)),   // Alt+C: Titan's Clear
     };
 
     /// <summary>Why these keys can't be typed, or null when they all can.</summary>

@@ -7,6 +7,17 @@ the GitHub Actions run that built it. The top entry is shown in the app
 so add an entry - and bump `MARKETING_VERSION` in `project.yml` to match -
 with every change that goes to `main`.
 
+## 0.34.0 - 2026-10-28 - Snappier keys, the current CCT, grand masters on MASTERS
+
+- **Fixed: keypad and intensity keys sometimes reached the desk 3-15 seconds late.** Three things added up:
+  - **Keys after CLEAR waited for it,** and a CLEAR that didn't take could keep them waiting for many seconds. With TitanDeck Host 0.15 CLEAR answers within about a second. Keys still wait for CLEAR, so it can never clear what you've just selected.
+  - **Keys shared their connections to the PC** with slow Host calls (PC status, cue fades, files) and could wait for a free one. Keys now have their own.
+  - **Each key waited for the one before to reach the PC.** Now everything pressed while one lot is on its way goes over together in the next, so typing fast never builds up a queue.
+- **The CCT keys show the current colour temperature:** on the colour temperature page the current one says NOW, and the CCT key on Quick Keys carries it ("CCT 3200K"). It's the CCT palette Titan shows as active for the selection when Titan says, else the last one applied from the deck for this selection; a new selection starts blank until one of those is known.
+- CLEAR on Titan 19 needs TitanDeck Host 0.15, which clears the desk's selection over CITP.
+- **Fixed: MASTERS said "No masters on page 60" with a grand master there.** A grand master isn't a playback, so it wasn't in the playback list the page was built from. MASTERS now asks Titan for page 60 itself (and if that comes back empty, looks through every handle Titan has for page 60), and sets a level with Titan's own master call first (Masters.SetMaster), then the group and playback calls as before.
+- Opening MASTERS puts what Titan has on page 60 in Settings > Recent events (each fader's legend, handle type and id), so if one's still missing, that line says why.
+
 ## 0.33.1 - 2026-10-28 - Titan keeps working when the Host is down
 
 - **Fixed: no commands reached Titan while TitanDeck Host was down.** With Settings > Through TitanDeck Host on, every call went via the Host, so with the Host stopped (as after a failed update) nothing worked at all. Now, when the Host doesn't answer, calls go straight to Titan's WebAPI instead (and keep doing so for a few seconds before trying the Host again), so GO, intensity and the rest carry on.

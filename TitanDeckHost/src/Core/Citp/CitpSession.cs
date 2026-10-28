@@ -82,6 +82,17 @@ public sealed class CitpSession
         Send(CitpMessages.CaexEnterShow(ShowName), "so Titan shares its selection");
     }
 
+    /// <summary>
+    /// Asks Titan to clear its selection: an empty CAEX FixtureSelection (as
+    /// Capture tells the console what's selected), and FSEL "deselect
+    /// everything" for consoles on the older layer.
+    /// </summary>
+    public void ClearSelection()
+    {
+        Send(CitpMessages.CaexClearSelection(), "TitanDeck's CLEAR: nothing selected");
+        Send(CitpMessages.FselDeselectAll(), "TitanDeck's CLEAR (older consoles' way)");
+    }
+
     /// <summary>The connection is closing politely.</summary>
     public void Stop() => Send(CitpMessages.CaexLeaveShow(), null);
 

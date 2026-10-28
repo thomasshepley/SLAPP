@@ -4,6 +4,7 @@ import Foundation
 /// One handle from GET /titan/handles/<group> (Playbacks, Colours,
 /// Workspaces...).
 ///
+/// GET /titan/handles/<group>/<page> is one page of them (page from 0).
 /// Documented response shape (Titan v19.2 API intro):
 /// [{"handleLocation":{"group":"Playbacks","index":0,"page":0},
 ///   "properties":[{"Key":"lockState","Value":"Unlocked"}],
@@ -21,6 +22,10 @@ struct PlaybackHandleState: Equatable {
     /// The fader's level, 0...1, if Titan says (a "level" at the top or in
     /// `properties`: undocumented, so any key with "level" in it).
     var level: Double? = nil
+    /// Titan's handle type: "playbackHandle", or a master's own type.
+    var type: String = ""
+    /// handleLocation's group ("Playbacks"...).
+    var group: String = ""
 }
 
 enum TitanHandlesParser {
@@ -43,7 +48,9 @@ enum TitanHandlesParser {
                 legend: value(in: handle, key: "legend") as? String ?? "",
                 page: intValue(self.value(in: location, key: "page")),
                 index: intValue(self.value(in: location, key: "index")),
-                level: levelValue(handle)
+                level: levelValue(handle),
+                type: value(in: handle, key: "type") as? String ?? "",
+                group: self.value(in: location, key: "group") as? String ?? ""
             )
         }
     }
@@ -69,6 +76,27 @@ enum TitanHandlesParser {
             return number > 1 ? min(number / 100, 1) : number
         }
         return nil
+    }
+
+    /// The handles on a playback page, from all of Titan's handles: the
+    /// playback faders' group, or any master (a grand master may not be a playback).
+    static func onPage(_ page: Int, of handles: [PlaybackHandleState]) -> [PlaybackHandleState] {
+        handles.filter { handle in
+            handle.page == page
+                && (handle.group.localizedCaseInsensitiveContains("playback") || handle.type.localizedCaseInsensitiveContains("master"))
+        }
+    }
+
+    /// What's on a page, for Recent events: "Masters: page 60
+    /// (handles/Playbacks/59) has 1: fader 1 Grand Master (masterHandle, id 1895)".
+    static func pageNote(_ handles: [PlaybackHandleState], page: Int, from: String) -> String {
+        guard !handles.isEmpty else { return "Masters: Titan has nothing on page \(page + 1) (\(from))" }
+        let list = handles.sorted { ($0.index ?? 0) < ($1.index ?? 0) }.map { handle in
+            let name = handle.legend.isEmpty ? "(no legend)" : handle.legend
+            let type = handle.type.isEmpty ? "" : handle.type + ", "
+            return "fader \((handle.index ?? -1) + 1) \(name) (\(type)\(handle.titanId.map { "id \($0)" } ?? "no id"))"
+        }
+        return "Masters: page \(page + 1) (\(from)) has \(handles.count): " + list.joined(separator: "; ")
     }
 
     /// Legends by user number (workspace names, for instance).

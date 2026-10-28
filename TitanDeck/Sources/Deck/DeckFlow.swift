@@ -281,6 +281,32 @@ enum DeckFlow {
         return DeckPage(name: "Colour", keys: keys.sorted { $0.index < $1.index })
     }
 
+    /// A colour temperature key as it reads with the selection's current CCT
+    /// known: that preset says NOW (and the CCT key on Quick Keys carries it).
+    static func cctKey(_ key: KeyDefinition, current kelvin: Int?) -> KeyDefinition {
+        guard let kelvin else { return key }
+        var shown = key
+        switch key.action {
+        case .colourTemperature(let preset)? where preset == kelvin:
+            shown.label = "\(firstLine(key.label))\nNOW"
+        case .colourPresets?:
+            shown.label = "\(firstLine(key.label))\n\(kelvin)K"
+        default:
+            break
+        }
+        return shown
+    }
+
+    private static func firstLine(_ label: String) -> String {
+        label.split(separator: "\n", omittingEmptySubsequences: false).first.map(String.init) ?? label
+    }
+
+    /// The colour temperature in a Titan palette's legend ("3200K", "Tungsten 3200 K"), or nil.
+    static func kelvin(inLegend legend: String) -> Int? {
+        guard let match = legend.range(of: "(?<![0-9])[0-9]{4,5}\\s*[kK](?![a-zA-Z])", options: .regularExpression) else { return nil }
+        return Int(legend[match].filter(\.isNumber))
+    }
+
     /// Colour temperatures offered to begin with.
     static let cctPresets = [2700, 3200, 4000, 4500, 5600, 6000, 6500, 7500, 10000]
 

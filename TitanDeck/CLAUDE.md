@@ -208,8 +208,8 @@ support posts):
   (`.keypadThro`, `DeckFlow.keypadKey`) while nothing is selected;
   `KeypadBuffer` turns "1>10 Enter" into a selection of 1-10. **Never Alt or
   any modifier from the app:** Alt+C for Clear left the desk's own Clear and
-  wheels dead (0.24). On Titan 19 the paired Host does CLEAR (Host 0.14.1 types
-  Alt+C itself, one burst, only with a desk selection; see TitanDeckHost/CLAUDE.md).
+  wheels dead (0.24). On Titan 19 the paired Host does CLEAR: since Host 0.15 an
+  empty CITP selection, only with a desk selection (see TitanDeckHost/CLAUDE.md).
   Clear types Exit if something's typed, then
   `TitanClient.clearSelection` on the 4430 client AND the desk link client
   (`Programmer/Editor/ClearSelection?disable=false&clearAllProgrammers=false`,
@@ -218,7 +218,15 @@ support posts):
   cleared every programmer; 0.29-0.30 only cleared the 4430 user's selection
   (did nothing on the desk). Titan 19 (CITP, no UI WebAPI): 4430
   `ClearSelection?clearAllProgrammers=true` (every user's selection), then
-  `deskLink.selection` (CITP) must go empty within 2 s, else a red key. +/- nudges are current level + nudge (`DeskKeys.nudged`), from
+  `deskLink.selection` (CITP) must go empty within 1 s, else a red key.
+  **Desk typing latency (0.34):** presses wait in `AppState.deskPresses` and
+  everything pressed while a request is on its way goes in the next one
+  (`typeWaitingPresses`, up to `HostClient.maxDeskKeys`); desk keys have their
+  own `URLSession` (`keysSession`) so they never queue behind slow Host calls.
+  CLEAR keeps its place in the order (later keys wait, so it can't clear their
+  selection), so keep CLEAR quick: Host 0.15 answers within about 1 s and no
+  longer tries the WebAPI clears after a CITP clear. Keys used to queue behind
+  a failing CLEAR's 2 s checks and fallbacks and showed on the desk 3-15 s late. +/- nudges are current level + nudge (`DeskKeys.nudged`), from
   `currentLevel` (typed in the last 2 s, else sACN live level, else the level
   last typed for the same selection); unknown = refused, never the WebAPI
   wheel. Typing is serial (one Task chain). The WebAPI user

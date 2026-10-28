@@ -93,6 +93,32 @@ public class CitpTests
         Assert.Throws<InvalidOperationException>(() => CitpAllowlist.Check(packet));
     }
 
+    [Fact]
+    public void OnlyAnEmptySelectionCanBeSent()
+    {
+        Assert.True(CitpAllowlist.MaySend(CitpMessages.CaexClearSelection()));
+        Assert.True(CitpAllowlist.MaySend(CitpMessages.FselDeselectAll()));
+        Assert.Equal([0, 0], CitpMessages.CaexClearSelection().Payload);
+        Assert.Equal(Array.Empty<uint>(), CitpMessages.ReadFixtureSelection(CitpMessages.CaexClearSelection()));
+        // A selection with fixtures in it never goes out, whichever layer.
+        var one = new CitpWriter().U16(1).U32(7).ToArray();
+        Assert.False(CitpAllowlist.MaySend(new CitpPacket("CAEX", CitpMessages.FixtureSelection, 0, one)));
+        Assert.False(CitpAllowlist.MaySend(new CitpPacket("FSEL", CitpMessages.DeSe, 0, new CitpWriter().U16(1).U16(7).ToArray())));
+        Assert.False(CitpAllowlist.MaySend(new CitpPacket("FSEL", CitpMessages.Sele, 0, new CitpWriter().U8(1).U8(0).U16(0).ToArray())));
+    }
+
+    [Fact]
+    public void ClearSelectionSendsOnlyTheEmptySelection()
+    {
+        var sent = new List<CitpPacket>();
+        var session = new CitpSession("TitanDeck Host", sent.Add, _ => { });
+        session.ClearSelection();
+        Assert.Equal(2, sent.Count);
+        Assert.All(sent, p => Assert.True(CitpAllowlist.MaySend(p)));
+        Assert.Equal("CAEX", sent[0].Layer);
+        Assert.Equal("FSEL", sent[1].Layer);
+    }
+
     [Theory]
     [InlineData("FPTC", "Ptch")]
     [InlineData("FPTC", "UPtc")]
