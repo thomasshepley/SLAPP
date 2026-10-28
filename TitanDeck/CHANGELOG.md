@@ -7,6 +7,12 @@ the GitHub Actions run that built it. The top entry is shown in the app
 so add an entry - and bump `MARKETING_VERSION` in `project.yml` to match -
 with every change that goes to `main`.
 
+## 0.32.0 - 2026-10-28 - Cue fades and CLEAR done by TitanDeck Host
+
+- **Cue fades and CLEAR are now done by TitanDeck Host (0.14) on the Titan PC** when the iPad is paired with it. The Host tries each way it knows, checks it worked (the time read back from the cue, the desk's selection over CITP) and logs every call in its Titan log. The answer, worked or not, shows here in Recent events.
+- **Quicker fixes:** a better way of doing either now only needs a Host update (the Update button in TitanDeck Host, a couple of minutes), not a new TitanDeck through TestFlight.
+- Without the Host (or with an older one), the deck does them itself as before.
+
 ## 0.31.1 - 2026-10-28 - CLEAR on Titan 19, fade times checked on the cue
 
 - **Fixed: CLEAR saying "the desk link isn't up" on Titan 19.** Titan 19 follows the desk over CITP, which only listens, so there's no desk link to send the Clear down. CLEAR now asks Titan to clear the selection for every user, the desk's included (the selection only, never a programmer). TitanDeck then checks over CITP that the desk's selection really went, and if it didn't, the key goes red and says so.

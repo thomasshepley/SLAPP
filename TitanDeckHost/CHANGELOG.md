@@ -6,6 +6,13 @@ until it's show-ready (1.0): MINOR for features, PATCH for fixes. Keep
 (ChangelogTests checks). Each version is published as a GitHub release
 `host-v<version>` with the installer attached.
 
+## 0.14.0 - 2026-10-28 - Cue fades and Clear for TitanDeck, done here
+
+- **The Host now does TitanDeck's cue fade and CLEAR keys** (TitanDeck 0.32+), through Titan's WebAPI on this PC. A better way of doing either only needs a Host update, not a new TitanDeck.
+- **Cue fades:** opens the cue the way the desk's Edit Times does, then tries each way of setting the time in turn (the property setters, then Titan's command line on the connected playback, then the time in Titan's own format). One only counts once the cue reads back the new time after being opened again. It never selects every cue of a cue list.
+- **Clear:** clears the selection for every user (never a programmer) and checks over CITP that the desk's selection went.
+- Every call is in the Titan log as "Host - Titan actions", with Titan's answer, and TitanDeck shows what worked or what Titan said.
+
 ## 0.13.1 - 2026-10-28 - A quieter Titan log
 
 - **The Titan log no longer fills up with CITP's handshake.** Titan goes through the whole CITP hello again every time it reconnects (EnterShow, FixtureListRequest, SetFixtureTransformationSpace and the Host's polite NACKs), which buried everything else. Those are normal, not errors: each one is now listed once and its repeats counted on the line above the log, the way polling already was. The desk's selection and anything red are always listed.

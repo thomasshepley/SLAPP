@@ -18,7 +18,8 @@ TitanDeckHost/
 │                  TitanLog (every Titan call, polls counted), Update/HostUpdate (GitHub releases),
 │                  TitanPatch (patch report CSV/XML/HTML), TitanPersonality + PersonalityLibrary (.d4),
 │                  Citp/ (CITP packets, PINF/FSEL/CAEX codecs, CitpAllowlist, CitpSession),
-│                  Slate/ (SlateNumbers, LookDiff, LookWatcher, SlateBook)
+│                  Slate/ (SlateNumbers, LookDiff, LookWatcher, SlateBook),
+│                  TitanRecipes (the ways TitanDeck's cue fade / Clear are tried on Titan 19)
 ├── src/Service/   net8.0-windows Windows service (LocalSystem): Kestrel API on
 │                  0.0.0.0:4431 (paired iPad) and 127.0.0.1:4432 (the Host window),
 │                  WindowsProbe (reads the PC), Fixer (applies fixes), Advertiser (mDNS),
@@ -27,7 +28,8 @@ TitanDeckHost/
 │                  HostUpdater (checks GitHub every 6 h, downloads + verifies the installer),
 │                  PatchReader (newest patch report + personalities),
 │                  CitpService (CITP visualiser: UDP 4809 PLoc, TCP 4435; Test and Show),
-│                  SlateService (Slate Book from sACN, Data\SlateBook\<day>.json)
+│                  SlateService (Slate Book from sACN, Data\SlateBook\<day>.json),
+│                  TitanActions (runs TitanRecipes on 4430, checks each, POST /api/v1/actions/*)
 ├── src/App/       net8.0-windows WPF tray app + dashboard; talks only to 127.0.0.1:4432
 ├── tests/Core.Tests/  xunit
 └── installer/     Inno Setup script

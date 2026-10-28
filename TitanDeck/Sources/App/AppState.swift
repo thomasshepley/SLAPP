@@ -333,7 +333,21 @@ final class AppState: ObservableObject {
         // times are the show's, so they're set through the WebAPI's own
         // editor, leaving the operator's editor as it is.
         var client = deskLink.commandClient ?? titan
-        if case .setCueFade = action { client = titan }
+        if case .setCueFade(let id, let fadeOut, let seconds) = action {
+            client = titan
+            // The Host does it when it can: a better way then only needs a Host update.
+            if let hostClient = host.client {
+                Task {
+                    let byHost = await hostAction(action) {
+                        try await hostClient.cueFade(titanId: id, fadeOut: fadeOut, seconds: seconds)
+                    }
+                    let result: TitanResult
+                    if let byHost { result = byHost } else { result = await titan.perform(action) }
+                    finish(result, keypadLine: keypadLine, keyIndex: keyIndex)
+                }
+                return
+            }
+        }
         Task {
             let result = await client.perform(action)
             finish(result, keypadLine: keypadLine, keyIndex: keyIndex)
@@ -351,6 +365,15 @@ final class AppState: ObservableObject {
         }
     }
 
+    /// Calls whose way of working is worth a line in Recent events when they
+    /// work (which way Titan took a fade, how the desk's selection cleared).
+    private static func explainsSuccess(_ action: TitanAction) -> Bool {
+        switch action {
+        case .setCueFade, .keypadClear: true
+        default: false
+        }
+    }
+
     private func finish(_ result: TitanResult, keypadLine: UUID?, keyIndex: Int?) {
         if let keypadLine { keypad.markAnswered(keypadLine, ok: result.ok) }
         recentResults.insert(result, at: 0)
@@ -359,7 +382,7 @@ final class AppState: ObservableObject {
         }
         if let keyIndex {
             deck.report(success: result.ok, forKey: keyIndex)
-            if result.ok, let detail = result.detail, case .setCueFade = result.action {
+            if result.ok, let detail = result.detail, Self.explainsSuccess(result.action) {
                 connectionLog.record(.key, .info, "Key \(keyIndex + 1) \(result.action.summary): \(detail)")
             }
             if !result.ok {
@@ -411,9 +434,15 @@ final class AppState: ObservableObject {
                 _ = await titan.clearSelection()
                 return await desk.clearSelection()
             }
-            // Titan 19: the WebAPI is a separate user and CITP only listens,
-            // so the selection is cleared for every user (never a programmer),
-            // then CITP shows whether the desk's went too.
+            // Titan 19: the WebAPI is a separate user and CITP only listens.
+            // The Host does it when it can (checked over CITP there), so a
+            // better way only needs a Host update.
+            if let hostClient = host.client,
+               let byHost = await hostAction(action, { try await hostClient.clearSelection() }) {
+                return byHost
+            }
+            // Else the selection is cleared for every user (never a
+            // programmer), then CITP shows whether the desk's went too.
             let cleared = await titan.clearSelection(everyUser: true)
             guard cleared.ok, case .linkedViaCitp = deskLink.state else { return cleared }
             for _ in 0 ..< 8 where !deskLink.selection.isEmpty {
@@ -434,6 +463,22 @@ final class AppState: ObservableObject {
         }
         return TitanResult(action: action, ok: true, statusCode: nil,
                           milliseconds: Int((Date().timeIntervalSince(start) * 1000).rounded()), error: nil, date: start)
+    }
+
+    /// A Titan action done by TitanDeck Host (0.14+), or nil when an older
+    /// Host can't (or the Host can't be reached): the deck then does it itself.
+    private func hostAction(_ action: TitanAction, _ run: () async throws -> HostTitanAction) async -> TitanResult? {
+        let start = Date()
+        do {
+            let answer = try await run()
+            Log.titan("Host: \(answer.message)\n" + answer.steps.joined(separator: "\n"))
+            return TitanResult(action: action, ok: answer.ok, statusCode: 200,
+                               milliseconds: Int((Date().timeIntervalSince(start) * 1000).rounded()),
+                               error: answer.ok ? nil : answer.message, date: start, detail: answer.message)
+        } catch {
+            Log.titan("Host couldn't do \(action.summary) (\(error.localizedDescription)); the deck does it")
+            return nil
+        }
     }
 
     /// Types keys on the PC through the Host, else the remote desktop.

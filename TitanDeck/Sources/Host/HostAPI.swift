@@ -179,6 +179,24 @@ struct HostCitpSelection: Codable, Equatable {
     let problem: String?
 }
 
+// MARK: - Titan actions (Host 0.14+)
+
+/// `POST /api/v1/actions/cue-fade`: a cue's fade time, set by the Host on the
+/// Titan PC (so a better way of doing it only needs a Host update).
+struct HostCueFadeRequest: Codable, Equatable {
+    let titanId: Int
+    let fadeOut: Bool
+    let seconds: Double
+}
+
+/// What the Host did for a Titan action: whether it worked (checked on the
+/// cue, or the desk's selection over CITP), in a line, and every step.
+struct HostTitanAction: Codable, Equatable {
+    let ok: Bool
+    let message: String
+    let steps: [String]
+}
+
 // MARK: - Slate Book (Host 0.13+)
 
 /// The slate showing: slate on the clapper, take, day or night, FX.

@@ -111,6 +111,30 @@ struct HostClient: Sendable {
         return try await send(request)
     }
 
+    // MARK: - Titan actions (Host 0.14+)
+
+    /// Sets a cue's fade time from the Host, which tries each way it knows and
+    /// checks the cue. Throws on an older Host (404), so the deck can do it itself.
+    func cueFade(titanId: Int, fadeOut: Bool, seconds: Double) async throws -> HostTitanAction {
+        try await actionPost("actions/cue-fade", body: HostCueFadeRequest(titanId: titanId, fadeOut: fadeOut, seconds: seconds))
+    }
+
+    /// Clears the desk's selection from the Host, checked over CITP.
+    func clearSelection() async throws -> HostTitanAction {
+        try await actionPost("actions/clear-selection", body: Optional<HostCueFadeRequest>.none)
+    }
+
+    private func actionPost<Body: Encodable>(_ path: String, body: Body?) async throws -> HostTitanAction {
+        var request = try request(path, method: "POST")
+        // Several tries, each read back from Titan: give it time.
+        request.timeoutInterval = 20
+        if let body {
+            request.httpBody = try HostAPI.encoder.encode(body)
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        }
+        return try await send(request)
+    }
+
     // MARK: - Slate Book (Host 0.13+)
 
     /// Today's Slate Book, or just the slate showing with `summary`.
