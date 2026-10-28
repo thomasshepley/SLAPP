@@ -264,7 +264,7 @@ struct KeyInspectorView: View {
             }
         case .none, .nextPage, .previousPage, .openSettings, .keypadAt, .keypadEnter, .keypadExit,
              .keypadClear, .keypadThro, .mainMenu, .colourPresets, .connectCue, .flashSelection,
-             .highlight, .nextFixture, .previousFixture:
+             .highlight, .nextFixture, .previousFixture, .allFixtures:
             EmptyView()
         }
     }
@@ -292,8 +292,8 @@ struct KeyInspectorView: View {
             Text("Shows the slot's fade time; press it on the deck to pick a new one. Setting cue times from the deck is new - check it on the console.")
         case .connectCue:
             Text("Turns the GO slot keys red: press one, then a Titan page, then a cue to put on it.")
-        case .highlight, .nextFixture, .previousFixture:
-            Text("Rig check, like the desk's Highlight, Next and Prev keys: Next and Prev step through the selected fixtures one at a time.")
+        case .highlight, .nextFixture, .previousFixture, .allFixtures:
+            Text("Rig check, like the desk's Highlight, Next and Prev keys: Next and Prev step through the selected fixtures one at a time, and All goes back to the whole selection.")
         case .flashSelection:
             Text("Hold to take the selected fixtures to 0%, let go to put them back. Fades follow Settings > Deck > Flash fades.")
         case .workspace:
