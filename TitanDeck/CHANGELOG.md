@@ -7,9 +7,11 @@ the GitHub Actions run that built it. The top entry is shown in the app
 so add an entry - and bump `MARKETING_VERSION` in `project.yml` to match -
 with every change that goes to `main`.
 
-## 0.31.1 - 2026-10-28 - CLEAR on Titan 19
+## 0.31.1 - 2026-10-28 - CLEAR on Titan 19, fade times checked on the cue
 
 - **Fixed: CLEAR saying "the desk link isn't up" on Titan 19.** Titan 19 follows the desk over CITP, which only listens, so there's no desk link to send the Clear down. CLEAR now asks Titan to clear the selection for every user, the desk's included (the selection only, never a programmer). TitanDeck then checks over CITP that the desk's selection really went, and if it didn't, the key goes red and says so.
+- **Fade times: no more "OK" when the cue didn't change.** 0.31.0 could report a fade as set when Titan's editor took the time but the cue kept 0. TitanDeck now opens the cue the way the desk's Edit Times does (Titan's FillTimes for the playback), and after setting the time it opens the cue again and reads it back. It only counts as set if the cue really has the new time; otherwise the key goes red and the message says what Titan's editor showed against what the cue still has.
+- When a fade does work, Settings > Recent events says which way it was set.
 
 ## 0.31.0 - 2026-10-27 - CLEAR on the desk, fade times through the editor
 

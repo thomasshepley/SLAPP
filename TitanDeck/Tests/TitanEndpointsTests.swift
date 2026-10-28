@@ -203,6 +203,8 @@ final class TitanEndpointsTests: XCTestCase {
                        "http://10.0.0.5:4430/titan/script/2/ActionScript/SetProperty?id=Playbacks.Editor.SelectedPlayback&value_titanId=1903")
         XCTAssertEqual(TitanEndpoints.setSelectedPlaybacksURL(titanId: 1903, host: host)?.absoluteString,
                        "http://10.0.0.5:4430/titan/script/2/Playbacks/Editor/SetSelectedPlaybacks?handles_handleList=1903")
+        XCTAssertEqual(TitanEndpoints.fillTimesURL(titanId: 1903, host: host)?.absoluteString,
+                       "http://10.0.0.5:4430/titan/script/2/Playbacks/TimesEdit/FillTimes?handle_titanId=1903")
         XCTAssertEqual(TitanEndpoints.editorPlaybackURL(host: host)?.absoluteString,
                        "http://10.0.0.5:4430/titan/get/2/Playbacks/Editor/SelectedPlayback")
         XCTAssertEqual(TitanEndpoints.setPropertyTimeURL(id: TitanEndpoints.cueFadePropertyID(fadeOut: false), seconds: 2.5, host: host)?.absoluteString,

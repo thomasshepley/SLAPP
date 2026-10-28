@@ -359,6 +359,9 @@ final class AppState: ObservableObject {
         }
         if let keyIndex {
             deck.report(success: result.ok, forKey: keyIndex)
+            if result.ok, let detail = result.detail, case .setCueFade = result.action {
+                connectionLog.record(.key, .info, "Key \(keyIndex + 1) \(result.action.summary): \(detail)")
+            }
             if !result.ok {
                 connectionLog.record(.key, .info, "Key \(keyIndex + 1) \(result.action.summary) failed: \(result.error ?? "HTTP \(result.statusCode ?? 0)")")
             }
