@@ -85,12 +85,17 @@ public sealed class CitpSession
     /// <summary>
     /// Asks Titan to clear its selection: an empty CAEX FixtureSelection (as
     /// Capture tells the console what's selected), and FSEL "deselect
-    /// everything" for consoles on the older layer.
+    /// everything" for consoles on the older layer. Titan clears the desk's
+    /// selection but doesn't send it back to the visualiser that cleared it,
+    /// so once the clear is out, <see cref="Selection"/> is empty here too (in
+    /// 0.15.0-0.15.1 TitanDeck kept showing the old selection). Titan's next
+    /// selection comes through as usual.
     /// </summary>
     public void ClearSelection()
     {
-        Send(CitpMessages.CaexClearSelection(), "TitanDeck's CLEAR: nothing selected");
+        var sent = Send(CitpMessages.CaexClearSelection(), "TitanDeck's CLEAR: nothing selected");
         Send(CitpMessages.FselDeselectAll(), "TitanDeck's CLEAR (older consoles' way)");
+        if (sent) SetSelection([], "TitanDeck's CLEAR (Titan doesn't send the cleared selection back)");
     }
 
     /// <summary>The connection is closing politely.</summary>
@@ -275,7 +280,8 @@ public sealed class CitpSession
         return ids.Where(_userNumbers.ContainsKey).Select(i => _userNumbers[i]).Where(u => u > 0).Distinct().ToList();
     }
 
-    private void Send(CitpPacket packet, string? note)
+    /// <summary>Sends a packet the allowlist lets out; false when it was blocked.</summary>
+    private bool Send(CitpPacket packet, string? note)
     {
         CitpPacket checkedPacket;
         try
@@ -285,10 +291,11 @@ public sealed class CitpSession
         catch (InvalidOperationException error)
         {
             Log(true, CitpMessages.Describe(packet), "BLOCKED: " + error.Message, flagged: true);
-            return;
+            return false;
         }
         _send(checkedPacket);
         Log(true, CitpMessages.Describe(checkedPacket), note);
+        return true;
     }
 
     private void Log(bool outgoing, string what, string? note, bool flagged = false) =>

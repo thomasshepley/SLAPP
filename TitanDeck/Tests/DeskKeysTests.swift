@@ -57,16 +57,13 @@ final class DeskKeysTests: XCTestCase {
         for name in DeskKeys.level(73) { XCTAssertNotNil(DeskKeys.table[name]) }
     }
 
-    func testRigKeysAreTitansAltArrowShortcuts() {
-        XCTAssertEqual(DeskKeys.shortcut(for: .nextFixture), ["next"])
-        XCTAssertEqual(DeskKeys.shortcut(for: .previousFixture), ["prev"])
-        XCTAssertEqual(DeskKeys.shortcut(for: .toggleHighlight), ["highlight"])
-        XCTAssertNil(DeskKeys.shortcut(for: .keypadClear), "no Alt+C: CLEAR goes over CITP")
-        XCTAssertEqual(Set(DeskKeys.shortcuts.keys), ["next", "prev", "highlight"], "RIG's three and nothing else")
-        XCTAssertEqual(DeskKeys.strokes(for: "next"), [
-            .key(0x38, down: true), .key(0x14D, down: true), .key(0x14D, down: false), .key(0x38, down: false),
-        ], "over remote desktop: Alt held for Right, then let go")
-        XCTAssertEqual(DeskKeys.strokes(for: "highlight")[1], .key(0x150, down: true))
+    func testFixturesAreSelectedByNumber() {
+        XCTAssertEqual(DeskKeys.selecting([5]), ["5", "enter"])
+        XCTAssertEqual(DeskKeys.selecting([12, 10, 11, 15, 16, 101]),
+                       ["1", "0", "thro", "1", "2", "and", "1", "5", "and", "1", "6", "and", "1", "0", "1", "enter"])
+        XCTAssertEqual(DeskKeys.selecting([3, 3, 0, -1]), ["3", "enter"], "once each, real fixture numbers only")
+        XCTAssertEqual(DeskKeys.selecting([]), [])
+        for name in DeskKeys.selecting([1, 2, 3, 7]) { XCTAssertNotNil(DeskKeys.table[name]) }
     }
 
     func testAFadedFlashIsTypedInSteps() {

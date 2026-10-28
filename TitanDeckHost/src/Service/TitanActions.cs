@@ -120,14 +120,14 @@ public sealed class TitanActions(TitanLog titanLog, CitpService citp)
             case TitanRecipes.ClearPlan.CitpClear:
                 if (citp.ClearDeskSelection())
                 {
+                    // Titan clears the desk's selection but doesn't send it
+                    // back, so there's nothing to check it with: the Host's
+                    // copy of the selection is cleared with it (CitpSession).
+                    // No WebAPI clears after this: on Titan 19 they don't
+                    // reach the desk's selection, and they held up the keys
+                    // pressed after CLEAR by seconds.
                     steps.Add($"CITP: told Titan nothing is selected ({before.Fixtures.Count} were)");
-                    if (await DeskCleared(token)) return new TitanActionDto(true, "Cleared over CITP, checked over CITP", steps);
-                    // No WebAPI clears after this: on Titan 19 they don't reach
-                    // the desk's selection (0.13-0.14), and each one only held
-                    // up the keys pressed after CLEAR by seconds.
-                    var left = citp.Selection().Fixtures.Count;
-                    steps.Add($"CITP clear: the desk still has {left} selected");
-                    return new TitanActionDto(false, $"Sent the clear over CITP, but the desk still has {left} selected", steps);
+                    return new TitanActionDto(true, $"Cleared over CITP ({before.Fixtures.Count} were selected)", steps);
                 }
                 else
                 {

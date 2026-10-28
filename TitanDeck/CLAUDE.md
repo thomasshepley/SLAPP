@@ -206,12 +206,13 @@ support posts):
   typed by the Host window (`POST /api/v1/desk/keys`) or over RDP, so they reach
   the desk's own command line. On the default keypad, Clear shows as THRU
   (`.keypadThro`, `DeckFlow.keypadKey`) while nothing is selected;
-  `KeypadBuffer` turns "1>10 Enter" into a selection of 1-10. **No Alt or
-  other modifier from the app, except RIG's** (`DeskKeys.shortcut`, the
-  user's call in 0.35: FIX +1 / FIX -1 / HI LIGHT as Alt+Right / Alt+Left /
-  Alt+Down, which the Host 0.15.1+ types as one burst; with an older Host they
-  fall back to the WebAPI). Alt+C for Clear left the desk's own Clear and
-  wheels dead (0.24). Never add another shortcut without the user asking. On Titan 19 the paired Host does CLEAR: since Host 0.15 an
+  `KeypadBuffer` turns "1>10 Enter" into a selection of 1-10. **Never Alt or
+  any modifier from the app:** Alt+C for Clear left the desk's own Clear and
+  wheels dead (0.24), and Titan 19 ignored Alt+C (Host 0.14) and RIG's
+  Alt+arrows (0.35). RIG on the desk (0.36, desk linked): FIX +1 / FIX -1 type
+  the next fixture of the selection by number and ALL types the selection back
+  (`AppState.rigKeys`, `DeskKeys.selecting`, "10 THRU 20 AND 25 Enter"); HI
+  LIGHT stays on the WebAPI user, which follows the desk's selection. On Titan 19 the paired Host does CLEAR: since Host 0.15 an
   empty CITP selection, only with a desk selection (see TitanDeckHost/CLAUDE.md).
   Clear types Exit if something's typed, then
   `TitanClient.clearSelection` on the 4430 client AND the desk link client
@@ -233,7 +234,11 @@ support posts):
   **Flash fades on the desk (0.35):** Titan's keyboard has no fade time, so a
   hold-for-0% with a fade (`FlashFadeRule`) is typed as levels in steps
   (`DeskKeys.rampSteps`, about 5 a second, at most 20; `AppState.rampOnDesk`).
-  0.23-0.34 typed "@ 0 Enter" at once and the fade was ignored. +/- nudges are current level + nudge (`DeskKeys.nudged`), from
+  0.23-0.34 typed "@ 0 Enter" at once and the fade was ignored.
+  **Master levels (0.36):** Titan has no getter for a fader's level; MASTERS
+  reads each master with `Masters/ConnectToMaster` (on the 4430 user), `GET
+  Masters/ConnectedMasterLevel`, `Masters/DisconnectMaster`
+  (`TitanClient.masterLevel`); what can't be read goes in Recent events. +/- nudges are current level + nudge (`DeskKeys.nudged`), from
   `currentLevel` (typed in the last 2 s, else sACN live level, else the level
   last typed for the same selection); unknown = refused, never the WebAPI
   wheel. Typing is serial (one Task chain). The WebAPI user

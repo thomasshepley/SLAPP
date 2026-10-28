@@ -457,8 +457,9 @@ enum DeckFlow {
     // MARK: Rig
 
     /// The Rig page: Fix -1, Highlight and Fix +1 across the top (like the
-    /// desk's Prev, Highlight and Next), for checking a rig fixture by
-    /// fixture. Return to Keypad where Menu is.
+    /// desk's Prev, Highlight and Next) and ALL under them, back to the whole
+    /// selection, for checking a rig fixture by fixture. Return to Keypad
+    /// where Menu is.
     static func rigPage(profile: DeckProfile, returnTo: Int, highlightOn: Bool) -> DeckPage {
         let threeWide = isThreeWide(profile)
         let templates = [
@@ -468,6 +469,8 @@ enum DeckFlow {
                           sfSymbol: "lightbulb.max", action: .toggleHighlight),
             KeyDefinition(index: 2, label: "FIX +1", colorHex: DeckProfile.pageColor, sfSymbol: "chevron.right",
                           action: .nextFixture),
+            KeyDefinition(index: 3, label: "ALL", colorHex: rigColour, sfSymbol: "square.grid.3x3.fill",
+                          action: .allFixtures),
         ]
         let room = threeWide ? templates.count : max(profile.keyCount - 1, 0)
         let keys = withReturnKey(Array(templates.prefix(room)), keyCount: profile.keyCount, threeWide: threeWide)

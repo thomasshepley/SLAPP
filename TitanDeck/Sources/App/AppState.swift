@@ -280,7 +280,7 @@ final class AppState: ObservableObject {
         let keypadLine: UUID?
         let keyIndex: Int?
         /// Done through Titan's WebAPI instead when it can't be typed (RIG's
-        /// keys with a Host older than 0.15.1, which doesn't type shortcuts).
+        /// keys with no Host or remote desktop to type them).
         var webAPIIfNotTyped = false
     }
     /// Presses waiting for the desk, in the order pressed.
@@ -358,8 +358,8 @@ final class AppState: ObservableObject {
             queueOnDesk(action, keys: keys, keypadLine: keypadLine, keyIndex: keyIndex)
             return
         }
-        if keypadTypesOnDesk, let keys = DeskKeys.shortcut(for: action) {
-            // RIG on the desk's own selection, as Titan's Alt shortcuts.
+        if keypadTypesOnDesk, deck.deskLinked, let keys = rigKeys(for: action) {
+            // RIG on the desk's own selection: the fixture's number typed.
             queueOnDesk(action, keys: keys, keypadLine: keypadLine, keyIndex: keyIndex, webAPIIfNotTyped: true)
             return
         }
@@ -389,10 +389,17 @@ final class AppState: ObservableObject {
     }
 
     /// Keys typed on the desk go in the order pressed.
+    /// More keys than the Host takes at once (a long ALL) go in pieces; the
+    /// last one reports on the key.
     private func queueOnDesk(_ action: TitanAction, keys: [String], keypadLine: UUID?, keyIndex: Int?,
                              webAPIIfNotTyped: Bool = false) {
-        deskPresses.append(DeskPress(action: action, keys: keys, keypadLine: keypadLine, keyIndex: keyIndex,
-                                     webAPIIfNotTyped: webAPIIfNotTyped))
+        let size = HostClient.maxDeskKeys
+        let pieces = stride(from: 0, to: max(keys.count, 1), by: size).map { Array(keys[$0 ..< min($0 + size, keys.count)]) }
+        for (number, piece) in pieces.enumerated() {
+            let last = number == pieces.count - 1
+            deskPresses.append(DeskPress(action: action, keys: piece, keypadLine: last ? keypadLine : nil,
+                                         keyIndex: last ? keyIndex : nil, webAPIIfNotTyped: webAPIIfNotTyped))
+        }
         guard deskTyping == nil else { return }
         deskTyping = Task { [weak self] in
             await self?.typeWaitingPresses()
@@ -474,6 +481,38 @@ final class AppState: ObservableObject {
                 connectionLog.record(.key, .info, "Key \(keyIndex + 1) \(result.action.summary) failed: \(result.error ?? "HTTP \(result.statusCode ?? 0)")")
             }
         }
+    }
+
+    /// RIG's FIX +1 / FIX -1 on the desk: the selection being stepped through
+    /// (as it was when stepping started) and the fixture the desk is on.
+    private var rigList: [Int] = []
+    private var rigIndex: Int?
+
+    /// FIX +1 / FIX -1 / ALL typed on the desk. Titan 19 ignores its Alt
+    /// shortcuts for Next and Prev from the PC keyboard (0.35), so the next
+    /// fixture of the selection is selected by its number ("12 Enter") and
+    /// ALL types the whole selection back ("10 THRU 20 Enter"). Stepping
+    /// carries on while the desk shows the list or one fixture of it; any
+    /// other selection starts a new list. Nil when there's nothing to step.
+    private func rigKeys(for action: TitanAction) -> [String]? {
+        let rigActions: [TitanAction] = [.nextFixture, .previousFixture, .allFixtures]
+        guard rigActions.contains(action) else { return nil }
+        let selected = deck.selectedFixtures
+        let stepping = rigIndex != nil && !rigList.isEmpty
+            && (selected == rigList || (selected.count <= 1 && Set(selected).isSubset(of: rigList)))
+        if !stepping {
+            rigList = selected
+            rigIndex = nil
+        }
+        guard !rigList.isEmpty else { return nil }
+        switch action {
+        case .nextFixture: rigIndex = rigIndex.map { ($0 + 1) % rigList.count } ?? 0
+        case .previousFixture: rigIndex = rigIndex.map { ($0 + rigList.count - 1) % rigList.count } ?? rigList.count - 1
+        default:
+            rigIndex = nil
+            return DeskKeys.selecting(rigList)
+        }
+        return DeskKeys.selecting([rigList[rigIndex ?? 0]])
     }
 
     /// Where a faded hold-for-0% goes from and to (0-1): down from the
@@ -827,7 +866,18 @@ final class AppState: ObservableObject {
             from = "every handle"
         }
         connectionLog.record(.app, .info, TitanHandlesParser.pageNote(handles, page: page, from: from))
-        deck.setPageMasters(Self.cueChoices(handles).map { var cue = $0; cue.page = page; return cue })
+        var masters = Self.cueChoices(handles).map { var cue = $0; cue.page = page; return cue }
+        deck.setPageMasters(masters)
+        // Then each master's level from Titan, as the page shows straight away.
+        var unread: [String] = []
+        for index in masters.indices where masters[index].index < DeckFlow.masterFaders && masters[index].level == nil {
+            let (level, answer) = await titan.masterLevel(titanId: masters[index].titanId)
+            if let level { masters[index].level = level } else { unread.append("\(masters[index].titanId): \(answer)") }
+        }
+        if !unread.isEmpty {
+            connectionLog.record(.app, .info, "Masters: couldn't read the level of " + unread.prefix(3).joined(separator: "; "))
+        }
+        deck.setPageMasters(masters)
     }
 
     /// Titan's playback handles as the deck's Connect Cue choices.

@@ -7,6 +7,13 @@ the GitHub Actions run that built it. The top entry is shown in the app
 so add an entry - and bump `MARKETING_VERSION` in `project.yml` to match -
 with every change that goes to `main`.
 
+## 0.36.0 - 2026-10-28 - RIG by fixture number, master levels from Titan
+
+- **RIG works on the desk:** the Alt shortcuts in 0.35 did nothing on Titan 19, so FIX +1 and FIX -1 now type the next fixture of your selection by number ("12 Enter"), and the desk shows just that one selected. The new **ALL** key under them types your whole selection back ("10 THRU 20 AND 25 Enter"). Select something new on the desk and FIX +1 starts on that instead.
+- **HI LIGHT works again:** it's back on Titan's WebAPI, as in 0.33, which follows the desk's selection, so it highlights the fixture FIX +1 / -1 is on.
+- **MASTERS shows each master's level from Titan** as soon as the page opens, not just after you've set one from the deck. If Titan won't give a level, Settings > Recent events says why.
+- **After CLEAR the deck shows nothing selected** (with TitanDeck Host 0.15.2: Titan doesn't send the cleared selection back, so the Host now empties its copy itself).
+
 ## 0.35.0 - 2026-10-28 - RIG steps the desk's own selection, flash fades on the desk
 
 - **Fixed: flash fades snapped.** With the keypad typing on the desk (Titan 19), hold-for-0% typed "@ 0 Enter" straight away and ignored the fade time set for the fixture (Settings > Deck). Titan's keyboard has no fade time, so the level is now typed in steps over the fade, about five a second ("@ 80", "@ 60"... "@ 0"), and back up the same way when you let go. Let go mid-fade and it fades back up from where it got to.

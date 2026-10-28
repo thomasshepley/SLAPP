@@ -42,6 +42,21 @@ final class TitanHandlesTests: XCTestCase {
                        "http://10.0.0.1:4430/titan/handles", "every handle")
     }
 
+    func testReadsAMastersLevelFromTitansAnswer() {
+        XCTAssertEqual(TitanHandlesParser.level(fromAnswer: Data("0.75".utf8)), 0.75)
+        XCTAssertEqual(TitanHandlesParser.level(fromAnswer: Data("\"0.5\"".utf8)), 0.5)
+        XCTAssertEqual(TitanHandlesParser.level(fromAnswer: Data("80".utf8)), 0.8, "a percentage")
+        XCTAssertEqual(TitanHandlesParser.level(fromAnswer: Data(#"{"Level":0.3}"#.utf8)), 0.3)
+        XCTAssertEqual(TitanHandlesParser.level(fromAnswer: Data(#"{"Value":"1"}"#.utf8)), 1)
+        XCTAssertNil(TitanHandlesParser.level(fromAnswer: Data("true".utf8)))
+        XCTAssertNil(TitanHandlesParser.level(fromAnswer: Data("".utf8)))
+        XCTAssertNil(TitanHandlesParser.level(fromAnswer: Data(#"{"Name":"Grand Master"}"#.utf8)))
+        let urls = TitanEndpoints.masterLevelURLs(titanId: 1895, host: "10.0.0.1")
+        XCTAssertEqual(urls.connect?.absoluteString, "http://10.0.0.1:4430/titan/script/2/Masters/ConnectToMaster?handle_titanId=1895")
+        XCTAssertEqual(urls.read?.absoluteString, "http://10.0.0.1:4430/titan/get/2/Masters/ConnectedMasterLevel")
+        XCTAssertEqual(urls.disconnect?.absoluteString, "http://10.0.0.1:4430/titan/script/2/Masters/DisconnectMaster")
+    }
+
     func testFindsAGrandMasterOnPage60() throws {
         let json = """
         [{"handleLocation":{"group":"Playbacks","index":0,"page":59},"properties":[],

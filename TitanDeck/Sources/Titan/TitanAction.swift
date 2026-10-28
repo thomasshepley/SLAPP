@@ -78,6 +78,8 @@ enum TitanAction: Codable, Hashable {
     case previousFixture
     /// A group master (a playback fader with a group on it) to a level, 0...1.
     case setGroupMaster(titanId: Int, level: Double)
+    /// Rig check: back to the whole selection after stepping (Titan's All).
+    case allFixtures
 
     /// True for actions that go over the network to Titan.
     var isRemote: Bool {
@@ -130,6 +132,7 @@ enum TitanAction: Codable, Hashable {
         case .toggleHighlight: return "Highlight"
         case .nextFixture: return "Next fixture"
         case .previousFixture: return "Previous fixture"
+        case .allFixtures: return "All fixtures again"
         case .setGroupMaster(let id, let level): return "Group master \(id) @ \(Int((level * 100).rounded()))%"
         case .dimmerFlash(let down, let s): return "Flash \(down ? "down" : "back")\(s.map { " over \(TitanEndpoints.format(number: $0))s" } ?? "")"
         }

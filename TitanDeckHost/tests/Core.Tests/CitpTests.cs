@@ -117,6 +117,7 @@ public class CitpTests
         Assert.All(sent, p => Assert.True(CitpAllowlist.MaySend(p)));
         Assert.Equal("CAEX", sent[0].Layer);
         Assert.Equal("FSEL", sent[1].Layer);
+        Assert.Empty(session.Selection);   // Titan doesn't send the cleared selection back
     }
 
     [Theory]

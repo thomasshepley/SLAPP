@@ -34,6 +34,7 @@ struct ActionDraft: Equatable {
         case highlight
         case nextFixture
         case previousFixture
+        case allFixtures
 
         var id: String { rawValue }
 
@@ -67,6 +68,7 @@ struct ActionDraft: Equatable {
             case .highlight: return "Highlight on/off"
             case .nextFixture: return "Next fixture (Fix +1)"
             case .previousFixture: return "Previous fixture (Fix -1)"
+            case .allFixtures: return "All fixtures again (after Fix +1 / -1)"
             }
         }
     }
@@ -114,6 +116,7 @@ struct ActionDraft: Equatable {
         case .toggleHighlight: kind = .highlight
         case .nextFixture: kind = .nextFixture
         case .previousFixture: kind = .previousFixture
+        case .allFixtures: kind = .allFixtures
         case .deckChoice, .fireHandle, .releaseHandle, .setCueFade, .dimmerFlash, .setGroupMaster: kind = .none
         }
     }
@@ -155,6 +158,7 @@ struct ActionDraft: Equatable {
         case .highlight: return .toggleHighlight
         case .nextFixture: return .nextFixture
         case .previousFixture: return .previousFixture
+        case .allFixtures: return .allFixtures
         }
     }
 }
