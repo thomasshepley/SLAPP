@@ -6,6 +6,12 @@ until it's show-ready (1.0): MINOR for features, PATCH for fixes. Keep
 (ChangelogTests checks). Each version is published as a GitHub release
 `host-v<version>` with the installer attached.
 
+## 0.15.0 - 2026-10-28 - CLEAR over CITP
+
+- **TitanDeck's CLEAR now clears the desk's selection over CITP**, the way a visualiser like Capture tells the console what's selected: the Host tells Titan nothing is selected. Typing Alt+C (0.14.1) didn't clear Titan 19's selection, so it's gone, and the Host is back to never typing a modifier.
+- **It can only clear:** the safety catch lets out an empty selection and nothing else, so the Host still can't select anything, patch anything or send DMX.
+- It's only sent when CITP shows the desk has something selected, and CITP is how the Host checks it worked. Without CITP, the WebAPI clears are tried as before.
+
 ## 0.14.3 - 2026-10-28 - Installer can't wait on an old window
 
 - **Fixed: an update could wait forever.** The installer asks the window app to close with `--quit`; a window app older than 0.14.2 doesn't know that, and if no copy was already running it simply opened and the installer waited on it. It no longer waits on it (the forced close afterwards still makes sure it's gone).

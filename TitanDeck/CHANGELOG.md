@@ -7,6 +7,11 @@ the GitHub Actions run that built it. The top entry is shown in the app
 so add an entry - and bump `MARKETING_VERSION` in `project.yml` to match -
 with every change that goes to `main`.
 
+## 0.34.0 - 2026-10-28 - The current CCT on the deck
+
+- **The CCT keys show the current colour temperature:** on the colour temperature page the current one says NOW, and the CCT key on Quick Keys carries it ("CCT 3200K"). It's the CCT palette Titan shows as active for the selection when Titan says, else the last one applied from the deck for this selection; a new selection starts blank until one of those is known.
+- CLEAR on Titan 19 needs TitanDeck Host 0.15, which clears the desk's selection over CITP.
+
 ## 0.33.1 - 2026-10-28 - Titan keeps working when the Host is down
 
 - **Fixed: no commands reached Titan while TitanDeck Host was down.** With Settings > Through TitanDeck Host on, every call went via the Host, so with the Host stopped (as after a failed update) nothing worked at all. Now, when the Host doesn't answer, calls go straight to Titan's WebAPI instead (and keep doing so for a few seconds before trying the Host again), so GO, intensity and the rest carry on.

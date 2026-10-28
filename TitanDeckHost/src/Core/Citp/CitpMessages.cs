@@ -131,6 +131,18 @@ public static class CitpMessages
 
     public static CitpPacket CaexFixtureListRequest(ushort requestIndex) => new("CAEX", FixtureListRequest, requestIndex, []);
 
+    /// <summary>
+    /// "Nothing selected": CAEX FixtureSelection with no fixtures, as a
+    /// visualiser like Capture tells the console its selection. The one
+    /// selection the Host ever sends (TitanDeck's CLEAR on Titan 19, whose
+    /// WebAPI can't reach the desk's selection): it can clear, never select.
+    /// </summary>
+    public static CitpPacket CaexClearSelection() =>
+        new("CAEX", FixtureSelection, 0, new CitpWriter().U16(0).ToArray());
+
+    /// <summary>The same for consoles on the older FSEL layer: DeSe with no ids, "deselect everything".</summary>
+    public static CitpPacket FselDeselectAll() => new("FSEL", DeSe, 0, new CitpWriter().U16(0).ToArray());
+
     /// <summary>A NACK, answering the request whose RequestIndex was <paramref name="inResponseTo"/>.</summary>
     public static CitpPacket CaexNack(byte reason, ushort inResponseTo) =>
         new("CAEX", Nack, inResponseTo, new CitpWriter().U8(reason).ToArray());
@@ -223,16 +235,23 @@ public static class CitpMessages
 /// The safety catch. Capture can patch Titan (Titan applies Capture's patch
 /// changes by itself), so TitanDeck Host may only ever send these: who it is
 /// (PLoc, PNam), that it has a "show" open or closed, a request for Titan's
-/// fixture list, and a refusal. Never a fixture list, patch change,
-/// selection, identify or DMX. Every packet goes through <see cref="Check"/>.
+/// fixture list, a refusal, and an empty selection (TitanDeck's CLEAR, the
+/// user's call: it can only clear, never select). Never a fixture list,
+/// patch change, a selection with fixtures in it, identify or DMX. Every
+/// packet goes through <see cref="Check"/>.
 /// </summary>
 public static class CitpAllowlist
 {
+    /// <summary>A selection payload with nothing in it: uint16 count = 0 and no ids.</summary>
+    private static bool IsEmptySelection(byte[] payload) => payload is [0, 0];
+
     public static bool MaySend(CitpPacket packet) => packet.Layer switch
     {
         "PINF" => packet.Content == CitpMessages.PLoc || packet.Content == CitpMessages.PNam,
         "CAEX" => packet.Content is CitpMessages.EnterShow or CitpMessages.LeaveShow
-            or CitpMessages.FixtureListRequest or CitpMessages.Nack,
+            or CitpMessages.FixtureListRequest or CitpMessages.Nack
+            || (packet.Content == CitpMessages.FixtureSelection && IsEmptySelection(packet.Payload)),
+        "FSEL" => packet.Content == CitpMessages.DeSe && IsEmptySelection(packet.Payload),
         _ => false,
     };
 

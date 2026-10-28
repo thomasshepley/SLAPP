@@ -101,15 +101,10 @@ TitanDeckHost/
   keyboard. Only `DeskKeys.All` keys can be typed (never letters); refused when
   the window isn't polling or Titan isn't running; keys older than 2 s dropped.
   If Titan ever runs elevated, SendInput from the (non-elevated) window can't
-  reach it (UIPI): the iPad falls back to typing over RDP. **No modifiers from
-  the iPad, ever.** The one exception (user's call, Host 0.14.1): Alt+C for
-  TitanDeck's CLEAR, typed only by `TitanActions` (`DeskKeys.Chords`, never in
-  `All`), only when CITP shows the desk has a selection (`TitanRecipes.PlanClear`:
-  with nothing selected the desk's Clear would clear the programmer), as one
-  SendInput burst (Alt down, C down, C up, Alt up) then `ReleaseModifiers()`.
-  Host 0.11 typed it key by key and the desk's own Clear and wheels died (held
-  Alt suspected). If that happens again: the user's fallback is CITP clear
-  (an empty FixtureSelection only), which needs the CITP allowlist changed.
+  reach it (UIPI): the iPad falls back to typing over RDP. **Never Alt or any
+  modifier.** Host 0.11 typed Alt+C for Clear key by key and the desk's own
+  Clear and wheels died; 0.14.1-0.14.3 typed it as one burst and it didn't clear
+  Titan 19's selection. TitanDeck's CLEAR goes over CITP (below) since 0.15.
 - **Patch from CITP** (`Core/Citp/CitpPatch`, `PatchReader.UseCitp`): Titan's
   CAEX FixtureList (read only, asked for again after a FixtureModify) becomes the
   patch, so live levels need no report. Universe/channel are taken as 0-based
@@ -135,11 +130,13 @@ TitanDeckHost/
   Titan 19's WebAPI can't see the desk's selection, so the Host joins Titan as
   a CITP visualiser ("TitanDeck Host") and hears CAEX FixtureSelection (or FSEL).
   **Titan auto-applies patch changes from a visualiser, so the Host must never
-  send FixtureList, FixtureModify, FixtureRemove, FixtureIdentify,
-  FixtureSelection, FPTC (Ptch/UPtc/SPtc), FSEL or SDMX.** `CitpAllowlist` only
-  lets PINF PLoc/PNam and CAEX EnterShow, LeaveShow, FixtureListRequest and
-  NACK out, and `CitpSession` sends everything through `CitpAllowlist.Check`.
-  Never widen it. Every request from Titan (FixtureListRequest,
+  send FixtureList, FixtureModify, FixtureRemove, FixtureIdentify, FPTC
+  (Ptch/UPtc/SPtc), FSEL Sele, SDMX, or a selection with any fixture in it.**
+  `CitpAllowlist` only lets PINF PLoc/PNam, CAEX EnterShow, LeaveShow,
+  FixtureListRequest and NACK out, plus (user's call, Host 0.15, for TitanDeck's
+  CLEAR) an EMPTY selection: CAEX FixtureSelection and FSEL DeSe whose payload is
+  exactly `00 00` (count 0). It can clear, never select. `CitpSession` sends
+  everything through `CitpAllowlist.Check`. Never widen it further. Every request from Titan (FixtureListRequest,
   ShowSyncVersion, live view...) gets NACK reason 3 (refused), answering its
   RequestIndex. Titan's FixtureList maps its fixture ids to user numbers
   ("Channel"); without one the ids are taken as user numbers and flagged as a

@@ -75,4 +75,12 @@ public class TitanRecipesTests
         Assert.All(calls, c => Assert.Contains("ClearSelection?", c));
         Assert.DoesNotContain(calls, c => c.Contains("ClearAll") || c.Contains("Programmer?"));
     }
+
+    [Fact]
+    public void ClearGoesOverCitpOnlyWithADeskSelection()
+    {
+        Assert.Equal(TitanRecipes.ClearPlan.CitpClear, TitanRecipes.PlanClear(citpLinked: true, deskSelected: 3));
+        Assert.Equal(TitanRecipes.ClearPlan.AlreadyClear, TitanRecipes.PlanClear(citpLinked: true, deskSelected: 0));
+        Assert.Equal(TitanRecipes.ClearPlan.WebApiOnly, TitanRecipes.PlanClear(citpLinked: false, deskSelected: 0));
+    }
 }

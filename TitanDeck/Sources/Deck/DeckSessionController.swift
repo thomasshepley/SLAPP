@@ -80,6 +80,26 @@ final class DeckSessionController: ObservableObject {
             redraw()
         }
     }
+    /// The selection's colour temperature, when known (Titan's active CCT
+    /// palette, or the last one the deck applied): shown on the CCT keys.
+    @Published private(set) var currentKelvin: Int?
+    /// Called when the colour temperature keys come up, to ask Titan for the current CCT.
+    var onColourShown: (() -> Void)?
+
+    func setCurrentKelvin(_ kelvin: Int?) {
+        guard kelvin != currentKelvin else { return }
+        currentKelvin = kelvin
+        guard let page = currentPage else { return }
+        for key in page.keys where Self.isCCT(key.action) { draw(logicalIndex: key.index) }
+    }
+
+    private static func isCCT(_ action: TitanAction?) -> Bool {
+        switch action {
+        case .colourTemperature?, .colourPresets?: true
+        default: false
+        }
+    }
+
     /// Highlight is on, as far as the deck knows (the Rig page's key).
     @Published private(set) var highlightOn = false
     /// Group master levels set from the deck (titanId: 0...1), shown when
@@ -173,6 +193,7 @@ final class DeckSessionController: ObservableObject {
                 return shown
             }
             .map { DeckFlow.slateKey($0, state: slateState) }
+            .map { DeckFlow.cctKey($0, current: currentKelvin) }
             .map { key in
                 // The flash key carries the selected fixture's live level.
                 let level = liveLevel ?? typedLevel
@@ -269,6 +290,7 @@ final class DeckSessionController: ObservableObject {
     private func show(_ overlay: DeckFlow.Overlay?) {
         switch overlay {
         case .titanPages?, .masters?: onNeedCues?()
+        case .colour?: onColourShown?()
         default: break
         }
         flowOverlay = overlay

@@ -79,6 +79,17 @@ public sealed class CitpService(HostPaths paths, TitanLog titanLog, PatchReader 
         return Status();
     }
 
+    /// <summary>Asks Titan over every CITP link to clear its selection (TitanDeck's CLEAR). False with no link.</summary>
+    public bool ClearDeskSelection()
+    {
+        lock (_gate)
+        {
+            var sessions = _links.Values.Select(l => l.Session).OfType<CitpSession>().ToList();
+            foreach (var session in sessions) session.ClearSelection();
+            return sessions.Count > 0;
+        }
+    }
+
     public CitpSelectionDto Selection()
     {
         lock (_gate)

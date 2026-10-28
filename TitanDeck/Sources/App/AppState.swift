@@ -194,8 +194,13 @@ final class AppState: ObservableObject {
                 ? "Desk link up: following the desk's selection, deck commands go to the desk's programmer"
                 : "Desk link down: deck commands go to Titan's WebAPI user (4430)")
         }
+        deck.onColourShown = { [weak self] in
+            Task { await self?.refreshCurrentKelvin() }
+        }
         deck.onSelectionChanged = { [weak self] fixtures in
             guard let self else { return }
+            // A new selection's CCT isn't known until Titan says or one is applied.
+            if Set(fixtures) != self.kelvinFixtures { self.deck.setCurrentKelvin(nil) }
             self.intensity.setFixture(fixtures.first)
             self.showTypedLevel()
             // Typed on the desk: the deck's WebAPI user selects the same fixtures,
@@ -374,7 +379,24 @@ final class AppState: ObservableObject {
         }
     }
 
+    /// The fixtures the deck's current CCT is for.
+    private var kelvinFixtures: Set<Int> = []
+
+    /// The CCT Titan shows as active (its colour palette lit for the
+    /// selection), when it says; else what the deck last applied stays.
+    private func refreshCurrentKelvin() async {
+        guard let palettes = await titan.handles(group: "Colours") else { return }
+        let active = palettes.filter(\.active).compactMap { DeckFlow.kelvin(inLegend: $0.legend) }
+        guard active.count == 1, let kelvin = active.first else { return }
+        kelvinFixtures = Set(deck.selectedFixtures)
+        deck.setCurrentKelvin(kelvin)
+    }
+
     private func finish(_ result: TitanResult, keypadLine: UUID?, keyIndex: Int?) {
+        if result.ok, case .colourTemperature(let kelvin) = result.action {
+            kelvinFixtures = Set(deck.selectedFixtures)
+            deck.setCurrentKelvin(kelvin)
+        }
         if let keypadLine { keypad.markAnswered(keypadLine, ok: result.ok) }
         recentResults.insert(result, at: 0)
         if recentResults.count > Self.maxResults {

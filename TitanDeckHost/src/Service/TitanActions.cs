@@ -13,7 +13,7 @@ namespace TitanDeckHost.Service;
 /// every call is in the Titan log. One action at a time: the WebAPI user's
 /// editor is shared.
 /// </summary>
-public sealed class TitanActions(TitanLog titanLog, CitpService citp, DeskKeyQueue deskKeys)
+public sealed class TitanActions(TitanLog titanLog, CitpService citp)
 {
     private const string Who = "Host - Titan actions";
     private static readonly HttpClient Titan = new() { Timeout = TimeSpan.FromSeconds(3) };
@@ -88,25 +88,26 @@ public sealed class TitanActions(TitanLog titanLog, CitpService citp, DeskKeyQue
         var steps = new List<string>();
         var errors = new List<string>();
         var before = citp.Selection();
-        var canType = deskKeys.WindowListening && WindowsProbe.IsTitanRunning();
-        switch (TitanRecipes.PlanClear(before.Linked, before.Fixtures.Count, canType))
+        switch (TitanRecipes.PlanClear(before.Linked, before.Fixtures.Count))
         {
             case TitanRecipes.ClearPlan.AlreadyClear:
                 return new TitanActionDto(true, "Nothing selected on the desk (CITP), so nothing to clear", steps);
-            case TitanRecipes.ClearPlan.TypeAltC:
-                deskKeys.Enqueue(["clear"]);
-                titanLog.Add(Who, "Host", "TYPE", "Alt+C", "", 200, 0,
-                    $"Clear typed on the desk for TitanDeck ({before.Fixtures.Count} selected), as one burst with Alt let go", null, false,
-                    DateTimeOffset.Now);
-                steps.Add($"Alt+C typed on the desk ({before.Fixtures.Count} selected)");
-                if (await DeskCleared(token)) return new TitanActionDto(true, "Cleared with Alt+C on the desk, checked over CITP", steps);
-                var left = citp.Selection().Fixtures.Count;
-                errors.Add($"Alt+C: typed, but the desk still has {left} selected");
-                steps.Add($"Alt+C: the desk still has {left} selected (CITP)");
+            case TitanRecipes.ClearPlan.CitpClear:
+                if (citp.ClearDeskSelection())
+                {
+                    steps.Add($"CITP: told Titan nothing is selected ({before.Fixtures.Count} were)");
+                    if (await DeskCleared(token)) return new TitanActionDto(true, "Cleared over CITP, checked over CITP", steps);
+                    var left = citp.Selection().Fixtures.Count;
+                    errors.Add($"CITP clear: sent, but the desk still has {left} selected");
+                    steps.Add($"CITP clear: the desk still has {left} selected");
+                }
+                else
+                {
+                    errors.Add("CITP clear: no CITP link to send it on");
+                }
                 break;
             default:
-                steps.Add(!before.Linked ? "CITP isn't linked, so the Host can't tell whether the desk has a selection: Alt+C isn't typed"
-                                         : "Can't type on the desk (the TitanDeck Host window or Titan isn't running): Alt+C isn't typed");
+                steps.Add("CITP isn't linked, so the Host can't clear the desk's selection over CITP or check it");
                 break;
         }
         foreach (var attempt in TitanRecipes.ClearSelectionAttempts())
