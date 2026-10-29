@@ -26,6 +26,34 @@ enum DeskKeys {
         }
     }
 
+    /// The keys with every level command ("@ 64 Enter" on its own) dropped
+    /// when another comes straight after it, so only the newest level is
+    /// typed: fewer keys in a row for Titan to miss (a missed "@" or Enter
+    /// turned a level into a fixture number). Keep in step with the Host's
+    /// `DeskKeys.Coalesce`.
+    static func coalesced(_ keys: [String]) -> [String] {
+        var commands: [[String]] = []
+        var current: [String] = []
+        for key in keys {
+            current.append(key)
+            if key == "enter" {
+                commands.append(current)
+                current = []
+            }
+        }
+        if !current.isEmpty { commands.append(current) }
+        func isLevel(_ command: [String]) -> Bool {
+            command.count >= 3 && command.first == "@" && command.last == "enter"
+                && command.dropFirst().dropLast().allSatisfy { $0.count == 1 && $0.first?.isASCII == true && $0.first?.isNumber == true }
+        }
+        var kept: [String] = []
+        for (index, command) in commands.enumerated() {
+            if isLevel(command), index + 1 < commands.count, isLevel(commands[index + 1]) { continue }
+            kept += command
+        }
+        return kept
+    }
+
     /// Fixtures selected on the desk's command line: "1 THRU 10 AND 15
     /// Enter" (runs of three or more as THRU). Empty for no fixtures.
     static func selecting(_ fixtures: [Int]) -> [String] {
@@ -60,10 +88,12 @@ enum DeskKeys {
     }
 
     /// A flash fade typed on the desk as levels in steps (Titan's keyboard has
-    /// no fade time): about five a second, as fast as "@ 50 Enter" is typed,
-    /// whole percents, ending exactly on `to`. The first step goes straight away.
+    /// no fade time): about three a second, which is how fast the PC types
+    /// "@ 50 Enter" steadily (0.35-0.37 typed five a second and Titan missed
+    /// the odd key), at most 12, whole percents, ending exactly on `to`. The
+    /// first step goes straight away.
     static func rampSteps(from: Double, to: Double, seconds: Double) -> [RampStep] {
-        let count = max(1, min(Int(seconds / 0.2), 20))
+        let count = max(1, min(Int(seconds / 0.35), 12))
         var steps: [RampStep] = []
         for index in 1 ... count {
             let percent = min(max((from + (to - from) * Double(index) / Double(count)).rounded(), 0), 100)

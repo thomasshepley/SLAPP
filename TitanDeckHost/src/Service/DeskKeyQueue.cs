@@ -1,4 +1,5 @@
 using System.Threading.Channels;
+using TitanDeckHost.Core.Titan;
 
 namespace TitanDeckHost.Service;
 
@@ -22,7 +23,11 @@ public sealed class DeskKeyQueue
 
     public void Enqueue(IReadOnlyList<string> keys) => _keys.Writer.TryWrite((DateTimeOffset.UtcNow, keys));
 
-    /// <summary>The next keys to type (in order), or none after <paramref name="wait"/>.</summary>
+    /// <summary>
+    /// Everything waiting to be typed, in order and in one go (with only the
+    /// newest of back-to-back levels, <see cref="DeskKeys.Coalesce"/>), or
+    /// none after <paramref name="wait"/>.
+    /// </summary>
     public async Task<IReadOnlyList<string>> Next(TimeSpan wait, CancellationToken cancel)
     {
         Interlocked.Increment(ref _waiting);
@@ -33,7 +38,11 @@ public sealed class DeskKeyQueue
             while (true)
             {
                 var (at, keys) = await _keys.Reader.ReadAsync(timeout.Token);
-                if (DateTimeOffset.UtcNow - at <= TooOld) return keys;
+                var all = DateTimeOffset.UtcNow - at <= TooOld ? keys.ToList() : [];
+                // And whatever else has come in meanwhile.
+                while (_keys.Reader.TryRead(out var more))
+                    if (DateTimeOffset.UtcNow - more.At <= TooOld) all.AddRange(more.Keys);
+                if (all.Count > 0) return DeskKeys.Coalesce(all);
             }
         }
         catch (OperationCanceledException)

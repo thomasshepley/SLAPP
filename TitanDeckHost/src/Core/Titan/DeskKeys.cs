@@ -35,6 +35,42 @@ public static class DeskKeys
         ["backspace"] = new(0x0E),
     };
 
+    /// <summary>
+    /// The keys with every level command ("@ 64 Enter" on its own, as the
+    /// deck's intensity keys and faded flashes type them) dropped when
+    /// another level command comes straight after it: only the newest level
+    /// is typed. Fewer keys in a row means fewer for Titan to miss, and a
+    /// missed "@" or Enter in a run of them turned a level into a fixture
+    /// number ("@ 64 @ 48" read as fixture 64), so fixtures got selected
+    /// mid-fade. Anything else typed is kept as it is.
+    /// </summary>
+    public static IReadOnlyList<string> Coalesce(IReadOnlyList<string> keys)
+    {
+        var commands = new List<List<string>>();
+        var current = new List<string>();
+        foreach (var key in keys)
+        {
+            current.Add(key);
+            if (key != "enter") continue;
+            commands.Add(current);
+            current = [];
+        }
+        if (current.Count > 0) commands.Add(current);
+        var kept = new List<string>();
+        for (var i = 0; i < commands.Count; i++)
+        {
+            var next = i + 1 < commands.Count ? commands[i + 1] : null;
+            if (IsLevel(commands[i]) && next is not null && IsLevel(next)) continue;
+            kept.AddRange(commands[i]);
+        }
+        return kept;
+    }
+
+    /// <summary>"@", digits, Enter: a level for the selection.</summary>
+    private static bool IsLevel(List<string> command) =>
+        command.Count >= 3 && command[0] == "@" && command[^1] == "enter"
+        && command.Skip(1).Take(command.Count - 2).All(k => k.Length == 1 && char.IsAsciiDigit(k[0]));
+
     /// <summary>Why these keys can't be typed, or null when they all can.</summary>
     public static string? Problem(IReadOnlyList<string>? keys)
     {

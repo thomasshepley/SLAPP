@@ -453,7 +453,7 @@ final class AppState: ObservableObject {
                 batch.append(deskPresses.removeFirst())
                 keys += next.keys
             }
-            let result = await typeOnDesk(batch[0].action, keys: keys)
+            let result = await typeOnDesk(batch[0].action, keys: DeskKeys.coalesced(keys))
             for press in batch {
                 if !result.ok, press.webAPIIfNotTyped {
                     finish(await (deskLink.commandClient ?? titan).perform(press.action),

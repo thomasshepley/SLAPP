@@ -7,6 +7,10 @@ the GitHub Actions run that built it. The top entry is shown in the app
 so add an entry - and bump `MARKETING_VERSION` in `project.yml` to match -
 with every change that goes to `main`.
 
+## 0.37.1 - 2026-10-29 - Steadier intensity and flash keys
+
+- **Fixed: intensity keys and faded flashes sometimes selected other fixtures.** They type "@ level Enter" on the desk, and in a fast run Titan could miss a key, turning a level into a fixture number. A faded flash now steps about three times a second (it was five), and when several levels are waiting only the newest is typed. Update TitanDeck Host to 0.16.1 too: it types each key more steadily.
+
 ## 0.37.0 - 2026-10-29 - FX: Prism video from the deck (Test mode)
 
 - **FX on the main menu (Test mode only for now):** FIRE, CANDLE, LIGHTNING, POLICE, FIREWORKS and TV, each with your versions from the FX tab. Pick one, then LAYER 1 or LAYER 2, and it goes onto that Prism layer (its Folder and File in Titan).
