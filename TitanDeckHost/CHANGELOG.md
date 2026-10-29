@@ -6,6 +6,10 @@ until it's show-ready (1.0): MINOR for features, PATCH for fixes. Keep
 (ChangelogTests checks). Each version is published as a GitHub release
 `host-v<version>` with the installer attached.
 
+## 0.18.0 - 2026-10-29 - Prism's clips for the FX Library
+
+- **New for TitanDeck 0.39's Sync with Prism:** `GET /api/v1/fx/media` lists the clips Prism has, bank by bank, with each clip's file on the PC and whether it's there. The Host looks through Avolites' Prism folders (every user's Documents\Avolites\Prism, AppData and ProgramData) for Prism's project and uses the newest one that lists media in banks. A folder or file set in TitanDeck's Prism Setup is read instead: Prism's project, or a folder of media with a subfolder per bank (Ai-style "001 Fire" names give the numbers). It only reads, so it works in Test and Show mode, and every file it weighed is in the answer's steps.
+
 ## 0.17.0 - 2026-10-29 - Groups for the deck
 
 - **New for TitanDeck 0.38's Groups page:** `GET /api/v1/groups/{titanId}/fixtures` says which fixtures a Titan group has, as fixture numbers, so the deck can type them on the desk. The Host recalls the group on Titan's WebAPI user, reads it back, and numbers the fixtures from Titan's CITP fixture list (or Titan's fixture handles if CITP hasn't got them); the WebAPI user's selection then goes back to the desk's. Works in Test and Show mode: nothing is output, only selected.

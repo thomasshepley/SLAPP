@@ -7,6 +7,14 @@ the GitHub Actions run that built it. The top entry is shown in the app
 so add an entry - and bump `MARKETING_VERSION` in `project.yml` to match -
 with every change that goes to `main`.
 
+## 0.39.0 - 2026-10-29 - Sync the FX Library with Prism
+
+- **Sync with Prism** (FX tab, top left): TitanDeck Host reads which clips Prism has in which bank from Prism's files on the Titan PC, and the FX Library takes them in. Each bank is the clip's Folder in Titan and its place in the bank is its File, so the deck's FX page knows where every clip is.
+- **Edit as before:** rename clips, give them a category (Fire, Candle, Lightning, Police, Fireworks or TV puts them on the deck) and add notes. Syncing again keeps your edits; only the Folder / File numbers follow Prism. Clips you'd already added or sent are matched up by name, not doubled.
+- Clips from Prism stay on the PC and show "On the PC". If one leaves Prism, it's marked "Not in Prism" rather than deleted.
+- **Prism Setup > Prism media:** where Prism's files are (left blank, the Host looks for them), whether Titan counts banks and clips from 0 or 1 (check one clip against Titan), Sync now, and what the Host looked at.
+- Needs TitanDeck Host 0.18.
+
 ## 0.38.0 - 2026-10-29 - Groups page
 
 - **Nothing Selected now opens your groups.** With nothing selected, press Nothing Selected on the keypad and the deck shows the groups of the set you're using. Press one and it's selected on the desk (TitanDeck types its fixture numbers, so the desk's selection is the group), then you're on Quick Keys.

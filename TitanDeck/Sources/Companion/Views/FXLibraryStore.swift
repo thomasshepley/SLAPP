@@ -20,6 +20,9 @@ final class FXLibraryStore: ObservableObject {
 
     func url(for item: FXItem) -> URL { folder.appendingPathComponent(item.fileName) }
 
+    /// The clip's file on the iPad; nil for a clip only on the PC (from Prism).
+    func localURL(for item: FXItem) -> URL? { item.isOnIPad ? url(for: item) : nil }
+
     // MARK: - Adding
 
     /// Copies files in (they may come from a picker that takes access away).
@@ -62,8 +65,9 @@ final class FXLibraryStore: ObservableObject {
         save()
     }
 
+    /// Takes the effect out of the library (a clip only on the PC stays on the PC).
     func delete(_ item: FXItem) {
-        try? FileManager.default.removeItem(at: url(for: item))
+        if let local = localURL(for: item) { try? FileManager.default.removeItem(at: local) }
         index.items.removeAll { $0.id == item.id }
         save()
     }
@@ -76,13 +80,21 @@ final class FXLibraryStore: ObservableObject {
         save()
     }
 
+    /// The library after Sync with Prism.
+    func replaceAll(_ items: [FXItem], message: String) {
+        index.items = items
+        save()
+        lastMessage = message
+    }
+
     // MARK: - Saving
 
     private func load() {
         guard let data = try? Data(contentsOf: indexURL),
               let saved = try? JSONDecoder().decode(FXIndex.self, from: data) else { return }
-        // Drop entries whose file has gone (deleted in the Files app, say).
-        index = FXIndex(items: saved.items.filter { FileManager.default.fileExists(atPath: url(for: $0).path) })
+        // Drop entries whose file has gone (deleted in the Files app, say);
+        // clips from Prism are on the PC, not here.
+        index = FXIndex(items: saved.items.filter { !$0.isOnIPad || FileManager.default.fileExists(atPath: url(for: $0).path) })
     }
 
     private func save() {

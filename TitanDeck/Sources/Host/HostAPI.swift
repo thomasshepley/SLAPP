@@ -246,6 +246,35 @@ struct HostFxProbe: Codable, Equatable {
     let steps: [String]
 }
 
+/// `GET /api/v1/fx/media` (Host 0.18+): the clips Prism has, bank by bank.
+struct HostPrismMedia: Codable, Equatable {
+    let ok: Bool
+    /// Prism's project file (or the media folder) the Host read.
+    let source: String
+    let modified: String?
+    let banks: [HostPrismBank]
+    let message: String
+    let steps: [String]
+}
+
+/// A Prism bank (Titan's Folder): its place from 0, and a number if its folder name starts with one.
+struct HostPrismBank: Codable, Equatable {
+    let index: Int
+    let number: Int?
+    let name: String
+    let clips: [HostPrismClip]
+}
+
+/// A clip in a bank (Titan's File) and its file on the PC.
+struct HostPrismClip: Codable, Equatable {
+    let index: Int
+    let number: Int?
+    let name: String
+    let path: String?
+    let bytes: Int?
+    let exists: Bool
+}
+
 // MARK: - Slate Book (Host 0.13+)
 
 /// The slate showing: slate on the clapper, take, day or night, FX.
