@@ -40,6 +40,10 @@ struct RootView: View {
                 .tabItem { Label("Slates", systemImage: "film.stack") }
                 .tag(AppState.Mode.slates)
 
+            FXTabView()
+                .tabItem { Label("FX", systemImage: "sparkles") }
+                .tag(AppState.Mode.fx)
+
             SettingsView()
                 .tabItem { Label("Settings", systemImage: "gearshape") }
                 .tag(AppState.Mode.settings)

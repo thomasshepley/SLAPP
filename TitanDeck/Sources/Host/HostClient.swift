@@ -142,6 +142,26 @@ struct HostClient: Sendable {
         try await actionPost("actions/clear-selection", body: Optional<HostCueFadeRequest>.none, timeout: 4)
     }
 
+    // MARK: - FX (Host 0.16+, Test mode)
+
+    /// A Prism layer fixture's controls set (or released) by the Host.
+    func fxLayer(_ request: HostFxLayerRequest) async throws -> HostTitanAction {
+        try await actionPost("fx/layer", body: request, timeout: 8)
+    }
+
+    /// A layer's pixel map group changed by the Host, read back to check.
+    func fxGroup(_ request: HostFxGroupRequest) async throws -> HostTitanAction {
+        try await actionPost("fx/group", body: request, timeout: 12)
+    }
+
+    /// Which controls a Prism layer fixture has (its personality's names).
+    func fxProbe(fixture: Int, names: [String]) async throws -> HostFxProbe {
+        var request = try request("fx/probe", query: [URLQueryItem(name: "fixture", value: "\(fixture)"),
+                                                     URLQueryItem(name: "names", value: names.joined(separator: ","))])
+        request.timeoutInterval = 15
+        return try await send(request)
+    }
+
     /// - Parameter timeout: a cue fade's several tries are each read back from Titan, so it gets time.
     private func actionPost<Body: Encodable>(_ path: String, body: Body?, timeout: TimeInterval = 20) async throws -> HostTitanAction {
         var request = try request(path, method: "POST")

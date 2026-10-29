@@ -7,6 +7,15 @@ the GitHub Actions run that built it. The top entry is shown in the app
 so add an entry - and bump `MARKETING_VERSION` in `project.yml` to match -
 with every change that goes to `main`.
 
+## 0.37.0 - 2026-10-29 - FX: Prism video from the deck (Test mode)
+
+- **FX on the main menu (Test mode only for now):** FIRE, CANDLE, LIGHTNING, POLICE, FIREWORKS and TV, each with your versions from the FX tab. Pick one, then LAYER 1 or LAYER 2, and it goes onto that Prism layer (its Folder and File in Titan).
+- **Each layer's page:** the clip (press it to pick another), BRIGHT, SPEED, CONTRAST and SAT (each a 0-100% picker, like MASTERS), GO and STOP for the layer's pixel map playback, FIXTURES, and RELEASE.
+- **FIXTURES:** select fixtures on the desk, then USE SEL (the layer is just those), ADD or REMOVE. Your Titan groups whose names start with FXZone are one-press zones underneath ("FXZone Bar" shows as Bar). It changes the group the layer's pixel map uses, and TitanDeck Host checks it took.
+- **The FX tab:** the FX Library has moved out of the Companion into its own tab. Give an effect a Fire / Candle / Lightning / Police / Fireworks / TV category and its Prism Folder and File, and it's on the deck. **Prism Setup** in the FX tab is where each layer's Prism fixture, pixel map group and pixel map playback go, and **Check the Prism fixture** shows which control names Titan has.
+- The deck's FX changes are held in Titan's WebAPI user's programmer, not the desk's: they aren't recorded into your cues, and they hold the layer until RELEASE (or RELEASE ALL on the FX page).
+- Needs TitanDeck Host 0.16.
+
 ## 0.36.0 - 2026-10-28 - RIG by fixture number, master levels from Titan
 
 - **RIG works on the desk:** the Alt shortcuts in 0.35 did nothing on Titan 19, so FIX +1 and FIX -1 now type the next fixture of your selection by number ("12 Enter"), and the desk shows just that one selected. The new **ALL** key under them types your whole selection back ("10 THRU 20 AND 25 Enter"). Select something new on the desk and FIX +1 starts on that instead.

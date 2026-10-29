@@ -75,6 +75,29 @@ struct FXItem: Codable, Identifiable, Hashable {
     var notes: String
     var added: Date
     var lastSent: Date?
+    /// Where Prism has the clip: the Prism layer's Folder and File in Titan
+    /// (the deck's FX page uses it when both are set).
+    var prismFolder: Int? = nil
+    var prismFile: Int? = nil
+
+    /// The deck FX page's kind for this category, if it has one.
+    var deckCategory: DeckFX.Category? {
+        switch category {
+        case .fire: .fire
+        case .candle: .candle
+        case .lightning: .lightning
+        case .police: .police
+        case .fireworks: .fireworks
+        case .tv: .tv
+        default: nil
+        }
+    }
+
+    /// On the deck's FX page: a deck category and both Prism numbers.
+    var deckItem: DeckFX.Item? {
+        guard let deckCategory, let prismFolder, let prismFile else { return nil }
+        return DeckFX.Item(id: id, title: title, category: deckCategory, folder: prismFolder, file: prismFile)
+    }
 
     /// "1920 x 1080 · 25 fps · 0:12".
     var summary: String {

@@ -114,6 +114,17 @@ TitanDeckHost/
   0.14.1-0.14.3 typed it as one burst and it didn't clear; 0.15.1's
   Alt+Right / Alt+Left / Alt+Down for RIG did nothing. CLEAR goes over CITP
   (below) since 0.15; RIG's FIX +1 / -1 type fixture numbers (TitanDeck 0.36).
+- **FX (0.16, Test mode only; `FxRecipes`, `TitanActions.Fx.cs`):** Prism
+  layers are Titan fixtures ("Layer 1", "Layer 2"; Dimmer, XY, Colour Adjust,
+  Gobo: Folder / File / Playmode / Speed). `POST /api/v1/fx/layer` selects the
+  layer fixture on the 4430 user and `SetControlValueByName` (into its
+  programmer; the user agreed, with RELEASE = `ClearSelectedControls`).
+  `POST /api/v1/fx/group` changes a pixel map's group (a pixel map follows
+  its group): members read by `RecallGroupNumeric` + `GetAllSelectedFixtureIds`,
+  then `ReplaceGroupOnHandle` (else `StoreGroupReplace`), read back to check;
+  never emptied. `GET /api/v1/fx/probe` asks `GetControlIdFromName` for each
+  name. Every FX action puts the 4430 user's selection back to the desk's
+  (CITP). 409 in Show mode.
 - **Cue fade checks must read the cue, not the editor** (0.15.1): Titan's
   `Playbacks.Editor.Times.*` read back whatever was just set even when the
   cue kept 0 (0.14-0.15 reported OK wrongly). `TitanActions.ReadFromCue` lets
