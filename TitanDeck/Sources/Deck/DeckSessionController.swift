@@ -38,6 +38,13 @@ final class DeckSessionController: ObservableObject {
     var onFX: ((DeckFX.Command, Int) -> Void)?
     /// Called when the FX fixtures page needs Titan's FXZone groups.
     var onNeedFXZones: (() -> Void)?
+    /// Called when a set's groups are needed (the set, 0-based).
+    var onNeedGroups: ((Int) -> Void)?
+    /// Called when a set is picked on the deck, to keep it for next time.
+    var onGroupSetChosen: ((Int) -> Void)?
+    /// Called when a group is pressed: select it on the desk (the group's
+    /// handle Titan id, and the key that shows the result).
+    var onPickGroup: ((Int, Int) -> Void)?
 
     /// Per-key press/failure highlight. Published so the on-screen deck mirrors it.
     @Published private(set) var overlays: [Int: DeckRenderer.Overlay] = [:]
@@ -112,6 +119,16 @@ final class DeckSessionController: ObservableObject {
     /// Group master levels set from the deck (titanId: 0...1), shown when
     /// Titan doesn't report the fader's level itself.
     @Published private(set) var masterLevels: [Int: Double] = [:]
+    /// The Groups page's sets (Settings > Deck > Groups page).
+    var groupSettings = DeckGroups.Settings() {
+        didSet {
+            guard groupSettings != oldValue else { return }
+            if case .groups? = flowOverlay { redraw() } else if case .groupSets? = flowOverlay { redraw() }
+        }
+    }
+    /// Each set's groups as Titan last listed them.
+    private(set) var groupLists: [Int: [DeckGroups.Group]] = [:]
+
     /// The FX page is on the main menu (Test mode).
     var fxEnabled = false {
         didSet { if fxEnabled != oldValue, flowOverlay == .menu { redraw() } }
@@ -192,6 +209,10 @@ final class DeckSessionController: ObservableObject {
                                     keyCount: profile.keyCount)
         case .fxFixtures(let layer, _)?:
             return DeckFX.fixturesPage(layer: layer, zones: fxZones, keyCount: profile.keyCount)
+        case .groupSets?:
+            return DeckGroups.setsPage(settings: groupSettings, keyCount: profile.keyCount)
+        case .groups(let set, _)?:
+            return DeckGroups.groupsPage(set: set, settings: groupSettings, groups: groupLists[set], keyCount: profile.keyCount)
         case nil:
             // The Quick Keys page always comes with its flash, CCT and way back.
             if currentPageIndex == DeckFlow.quickKeysPageIndex(in: profile) {
@@ -330,6 +351,7 @@ final class DeckSessionController: ObservableObject {
         case .titanPages?: onNeedCues?()
         case .masters?: if let onNeedMasters { onNeedMasters() } else { onNeedCues?() }
         case .fxFixtures?: onNeedFXZones?()
+        case .groups(let set, _)?: onNeedGroups?(set)
         case .colour?: onColourShown?()
         default: break
         }
@@ -441,7 +463,7 @@ final class DeckSessionController: ObservableObject {
                                         hasSelection: !selectedFixtures.isEmpty) {
                 case .quickKeys(let keypad): show(.selection(returnTo: keypad))
                 case .page(let page): showPage(page)
-                case .nothing: break   // Nothing Selected: only a hold does anything
+                case .groups(let keypad): showGroups(returnTo: keypad)
                 }
                 return
             }
@@ -666,6 +688,17 @@ final class DeckSessionController: ObservableObject {
             show(.fx(returnTo: home))
         case (.back, .fxLevel(let layer, _, _)), (.back, .fxFixtures(let layer, _)):
             show(.fxLayer(layer: layer, returnTo: home))
+        // Groups (Nothing Selected).
+        case (.pickGroupSet(let set), .groupSets):
+            groupSettings.chosen = set
+            onGroupSetChosen?(set)
+            show(.groups(set: set, returnTo: home))
+        case (.changeGroupSet, .groups):
+            show(.groupSets(returnTo: home))
+        case (.pickGroup(let titanId), .groups):
+            onPickGroup?(titanId, index)
+            // On to Quick Keys: the desk's selection comes in over CITP once typed.
+            show(.selection(returnTo: home))
         case (.intensity, _):
             show(.selection(returnTo: home))
         case (.back, _), (.done, _):
@@ -692,6 +725,22 @@ final class DeckSessionController: ObservableObject {
         activeTitanIds.insert(titanId)
         redraw()
         return .fireHandle(titanId: titanId)
+    }
+
+    /// Nothing Selected: the set in use's groups, or the sets to pick one.
+    private func showGroups(returnTo keypad: Int) {
+        if let set = groupSettings.current {
+            show(.groups(set: set, returnTo: keypad))
+        } else {
+            show(.groupSets(returnTo: keypad))
+        }
+    }
+
+    /// A set's groups from Titan, for the Groups page.
+    func setGroups(_ groups: [DeckGroups.Group], forSet set: Int) {
+        guard groupLists[set] != groups else { return }
+        groupLists[set] = groups
+        if case .groups(set, _)? = flowOverlay { redraw() }
     }
 
     /// A video onto a layer, then that layer's page (the result shows on its clip key).

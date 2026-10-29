@@ -23,6 +23,7 @@ struct SettingsView: View {
                 FileDropSection(store: appState.fileDrop, host: appState.host)
                 if !showMode { testSection }
                 DeckSection(deck: appState.deck)
+                GroupSetsSection()
                 if !showMode { SoakLogSection(store: appState.connectionLog) }
                 WatchSection(watch: appState.watch)
                 if !showMode { logSection }

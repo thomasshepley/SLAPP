@@ -197,6 +197,16 @@ struct HostTitanAction: Codable, Equatable {
     let steps: [String]
 }
 
+// MARK: - Groups (Host 0.17+)
+
+/// `GET /api/v1/groups/{titanId}/fixtures`: a Titan group's fixture numbers.
+struct HostGroupFixtures: Codable, Equatable {
+    let ok: Bool
+    let fixtures: [Int]
+    let message: String
+    let steps: [String]
+}
+
 // MARK: - FX (Host 0.16+, Test mode)
 
 /// One control of a Prism layer fixture and its value, as Titan's attribute editor shows it.

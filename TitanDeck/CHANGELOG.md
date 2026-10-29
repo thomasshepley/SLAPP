@@ -7,6 +7,13 @@ the GitHub Actions run that built it. The top entry is shown in the app
 so add an entry - and bump `MARKETING_VERSION` in `project.yml` to match -
 with every change that goes to `main`.
 
+## 0.38.0 - 2026-10-29 - Groups page
+
+- **Nothing Selected now opens your groups.** With nothing selected, press Nothing Selected on the keypad and the deck shows the groups of the set you're using. Press one and it's selected on the desk (TitanDeck types its fixture numbers, so the desk's selection is the group), then you're on Quick Keys.
+- **Sets:** each set is a page of Titan's Groups window, starting at Groups page 2 (Set 1 = page 2, Set 2 = page 3, Set 3 = page 4). The first time, the deck asks which set; it remembers it after that, and the SET key on the Groups page changes it.
+- **Settings > Groups page:** how many sets, their names, which Titan Groups page Set 1 is, and the set in use.
+- Needs TitanDeck Host 0.17, which works out a group's fixture numbers.
+
 ## 0.37.1 - 2026-10-29 - Steadier intensity and flash keys
 
 - **Fixed: intensity keys and faded flashes sometimes selected other fixtures.** They type "@ level Enter" on the desk, and in a fast run Titan could miss a key, turning a level into a fixture number. A faded flash now steps about three times a second (it was five), and when several levels are waiting only the newest is typed. Update TitanDeck Host to 0.16.1 too: it types each key more steadily.

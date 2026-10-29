@@ -44,6 +44,10 @@ enum DeckFlow {
         case fxLevel(layer: Int, control: DeckFX.Control, returnTo: Int)
         /// A layer's fixtures: USE SEL / ADD / REMOVE and the FXZone groups.
         case fxFixtures(layer: Int, returnTo: Int)
+        /// The group sets (Nothing Selected, before a set is picked, or SET).
+        case groupSets(returnTo: Int)
+        /// One set's groups: a press selects that group on the desk.
+        case groups(set: Int, returnTo: Int)
 
         /// The profile page to go back to.
         var returnTo: Int {
@@ -53,6 +57,7 @@ enum DeckFlow {
                  .rig(let page), .masters(let page), .masterLevel(_, let page): return page
             case .fx(let page), .fxVersions(_, let page), .fxLayerPick(_, let page), .fxLayer(_, let page),
                  .fxLevel(_, _, let page), .fxFixtures(_, let page): return page
+            case .groupSets(let page), .groups(_, let page): return page
             case .titanPages(_, _, _, let page), .titanCues(_, _, _, let page), .fadePicker(_, _, let page): return page
             }
         }
@@ -378,13 +383,13 @@ enum DeckFlow {
     static let selectionColour = "#0E5560"
 
     /// Where a tap on the Menu key goes: from the keypad to Quick Keys (with
-    /// nothing selected, nowhere: only a hold does anything), from anywhere
-    /// else back to the keypad. A profile with no keypad page just steps
-    /// through its pages.
+    /// nothing selected, to the Groups page: 0.38), from anywhere else back
+    /// to the keypad. A profile with no keypad page just steps through its
+    /// pages.
     enum MenuTap: Equatable {
         case quickKeys(returnTo: Int)
         case page(Int)
-        case nothing
+        case groups(returnTo: Int)
     }
 
     static func menuTap(onPage index: Int, overlay: Overlay?, profile: DeckProfile, hasSelection: Bool) -> MenuTap {
@@ -392,7 +397,7 @@ enum DeckFlow {
             return .page(nextPage(after: index, pageCount: profile.pages.count))
         }
         guard overlay == nil, index == keypad else { return .page(keypad) }
-        return hasSelection ? .quickKeys(returnTo: keypad) : .nothing
+        return hasSelection ? .quickKeys(returnTo: keypad) : .groups(returnTo: keypad)
     }
 
     static let nothingSelected = "Nothing Selected"

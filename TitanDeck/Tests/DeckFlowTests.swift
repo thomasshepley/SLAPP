@@ -152,8 +152,8 @@ final class DeckFlowTests: XCTestCase {
 
         XCTAssertEqual(DeckFlow.menuLabel(onPage: 0, overlay: nil, profile: profile, pageName: "Keypad", hasSelection: false),
                        "Nothing Selected")
-        XCTAssertEqual(DeckFlow.menuTap(onPage: 0, overlay: nil, profile: profile, hasSelection: false), .nothing,
-                       "nothing selected: a tap does nothing, only a hold")
+        XCTAssertEqual(DeckFlow.menuTap(onPage: 0, overlay: nil, profile: profile, hasSelection: false), .groups(returnTo: 0),
+                       "nothing selected: a tap opens the Groups page")
         XCTAssertEqual(DeckFlow.menuTap(onPage: 3, overlay: nil, profile: profile, hasSelection: false), .page(0),
                        "elsewhere a tap still goes back to the keypad")
 

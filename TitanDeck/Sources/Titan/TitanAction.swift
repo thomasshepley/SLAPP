@@ -206,4 +206,10 @@ enum DeckChoice: Codable, Hashable {
     case fxRemove
     /// FX fixtures: the layer's group becomes an FXZone group's fixtures.
     case fxZone(titanId: Int)
+    /// Group sets: use this set (0-based) from now on.
+    case pickGroupSet(Int)
+    /// Groups page: pick another set.
+    case changeGroupSet
+    /// Groups page: select this group on the desk.
+    case pickGroup(titanId: Int)
 }

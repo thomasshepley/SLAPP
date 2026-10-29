@@ -136,6 +136,43 @@ public static class FxRecipes
         return ids;
     }
 
+    /// <summary>Every fixture handle (for fixture numbers when CITP hasn't Titan's fixture list).</summary>
+    public static TitanCall FixtureHandles() => new("GET", "/titan/handles/Fixtures");
+
+    /// <summary>
+    /// Titan id to fixture number from Titan's fixture handles, where a handle
+    /// has a user number (at the top or in its properties, any casing).
+    /// </summary>
+    public static IReadOnlyDictionary<int, int> FixtureNumbers(string handlesJson)
+    {
+        var numbers = new Dictionary<int, int>();
+        JsonArray? handles;
+        try { handles = JsonNode.Parse(handlesJson) as JsonArray; }
+        catch (JsonException) { return numbers; }
+        foreach (var handle in handles?.OfType<JsonObject>() ?? [])
+        {
+            if (Find(handle, "titanId") is not JsonValue idValue || !idValue.TryGetValue(out int id)) continue;
+            var number = Number(Find(handle, "userNumber"));
+            if (number is null && Find(handle, "properties") is JsonArray properties)
+                foreach (var property in properties.OfType<JsonObject>())
+                    if (Find(property, "Key") is JsonValue key && key.TryGetValue(out string? name)
+                        && name.Equals("userNumber", StringComparison.OrdinalIgnoreCase))
+                        number = Number(Find(property, "Value"));
+            if (number is > 0) numbers[id] = number.Value;
+        }
+        return numbers;
+    }
+
+    private static int? Number(JsonNode? node) => node switch
+    {
+        JsonValue v when v.TryGetValue(out int n) => n,
+        JsonValue v when v.TryGetValue(out string? s) && int.TryParse(s, NumberStyles.Integer, CultureInfo.InvariantCulture, out var n) => n,
+        _ => null,
+    };
+
+    private static JsonNode? Find(JsonObject obj, string key) =>
+        obj.FirstOrDefault(p => p.Key.Equals(key, StringComparison.OrdinalIgnoreCase)).Value;
+
     /// <summary>A control id from GetControlIdFromName's answer; null when the fixture hasn't got it.</summary>
     public static int? ControlIdFrom(string answer) =>
         int.TryParse(answer.Trim().Trim('"'), NumberStyles.Integer, CultureInfo.InvariantCulture, out var id) && id >= 0 ? id : null;

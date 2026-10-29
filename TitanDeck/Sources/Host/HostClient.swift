@@ -142,6 +142,16 @@ struct HostClient: Sendable {
         try await actionPost("actions/clear-selection", body: Optional<HostCueFadeRequest>.none, timeout: 4)
     }
 
+    // MARK: - Groups (Host 0.17+)
+
+    /// A Titan group's fixture numbers (by its handle's Titan id), for the
+    /// deck to type on the desk.
+    func groupFixtures(titanId: Int) async throws -> HostGroupFixtures {
+        var request = try request("groups/\(titanId)/fixtures")
+        request.timeoutInterval = 8
+        return try await send(request)
+    }
+
     // MARK: - FX (Host 0.16+, Test mode)
 
     /// A Prism layer fixture's controls set (or released) by the Host.
