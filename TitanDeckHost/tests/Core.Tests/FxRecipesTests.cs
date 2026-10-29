@@ -18,6 +18,18 @@ public class FxRecipesTests
     }
 
     [Fact]
+    public void RecallsAGroupEveryWayTitanHas()
+    {
+        var ways = FxRecipes.RecallGroupWays(4400, 12);
+        Assert.Equal(["RecallGroup", "RecallGroupById", "RecallGroupNumeric", "RecallGroups"], ways.Select(w => w.Name));
+        Assert.Equal("/titan/script/2/Group/RecallGroup?handle_titanId=4400", ways[0].Call.PathAndQuery);
+        Assert.Equal("/titan/script/2/Group/RecallGroupById?groupId=4400", ways[1].Call.PathAndQuery);
+        Assert.Equal("/titan/script/2/Group/RecallGroupNumeric?userId=12", ways[2].Call.PathAndQuery);
+        Assert.Equal("/titan/script/2/Group/RecallGroups?handles_handleList=4400", ways[3].Call.PathAndQuery);
+        Assert.DoesNotContain(FxRecipes.RecallGroupWays(4400, null), w => w.Name == "RecallGroupNumeric");
+    }
+
+    [Fact]
     public void ReplacesAGroupTwoWays()
     {
         var attempts = FxRecipes.ReplaceGroupAttempts(12);

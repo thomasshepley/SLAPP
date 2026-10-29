@@ -49,6 +49,24 @@ public static class FxRecipes
     public static TitanCall RecallGroupHandle(int titanId) =>
         TitanCall.Script("Group/RecallGroup", ("handle_titanId", Id(titanId)));
 
+    /// <summary>
+    /// The ways to put a group onto the (cleared) selection, tried in turn
+    /// until one selects something (Host 0.18.1): by its handle (0.17 only
+    /// did this, and a group made of other groups selected nothing), by the
+    /// group's own id, by its number, and as a one-group range.
+    /// </summary>
+    public static IReadOnlyList<(string Name, TitanCall Call)> RecallGroupWays(int titanId, int? userNumber)
+    {
+        var ways = new List<(string, TitanCall)>
+        {
+            ("RecallGroup", RecallGroupHandle(titanId)),
+            ("RecallGroupById", TitanCall.Script("Group/RecallGroupById", ("groupId", Id(titanId)))),
+        };
+        if (userNumber is > 0) ways.Add(("RecallGroupNumeric", RecallGroup(userNumber.Value)));
+        ways.Add(("RecallGroups", TitanCall.Script("Group/RecallGroups", ("handles_handleList", Id(titanId)))));
+        return ways;
+    }
+
     /// <summary>The ways to make a group the selection, tried in turn and each checked.</summary>
     public static IReadOnlyList<TitanAttempt> ReplaceGroupAttempts(int userNumber) =>
     [
