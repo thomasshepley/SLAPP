@@ -202,8 +202,11 @@ final class DeckSessionController: ObservableObject {
             return DeckFX.versionsPage(category: category, items: fxItems, keyCount: profile.keyCount)
         case .fxLayerPick(let id, _)?:
             return DeckFX.layerPickPage(item: fxItems.first { $0.id == id }, layers: fxLayers, keyCount: profile.keyCount)
-        case .fxLayer(let layer, _)?, .fxLevel(let layer, _, _)?:
+        case .fxLayer(let layer, _)?:
             return DeckFX.layerPage(layer: layer, state: fxLayers[layer] ?? DeckFX.LayerState(), keyCount: profile.keyCount)
+        case .fxLevel(let layer, let control, _)?:
+            return DeckFX.levelPage(layer: layer, control: control, current: fxLayers[layer]?.levels[control],
+                                    keyCount: profile.keyCount)
         case .fxFixtures(let layer, _)?:
             return DeckFX.zonesPage(layer: layer, zones: fxZones, keyCount: profile.keyCount)
         case .fxFaderLevel(let layer, _)?:
@@ -646,7 +649,10 @@ final class DeckSessionController: ObservableObject {
             show(.fxLayer(layer: layer, returnTo: home))
         case (.fxReleaseAll, .fx):
             onFX?(.releaseAll, index)
-            for layer in fxLayers.keys { fxLayers[layer]?.clip = nil }
+            for layer in fxLayers.keys {
+                fxLayers[layer]?.clip = nil
+                fxLayers[layer]?.levels = [:]
+            }
             redraw()
         case (.fxStopAll, .fx):
             onFX?(.stopAll, index)
@@ -671,20 +677,29 @@ final class DeckSessionController: ObservableObject {
             let state = fxLayers[layer] ?? DeckFX.LayerState()
             fxLayers[layer, default: DeckFX.LayerState()].running = !state.running
             redraw()
-            onFX?(state.running ? .stop(layer: layer) : .go(layer: layer, level: state.level ?? 1), index)
+            onFX?(state.running ? .stop(layer: layer) : .go(layer: layer, level: 1), index)
+        case (.fxSelectGroup, .fxLayer(let layer, _)):
+            fxLayers[layer, default: DeckFX.LayerState()].level = 1
+            redraw()
+            onFX?(.selectGroup(layer: layer), index)
         case (.fxFaderLevel, .fxLayer(let layer, _)):
             show(.fxFaderLevel(layer: layer, returnTo: home))
         case (.fxLevel(let level), .fxFaderLevel(let layer, _)):
             fxLayers[layer, default: DeckFX.LayerState()].level = level
             show(.fxLayer(layer: layer, returnTo: home))
-            // Running: the fader moves now (its result on LEVEL); else at the next RUN.
-            if fxLayers[layer]?.running == true { onFX?(.level(layer: layer, level: level), 2) }
+            onFX?(.groupLevel(layer: layer, level: level), DeckFX.LayerKey.level.rawValue)
+        case (.fxControl(let raw), .fxLayer(let layer, _)):
+            guard let control = DeckFX.Control(rawValue: raw) else { return }
+            show(.fxLevel(layer: layer, control: control, returnTo: home))
+        case (.fxLevel(let level), .fxLevel(let layer, let control, _)):
+            fxLayers[layer, default: DeckFX.LayerState()].levels[control] = level
+            show(.fxLayer(layer: layer, returnTo: home))
+            onFX?(.setLevel(layer: layer, control: control, level: level), DeckFX.LayerKey.control(control).rawValue)
         case (.fxRelease, .fxLayer(let layer, _)):
             onFX?(.release(layer: layer), index)
             fxLayers[layer]?.clip = nil
+            fxLayers[layer]?.levels = [:]
             redraw()
-        case (.fxFixtures, .fxLayer(let layer, _)):
-            show(.fxFixtures(layer: layer, returnTo: home))
         case (.fxZone(let titanId), .fxFixtures(let layer, _)):
             guard let zone = fxZones.first(where: { $0.titanId == titanId }) else { return }
             show(.fxLayer(layer: layer, returnTo: home))
@@ -752,10 +767,12 @@ final class DeckSessionController: ObservableObject {
     }
 
     /// A video onto a layer, then that layer's page (the result shows on its clip key).
+    /// The clip on the layer; AppState also selects the FX group on the desk at 100%.
     private func setVideo(_ item: DeckFX.Item, on layer: Int, home: Int) {
         fxLayers[layer, default: DeckFX.LayerState()].clip = item.title
+        fxLayers[layer, default: DeckFX.LayerState()].level = 1
         show(.fxLayer(layer: layer, returnTo: home))
-        onFX?(.setVideo(layer: layer, item: item), 0)
+        onFX?(.setVideo(layer: layer, item: item), DeckFX.LayerKey.clip.rawValue)
     }
 
     /// A layer's faders as they turned out (RUN or STOP that Titan didn't take).

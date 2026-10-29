@@ -1,19 +1,20 @@
 // Deck/DeckFX.swift
 import Foundation
 
-/// The FX page (Test mode, TitanDeck 0.37; built round the user's own faders
-/// in 0.40). An FX in Titan is three faders per Prism layer ("Layer 1",
-/// "Layer 2"), recorded by the user: the pixel map FX (over a group), the
-/// Prism layer fixture's settings (clip, play mode, speed, 100%) and the
-/// fixtures' level. The deck runs them, it doesn't replace them:
+/// The FX page (Test mode, TitanDeck 0.37; reworked with the user in 0.40).
+/// Per Prism layer ("Layer 1", "Layer 2") the user records a Prism layer
+/// fader (clip, play mode, speed, 100%) and a pixel map fader over an FX
+/// group, and changes the group on the desk themselves. The deck:
 ///
 /// FX > a category (FIRE, CANDLE...) > a version from the FX tab (its Prism
-/// Folder / File) > LAYER 1 or LAYER 2 puts that clip on the layer (over the
-/// Prism fader's, in the WebAPI user's programmer, until RESET CLIP). A
-/// layer's page: CLIP (swap), RUN / STOP (all three faders), LEVEL (the level
-/// fader, so the fixtures' intensity stays a fader), ZONE (an FXZone group
-/// becomes the pixel map's group) and RESET CLIP. Clip and zone go through
-/// the Host (`/api/v1/fx`); the faders straight to Titan. Pure, so it's tested.
+/// Folder / File) > LAYER 1 or LAYER 2 puts that clip on the layer (in the
+/// WebAPI user's programmer, until RESET) and selects the FX group on the
+/// desk at 100%, so the user can set its colour mode before RUN. A layer's
+/// page: CLIP, RUN / STOP (its faders), SELECT (the FX group on the desk at
+/// 100% again), LEVEL (the FX group's intensity, typed on the desk), the
+/// Prism quick settings BRIGHT / SPEED / CONTRAST / SAT, and RESET. Clip and
+/// quick settings go through the Host (`/api/v1/fx`), the faders straight to
+/// Titan, the group's fixtures are typed on the desk. Pure, so it's tested.
 enum DeckFX {
     /// The two Prism layers the deck drives.
     static let layers = [1, 2]
@@ -110,16 +111,21 @@ enum DeckFX {
     /// What a press on the FX pages asks Titan for (AppState sends the clip
     /// and zone to the Host, the faders straight to Titan).
     enum Command: Equatable {
-        /// The clip on the layer fixture (over the Prism fader's).
+        /// The clip on the layer fixture (over the Prism fader's), then the
+        /// FX group selected on the desk at 100%.
         case setVideo(layer: Int, item: Item)
-        /// RUN: the layer's faders up, the level fader to `level`.
+        /// A Prism quick setting on the layer fixture.
+        case setLevel(layer: Int, control: Control, level: Double)
+        /// RUN: the layer's faders up (a level fader, if set, at `level`).
         case go(layer: Int, level: Double)
         /// STOP: the layer's faders released.
         case stop(layer: Int)
         case stopAll
-        /// The level fader's level, while the layer runs.
-        case level(layer: Int, level: Double)
-        /// RESET CLIP: back to the Prism fader's clip.
+        /// SELECT: the FX group selected on the desk at 100%.
+        case selectGroup(layer: Int)
+        /// LEVEL: the FX group to a level, typed on the desk.
+        case groupLevel(layer: Int, level: Double)
+        /// RESET: the layer fixture back to its fader (clip and quick settings).
         case release(layer: Int)
         case releaseAll
         case zone(layer: Int, zone: Zone)
@@ -214,8 +220,7 @@ enum DeckFX {
         }
 
         /// The control names the FX tab's probe also asks about.
-        /// Only the clip's now (0.40): the rest stays on the Prism layer fader.
-        var controlNames: [String] { [folder, file] }
+        var controlNames: [String] { [dimmer, folder, file, speed, contrast, saturation] }
     }
 
     /// Whether a layer runs, from Titan's playbacks: any of its faders
@@ -313,29 +318,64 @@ enum DeckFX {
         return DeckPage(name: item.map { short($0.title, 24) } ?? "FX", keys: keys)
     }
 
-    /// A layer's page: CLIP (a press picks another), RUN / STOP (the
-    /// layer's faders), LEVEL (the level fader), ZONE and RESET CLIP, with BACK.
+    /// The layer page's keys, in place: where each one's result shows.
+    enum LayerKey: Int {
+        case clip, run, select, level, brightness, speed, contrast, saturation, reset
+
+        static func control(_ control: Control) -> LayerKey {
+            switch control {
+            case .brightness: .brightness
+            case .speed: .speed
+            case .contrast: .contrast
+            case .saturation: .saturation
+            }
+        }
+    }
+
+    /// A layer's page: CLIP (a press picks another), RUN / STOP (its
+    /// faders), SELECT (the FX group on the desk at 100%), LEVEL (the FX
+    /// group's intensity), the quick settings and RESET, with BACK.
     static func layerPage(layer: Int, state: LayerState, keyCount: Int) -> DeckPage {
         let back = max(keyCount - 1, 0)
-        let templates = [
-            KeyDefinition(index: 0, label: "CLIP\n" + clipText(state), colorHex: fxColour, sfSymbol: "film",
-                          action: .deckChoice(.fxPickVideo)),
+        var templates = [
+            KeyDefinition(index: LayerKey.clip.rawValue, label: "CLIP\n" + clipText(state), colorHex: fxColour,
+                          sfSymbol: "film", action: .deckChoice(.fxPickVideo)),
             state.running
-                ? KeyDefinition(index: 1, label: "STOP", colorHex: stopColour, sfSymbol: "stop.fill", action: .deckChoice(.fxRun))
-                : KeyDefinition(index: 1, label: "RUN", colorHex: DeckProfile.goColor, sfSymbol: "play.fill", action: .deckChoice(.fxRun)),
-            KeyDefinition(index: 2, label: "LEVEL\n\(DeckFlow.percentText(state.level ?? 1))", colorHex: "#2D4FA3",
-                          sfSymbol: "slider.vertical.3", action: .deckChoice(.fxFaderLevel)),
-            KeyDefinition(index: 3, label: "ZONE", colorHex: "#3D2E6B", sfSymbol: "square.grid.3x3",
-                          action: .deckChoice(.fxFixtures)),
-            KeyDefinition(index: 4, label: "RESET\nCLIP", colorHex: releaseColour, sfSymbol: "arrow.uturn.down",
-                          action: .deckChoice(.fxRelease)),
+                ? KeyDefinition(index: LayerKey.run.rawValue, label: "STOP", colorHex: stopColour, sfSymbol: "stop.fill",
+                                action: .deckChoice(.fxRun))
+                : KeyDefinition(index: LayerKey.run.rawValue, label: "RUN", colorHex: DeckProfile.goColor, sfSymbol: "play.fill",
+                                action: .deckChoice(.fxRun)),
+            KeyDefinition(index: LayerKey.select.rawValue, label: "SELECT\nFX GROUP", colorHex: "#0E7C86",
+                          sfSymbol: "lightbulb.2", action: .deckChoice(.fxSelectGroup)),
+            KeyDefinition(index: LayerKey.level.rawValue, label: "LEVEL\n\(DeckFlow.percentText(state.level))",
+                          colorHex: "#2D4FA3", sfSymbol: "slider.vertical.3", action: .deckChoice(.fxFaderLevel)),
         ]
+        for control in Control.allCases {
+            templates.append(KeyDefinition(index: LayerKey.control(control).rawValue,
+                                           label: "\(control.label)\n\(DeckFlow.percentText(state.levels[control]))",
+                                           colorHex: "#3D2E6B", action: .deckChoice(.fxControl(control.rawValue))))
+        }
+        templates.append(KeyDefinition(index: LayerKey.reset.rawValue, label: "RESET", colorHex: releaseColour,
+                                       sfSymbol: "arrow.uturn.down", action: .deckChoice(.fxRelease)))
         var keys = Array(templates.prefix(back))
         keys.append(backKey(back))
         return DeckPage(name: "Layer \(layer)", keys: keys)
     }
 
-    /// The level fader's level, 0% to 100% in tens, the current one lit, with BACK.
+    /// A Prism quick setting, 0% to 100% in tens, the current one lit, with BACK.
+    static func levelPage(layer: Int, control: Control, current: Double?, keyCount: Int) -> DeckPage {
+        let back = max(keyCount - 1, 0)
+        let lit = current.map { ($0 * 10).rounded() / 10 }
+        var keys = DeckFlow.masterLevels.prefix(back).enumerated().map { slot, level in
+            KeyDefinition(index: slot, label: DeckFlow.percentText(level),
+                          colorHex: level == lit ? DeckProfile.goColor : "#3D2E6B",
+                          action: .deckChoice(.fxLevel(level)))
+        }
+        keys.append(backKey(back))
+        return DeckPage(name: "L\(layer) \(control.label)", keys: keys)
+    }
+
+    /// The FX group's intensity, 0% to 100% in tens, the current one lit, with BACK.
     static func faderLevelPage(layer: Int, current: Double?, keyCount: Int) -> DeckPage {
         let back = max(keyCount - 1, 0)
         let lit = ((current ?? 1) * 10).rounded() / 10
@@ -345,7 +385,7 @@ enum DeckFX {
                           action: .deckChoice(.fxLevel(level)))
         }
         keys.append(backKey(back))
-        return DeckPage(name: "L\(layer) LEVEL", keys: keys)
+        return DeckPage(name: "L\(layer) FX group level", keys: keys)
     }
 
     /// Where a layer's pixel map runs: the FXZone groups (each becomes the

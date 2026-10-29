@@ -39,24 +39,31 @@ final class DeckFXTests: XCTestCase {
         XCTAssertEqual(none.key(at: 0)?.label, "No TV\nin FX tab")
     }
 
-    func testTheLayerPageRunsTheFaders() {
+    func testTheLayerPage() {
         var state = DeckFX.LayerState(clip: "Table candle flicker slow")
         state.level = 0.8
+        state.levels[.speed] = 0.5
         let page = DeckFX.layerPage(layer: 1, state: state, keyCount: 15)
         XCTAssertEqual(page.key(at: 0)?.label, "CLIP\nTable candl.")
         XCTAssertEqual(page.key(at: 1)?.label, "RUN")
-        XCTAssertEqual(page.key(at: 2)?.label, "LEVEL\n80%")
+        XCTAssertEqual(page.key(at: 2)?.label, "SELECT\nFX GROUP")
+        XCTAssertEqual(page.key(at: 3)?.label, "LEVEL\n80%")
+        XCTAssertEqual(page.key(at: 5)?.label, "SPEED\n50%")
         XCTAssertEqual(page.keys.map(\.action).compactMap { $0 }, [
-            .deckChoice(.fxPickVideo), .deckChoice(.fxRun), .deckChoice(.fxFaderLevel),
-            .deckChoice(.fxFixtures), .deckChoice(.fxRelease), .deckChoice(.back),
+            .deckChoice(.fxPickVideo), .deckChoice(.fxRun), .deckChoice(.fxSelectGroup), .deckChoice(.fxFaderLevel),
+            .deckChoice(.fxControl("brightness")), .deckChoice(.fxControl("speed")), .deckChoice(.fxControl("contrast")),
+            .deckChoice(.fxControl("saturation")), .deckChoice(.fxRelease), .deckChoice(.back),
         ])
+        XCTAssertEqual(DeckFX.LayerKey.control(.saturation).rawValue, 7)
         state.running = true
         XCTAssertEqual(DeckFX.layerPage(layer: 1, state: state, keyCount: 15).key(at: 1)?.label, "STOP")
-        XCTAssertEqual(DeckFX.layerPage(layer: 1, state: DeckFX.LayerState(), keyCount: 15).key(at: 2)?.label,
-                       "LEVEL\n100%", "full until a level is picked")
+        XCTAssertEqual(DeckFX.layerPage(layer: 1, state: DeckFX.LayerState(), keyCount: 15).key(at: 3)?.label, "LEVEL\n-")
         let level = DeckFX.faderLevelPage(layer: 1, current: 0.8, keyCount: 15)
         XCTAssertEqual(level.key(at: 8)?.colorHex, DeckProfile.goColor, "80% lit")
         XCTAssertEqual(level.key(at: 10)?.action, .deckChoice(.fxLevel(1)))
+        let speed = DeckFX.levelPage(layer: 1, control: .speed, current: 0.5, keyCount: 15)
+        XCTAssertEqual(speed.key(at: 5)?.colorHex, DeckProfile.goColor)
+        XCTAssertEqual(speed.name, "L1 SPEED")
     }
 
     func testZones() {
@@ -73,7 +80,8 @@ final class DeckFXTests: XCTestCase {
 
     func testSettings() {
         var settings = DeckFX.Settings()
-        XCTAssertEqual(settings.controlNames, ["Folder", "File"])
+        XCTAssertEqual(settings.controlNames, ["Dimmer", "Folder", "File", "Speed", "Contrast", "Saturation"])
+        XCTAssertEqual(settings.value(0.55), 55)
         XCTAssertEqual(settings.layer(3), DeckFX.Settings.Layer(), "no third layer")
         XCTAssertEqual(settings.layer(1).faders, [])
         settings.layers[0].prismPage = 5

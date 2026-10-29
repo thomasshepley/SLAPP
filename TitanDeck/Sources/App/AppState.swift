@@ -1017,15 +1017,10 @@ final class AppState: ObservableObject {
                 messages.append(result.message)
             }
             return messages.isEmpty ? (false, "No FX faders set (FX tab > Prism Setup)") : (ok, messages.joined(separator: "; "))
-        case .level(let layer, let level):
-            guard let spot = settings.layer(layer).spot(.level) else {
-                return (false, "Layer \(layer)'s level fader isn't set (FX tab > Prism Setup)")
-            }
-            guard let id = await playbackHandle(page: spot.page, fader: spot.fader) else {
-                return (false, "Titan has no playback on page \(spot.page) fader \(spot.fader) (layer \(layer)'s level fader)")
-            }
-            let result = await (deskLink.commandClient ?? titan).perform(Self.faderLevel(id, level))
-            return (result.ok, "Layer \(layer) level \(DeckFlow.percentText(level))" + (result.ok ? "" : ": " + (result.error ?? "Titan didn't take it")))
+        case .selectGroup(let layer):
+            return await selectFXGroup(layer: layer, level: 1)
+        case .groupLevel(let layer, let level):
+            return await selectFXGroup(layer: layer, level: level)
         default:
             break
         }
@@ -1040,9 +1035,19 @@ final class AppState: ObservableObject {
             switch command {
             case .setVideo(let layer, let item):
                 guard let number = fixture(layer) else { return unset(layer, "Prism fixture") }
-                answer = try await client.fxLayer(HostFxLayerRequest(fixture: number, values: [
+                let clip = try await client.fxLayer(HostFxLayerRequest(fixture: number, values: [
                     HostFxControlValue(control: settings.folder, value: Double(item.folder)),
                     HostFxControlValue(control: settings.file, value: Double(item.file)),
+                ], release: false))
+                Log.titan("Host FX: \(clip.message)\n" + clip.steps.joined(separator: "\n"))
+                // Then the FX group on the desk at 100%, ready for its colour mode before RUN.
+                guard settings.layer(layer).group > 0 else { return (clip.ok, clip.message) }
+                let selected = await selectFXGroup(layer: layer, level: 1)
+                return (clip.ok && selected.ok, clip.message + "; " + selected.message)
+            case .setLevel(let layer, let control, let level):
+                guard let number = fixture(layer) else { return unset(layer, "Prism fixture") }
+                answer = try await client.fxLayer(HostFxLayerRequest(fixture: number, values: [
+                    HostFxControlValue(control: settings.controlName(control), value: settings.value(level)),
                 ], release: false))
             case .release(let layer):
                 guard let number = fixture(layer) else { return unset(layer, "Prism fixture") }
@@ -1061,7 +1066,7 @@ final class AppState: ObservableObject {
                 let group = settings.layer(layer).group
                 guard group > 0 else { return unset(layer, "pixel map group") }
                 answer = try await client.fxGroup(HostFxGroupRequest(group: group, mode: "zone", fixtures: [], zoneTitanId: zone.titanId))
-            case .go, .stop, .stopAll, .level:
+            case .go, .stop, .stopAll, .selectGroup, .groupLevel:
                 return (false, "")
             }
             Log.titan("Host FX: \(answer.message)\n" + answer.steps.joined(separator: "\n"))
@@ -1114,12 +1119,43 @@ final class AppState: ObservableObject {
         return (problems.isEmpty, taken > 0, problems.isEmpty ? what : what + ": " + problems.joined(separator: "; "))
     }
 
-    /// The level fader to a level (0...1): fired at it for RUN, else moved.
+    /// A level fader fired at a level (0...1) for RUN.
     private static func faderLevel(_ titanId: Int, _ level: Double, fire: Bool = false) -> TitanAction {
         let value = TitanEndpoints.format(number: min(max(level, 0), 1))
         return fire
             ? .raw("Playbacks/FirePlaybackAtLevel?handle_titanId=\(titanId)&level_level=\(value)&alwaysRefire=false")
             : .raw("Playbacks/SetPlaybackLevel?srcHandle_titanId=\(titanId)&level_level=\(value)")
+    }
+
+    /// The layer's FX group selected on the desk (its fixture numbers typed,
+    /// so it's in the user's own programmer) at a level: 100% for SELECT and
+    /// after a clip, LEVEL's otherwise. Read afresh each time, as the user
+    /// changes the group on the desk. The deck takes it as its selection, so
+    /// Quick Keys act on it too.
+    private func selectFXGroup(layer: Int, level: Double) async -> (ok: Bool, message: String) {
+        let number = fxSettings.layer(layer).group
+        guard number > 0 else { return (false, "Layer \(layer)'s FX group isn't set (FX tab > Prism Setup)") }
+        guard let client = host.client else { return (false, "Selecting the FX group needs TitanDeck Host 0.17 or later, paired in Settings") }
+        var titanId: Int?
+        for name in ["Groups", "Group"] {
+            guard let handles = await titan.handles(group: name), !handles.isEmpty else { continue }
+            titanId = handles.first { $0.userNumber == number }?.titanId
+            break
+        }
+        guard let titanId else { return (false, "Titan has no group \(number) (layer \(layer)'s FX group)") }
+        do {
+            let answer = try await client.groupFixtures(titanId: titanId, number: number)
+            Log.titan("Host group: \(answer.message)\n" + answer.steps.joined(separator: "\n"))
+            guard answer.ok, !answer.fixtures.isEmpty else { return (false, "FX group \(number) not selected: " + answer.message) }
+            let backOut = keypad.readout.current?.text == nil ? [] : ["exit"]
+            queueOnDesk(.deckChoice(.fxSelectGroup), keys: backOut + DeskKeys.selecting(answer.fixtures) + DeskKeys.level(level * 100),
+                        keypadLine: nil, keyIndex: nil)
+            deck.selectTyped(answer.fixtures)
+            rememberTyped(level, fixtures: answer.fixtures)
+            return (true, "FX group \(number) (\(answer.message)) at \(DeckFlow.percentText(level)) on the desk")
+        } catch {
+            return (false, "FX group \(number) not selected: " + error.localizedDescription)
+        }
     }
 
     /// The playback on a page and fader (both from 1) as Titan's handle.

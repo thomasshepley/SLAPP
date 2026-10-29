@@ -44,10 +44,10 @@ struct FXTabView: View {
     }
 }
 
-/// Each Prism layer's faders in Titan (0.40: the Prism layer, the pixel map
-/// and the fixtures' level, which RUN / STOP / LEVEL run), its fixture and
-/// pixel map group (for CLIP and ZONE), and the Folder / File control names
-/// (with a check of them on Titan).
+/// Each Prism layer's faders in Titan (0.40: the Prism layer and the pixel
+/// map, which RUN / STOP run), its fixture (for CLIP and the quick settings)
+/// and FX group (SELECT / LEVEL), and the Prism control names (with a check
+/// of them on Titan).
 struct FXSettingsView: View {
     @EnvironmentObject private var appState: AppState
     @Environment(\.dismiss) private var dismiss
@@ -58,11 +58,10 @@ struct FXSettingsView: View {
         Form {
             ForEach(DeckFX.layers, id: \.self) { layer in
                 Section {
+                    numberRow("Prism layer fixture", value: binding(layer, \.fixture))
+                    numberRow("FX group", value: binding(layer, \.group))
                     faderRow("Prism layer fader", page: binding(layer, \.prismPage), fader: binding(layer, \.prismFader))
                     faderRow("Pixel map fader", page: binding(layer, \.playbackPage), fader: binding(layer, \.playbackFader))
-                    faderRow("Level fader", page: binding(layer, \.levelPage), fader: binding(layer, \.levelFader))
-                    numberRow("Prism fixture (for CLIP)", value: binding(layer, \.fixture))
-                    numberRow("Pixel map group (for ZONE)", value: binding(layer, \.group))
                     Button {
                         Task { await check(layer) }
                     } label: {
@@ -77,17 +76,22 @@ struct FXSettingsView: View {
                 } header: {
                     Text("Layer \(layer)")
                 } footer: {
-                    Text("The three faders you record for this layer, as Titan's playback page and fader number: the Prism layer (clip, play mode, speed, 100%), the pixel map FX, and the fixtures' level. RUN brings them all up (the level fader at the LEVEL you set) and STOP releases them. CLIP swaps the clip on the Prism layer fixture until RESET CLIP, and ZONE makes an FXZone group the pixel map's group.")
+                    Text("The Prism layer's fixture number and the FX group (the group number of the fixtures the pixel map runs over), then the two faders you record for this layer as Titan's playback page and fader: the Prism layer (clip, play mode, speed, 100%) and the pixel map FX. Picking a clip, or SELECT, puts the FX group in your programmer at 100%, ready for its colour mode; LEVEL changes its intensity. RUN brings the faders up, STOP releases them.")
                 }
             }
 
             Section {
                 nameRow("Folder", \.folder)
                 nameRow("File", \.file)
+                nameRow("Brightness", \.dimmer)
+                nameRow("Speed", \.speed)
+                nameRow("Contrast", \.contrast)
+                nameRow("Saturation", \.saturation)
+                Toggle("Levels as 0-100", isOn: $appState.fxSettings.levelsAsPercent)
             } header: {
-                Text("Prism clip controls in Titan")
+                Text("Prism controls in Titan")
             } footer: {
-                Text("What CLIP sets on the Prism layer fixture, as Titan's attribute editor names them. Check the Prism fixture above to see which names Titan has. Everything else (play mode, speed, intensity) stays on your Prism layer fader.")
+                Text("What CLIP and the quick settings (BRIGHT, SPEED, CONTRAST, SAT) set on the Prism layer fixture, as Titan's attribute editor names them. They hold over your Prism fader until RESET. Check the Prism fixture above to see which names Titan has. Turn off Levels as 0-100 if Titan wants 0 to 1.")
             }
 
             Section {
@@ -138,11 +142,6 @@ struct FXSettingsView: View {
                 Text("Sync with Prism has TitanDeck Host (0.18 or later) read which clips Prism has in which bank, from Prism's files on the Titan PC. Each bank is a Folder in Titan and each clip's place in its bank its File, counting from the numbers above: check one clip against Titan and change them if it's out by one. If the Host can't find Prism's files, put the folder Prism keeps its project in (or a folder of your Prism media, one subfolder per bank) in Prism's files.")
             }
 
-            Section {
-                Text("FX zones are your Titan groups whose names start with \(DeckFX.zonePrefix) (\"\(DeckFX.zonePrefix) Bar\" shows as Bar). They're on each layer's ZONE page. Record your level fader over every zone's fixtures, so whichever zone the pixel map is on has a level.")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-            }
         }
         .navigationTitle("Prism Setup")
         .navigationBarTitleDisplayMode(.inline)

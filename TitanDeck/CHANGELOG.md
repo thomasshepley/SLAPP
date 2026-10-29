@@ -7,16 +7,16 @@ the GitHub Actions run that built it. The top entry is shown in the app
 so add an entry - and bump `MARKETING_VERSION` in `project.yml` to match -
 with every change that goes to `main`.
 
-## 0.40.0 - 2026-10-29 - FX runs your faders
+## 0.40.0 - 2026-10-29 - FX: your faders, your group
 
-The FX page now works the way you build FX in Titan: per Prism layer, a Prism layer fader (clip, play mode, speed, 100%), a pixel map fader and a fixture level fader.
+The FX page now fits how you run FX in Titan: per Prism layer, a Prism layer fader (clip, play mode, speed, 100%) and a pixel map fader over your FX group, which you change on the desk yourself.
 
-- **Prism Setup** (FX tab) asks for those three faders for each layer, as page and fader number.
-- **RUN** on a layer's page brings all three up; it turns into **STOP**, which releases them. The layer's key on the FX page goes green while it runs, and follows the faders if you run them from the desk.
-- **LEVEL** moves the level fader (0-100%), so the fixtures' intensity stays a fader you can see and change. It's used straight away while the layer runs, or at the next RUN.
-- **CLIP** still swaps the clip from your FX library (pick FIRE, a version, then the layer); **RESET CLIP** goes back to the clip on your Prism fader.
-- **ZONE** lists your FXZone groups: pick one and the pixel map runs over it. Record your level fader over every zone's fixtures.
-- **Gone:** BRIGHT, SPEED, CONTRAST and SAT (your Prism fader has them now) and USE SEL / ADD / REMOVE. On the FX page, RELEASE ALL is now **STOP ALL** (faders down) and **RESET CLIPS**.
+- **Prism Setup** (FX tab): each layer's Prism fixture, its **FX group** number, and its Prism layer and pixel map faders (page and fader).
+- **Picking a clip** (FX > FIRE > a version > LAYER 1) puts it on the layer and **selects the FX group in your programmer at 100%**, so you can set its colour mode (CCT to RGB...) on the desk before you RUN.
+- **RUN** brings the layer's faders up and turns into **STOP**. The layer's key on the FX page goes green while it runs, and follows the faders if you run them from the desk.
+- **SELECT FX GROUP** puts the group in your programmer at 100% again; **LEVEL** sets its intensity (0-100%), and the Quick Keys work on it too.
+- **BRIGHT / SPEED / CONTRAST / SAT** are back as quick settings on the Prism layer; **RESET** puts the layer back to its fader (clip and quick settings).
+- **Gone:** USE SEL / ADD / REMOVE and the zone keys. On the FX page, RELEASE ALL is now **STOP ALL** (faders down) and **RESET CLIPS**.
 
 ## 0.39.3 - 2026-10-29 - Groups made of groups
 
