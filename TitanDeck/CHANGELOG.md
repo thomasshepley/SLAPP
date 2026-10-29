@@ -14,6 +14,7 @@ with every change that goes to `main`.
 - Clips from Prism stay on the PC and show "On the PC". If one leaves Prism, it's marked "Not in Prism" rather than deleted.
 - **Prism Setup > Prism media:** where Prism's files are (left blank, the Host looks for them), whether Titan counts banks and clips from 0 or 1 (check one clip against Titan), Sync now, and what the Host looked at.
 - Needs TitanDeck Host 0.18.
+- **Fixed: the iPad turning to portrait.** With the iPad's rotation lock off, iPadOS 26 could turn TitanDeck sideways even though it's landscape only. It now turns straight back to landscape. Turning the iPad over still flips it the right way up.
 
 ## 0.38.0 - 2026-10-29 - Groups page
 

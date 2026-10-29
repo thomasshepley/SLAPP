@@ -6,6 +6,13 @@ from a film/TV set. A physical Elgato Stream Deck on the iPad's USB-C hub fires
 Titan playbacks over the Titan WebAPI. From M5, a full-screen FreeRDP remote
 desktop of the Titan PC fills the screen.
 
+Landscape is enforced three ways (`App/DeviceSetup.swift`): the Info.plist
+iPad list, the app delegate's mask, and (0.39) `DeviceSetup.holdLandscape`,
+called whenever the root view turns taller than wide or the device turns.
+iPadOS 26 can rotate a landscape-only app to portrait with the rotation lock
+off, so it requests landscape again (the way the iPad is held). Don't use
+`prefersInterfaceOrientationLocked`: it would also stop the 180 degree flip.
+
 The person you're working with is a lighting tech, not a full-time developer
 (basic-to-mid HTML/CSS/JS/PHP, new to Swift). Explain Swift and Xcode concepts
 briefly when they come up, and keep it conversational.
