@@ -104,10 +104,13 @@ enum DeskKeys {
     }
 
     /// "@ <level> Enter", for a level in percent (0-100, whole numbers):
-    /// the selection to that level on the desk's own command line.
+    /// the selection to that level on the desk's own command line. 1-9 go
+    /// as two digits ("@ 0 5"): Avolites reads a single digit as tens, so
+    /// "@ 5" is 50% (and the end of a fade down jumped up to it).
     static func level(_ percent: Double) -> [String] {
         let whole = Int(min(max(percent, 0), 100).rounded())
-        return ["@"] + String(whole).map(String.init) + ["enter"]
+        let digits = (1 ... 9).contains(whole) ? "0\(whole)" : String(whole)
+        return ["@"] + digits.map(String.init) + ["enter"]
     }
 
     /// The same key as remote desktop keystrokes (set-1 scan codes, 0x100 = extended).

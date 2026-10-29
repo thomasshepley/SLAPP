@@ -54,6 +54,9 @@ final class DeskKeysTests: XCTestCase {
         XCTAssertEqual(DeskKeys.level(112), ["@", "1", "0", "0", "enter"], "never past full")
         XCTAssertEqual(DeskKeys.level(-5), ["@", "0", "enter"])
         XCTAssertEqual(DeskKeys.level(54.6), ["@", "5", "5", "enter"])
+        XCTAssertEqual(DeskKeys.level(5), ["@", "0", "5", "enter"], "\"@ 5\" is 50% on Avolites")
+        XCTAssertEqual(DeskKeys.level(1.2), ["@", "0", "1", "enter"])
+        XCTAssertEqual(DeskKeys.coalesced(DeskKeys.level(5) + DeskKeys.level(0)), DeskKeys.level(0))
         for name in DeskKeys.level(73) { XCTAssertNotNil(DeskKeys.table[name]) }
     }
 

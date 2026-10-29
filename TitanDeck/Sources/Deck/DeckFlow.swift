@@ -114,6 +114,13 @@ enum DeckFlow {
             return .none
         }
 
+        /// Fixtures selected some other way than the keypad (a group from the
+        /// Groups page, typed on the desk for it): the line starts afresh.
+        mutating func select(_ fixtures: [Int]) {
+            text = ""
+            selected = fixtures
+        }
+
         /// "102" or "1>10" (Thro) as fixture numbers, or nil if it's neither.
         static func fixtures(in text: String) -> [Int]? {
             let parts = text.split(separator: ">", omittingEmptySubsequences: false)

@@ -7,6 +7,11 @@ the GitHub Actions run that built it. The top entry is shown in the app
 so add an entry - and bump `MARKETING_VERSION` in `project.yml` to match -
 with every change that goes to `main`.
 
+## 0.39.1 - 2026-10-29 - Intensity keys after a group, low levels
+
+- **Fixed: intensity keys and Hold for 0% did nothing after picking a group.** The Groups page typed the group on the desk, but the deck didn't know what was selected, so the intensity keys went to Titan's WebAPI (a separate user on Titan 19) instead of the desk. The deck now takes the group as its selection straight away.
+- **Fixed: a faded Hold for 0% jumped up near the end.** Levels from 1% to 9% were typed as "@ 5", which Avolites reads as 50%. They're typed as "@ 05" now.
+
 ## 0.39.0 - 2026-10-29 - Sync the FX Library with Prism
 
 - **Sync with Prism** (FX tab, top left): TitanDeck Host reads which clips Prism has in which bank from Prism's files on the Titan PC, and the FX Library takes them in. Each bank is the clip's Folder in Titan and its place in the bank is its File, so the deck's FX page knows where every clip is.

@@ -262,7 +262,10 @@ support posts):
 - **Desk-typed levels** (`AppState.deskLevelKeys`): with the keypad typing on
   the desk, intensity nudges and Hold for 0% type `@ level Enter` on the desk
   (`DeskKeys.level`), from `deck.liveLevel` (or the level just typed, for 2 s);
-  unknown level = the WebAPI as before. IncrementDimmer accelerates when the
+  unknown level = the WebAPI as before. 1-9% go as two digits ("@ 0 5"):
+  Avolites reads one digit as tens ("@ 5" = 50%). They need
+  `deck.selectedFixtures`: anything the deck types to select (a Groups page
+  group) must also call `deck.selectTyped`, or the keys fall to the WebAPI. IncrementDimmer accelerates when the
   wheel turns fast, so `TitanEndpoints.wheelSeconds` keeps it at 10 steps/s.
 - **Selection strip**: `DeckFlow.selectionTexts` (Remote screen top bar, the
   longest that fits via ViewThatFits), `selectionStrip` (Quick Keys keys 9-11,

@@ -13,6 +13,18 @@ final class DeckFlowTests: XCTestCase {
         XCTAssertEqual(keypad.selection, 102)
     }
 
+    func testAGroupPickedIsTheSelection() {
+        var keypad = DeckFlow.KeypadBuffer()
+        _ = keypad.apply(.keypadDigit(7))
+        keypad.select([101, 102, 110])
+        XCTAssertEqual(keypad.text, "")
+        XCTAssertEqual(keypad.selected, [101, 102, 110])
+        _ = keypad.apply(.keypadAt)
+        _ = keypad.apply(.keypadDigit(5))
+        XCTAssertEqual(keypad.apply(.keypadEnter), .none)
+        XCTAssertEqual(keypad.selected, [101, 102, 110], "\"@ 5 Enter\" keeps the group")
+    }
+
     func testTheSelectionFollowsTitan() {
         var keypad = DeckFlow.KeypadBuffer()
         func type(_ actions: TitanAction...) -> DeckFlow.KeypadBuffer.Event {
