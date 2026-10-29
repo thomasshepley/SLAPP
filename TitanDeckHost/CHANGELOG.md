@@ -6,6 +6,10 @@ until it's show-ready (1.0): MINOR for features, PATCH for fixes. Keep
 (ChangelogTests checks). Each version is published as a GitHub release
 `host-v<version>` with the installer attached.
 
+## 0.17.0 - 2026-10-29 - Groups for the deck
+
+- **New for TitanDeck 0.38's Groups page:** `GET /api/v1/groups/{titanId}/fixtures` says which fixtures a Titan group has, as fixture numbers, so the deck can type them on the desk. The Host recalls the group on Titan's WebAPI user, reads it back, and numbers the fixtures from Titan's CITP fixture list (or Titan's fixture handles if CITP hasn't got them); the WebAPI user's selection then goes back to the desk's. Works in Test and Show mode: nothing is output, only selected.
+
 ## 0.16.1 - 2026-10-29 - Steadier typing on the desk
 
 - **Fixed: intensity keys and faded flashes sometimes selected other fixtures.** The deck sets a level by typing "@ 64 Enter", and a faded flash types a run of them. Keys went in quickly (held 20 ms), and if Titan missed an "@" or an Enter, a level became a fixture number ("@ 64 @ 48" reads as fixture 64). Keys are now held longer with a pause after each Enter, everything waiting is typed in one go, and when several levels are waiting only the newest is typed.

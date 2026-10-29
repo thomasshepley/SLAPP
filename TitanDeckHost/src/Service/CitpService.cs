@@ -90,6 +90,16 @@ public sealed class CitpService(HostPaths paths, TitanLog titanLog, PatchReader 
         }
     }
 
+    /// <summary>Fixture numbers for Titan's fixture ids from Titan's CITP fixture list (null where it hasn't one).</summary>
+    public IReadOnlyList<int?> UserNumbers(IReadOnlyList<int> titanIds)
+    {
+        lock (_gate)
+        {
+            var session = _links.Values.Select(l => l.Session).OfType<CitpSession>().FirstOrDefault(s => s.HaveFixtureList);
+            return titanIds.Select(id => session?.UserNumber(id)).ToList();
+        }
+    }
+
     public CitpSelectionDto Selection()
     {
         lock (_gate)

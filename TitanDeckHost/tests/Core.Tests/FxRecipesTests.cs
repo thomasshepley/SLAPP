@@ -63,4 +63,17 @@ public class FxRecipesTests
         Assert.Null(FxRecipes.ControlIdFrom("-1"));
         Assert.Null(FxRecipes.ControlIdFrom(""));
     }
+
+    [Fact]
+    public void NumbersFixturesFromTitansHandles()
+    {
+        var numbers = FxRecipes.FixtureNumbers("""
+            [{"titanId":1105,"userNumber":105},
+             {"titanId":1106,"properties":[{"Key":"UserNumber","Value":"106"}]},
+             {"titanId":1107,"Legend":"no number"},
+             {"userNumber":9}]
+            """);
+        Assert.Equal(new Dictionary<int, int> { [1105] = 105, [1106] = 106 }, numbers);
+        Assert.Empty(FxRecipes.FixtureNumbers("nope"));
+    }
 }

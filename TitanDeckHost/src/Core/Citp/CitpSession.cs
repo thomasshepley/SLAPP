@@ -63,6 +63,10 @@ public sealed class CitpSession
     public string? PeerShow { get; private set; }
     public bool PeerInShow { get; private set; }
     public bool HaveFixtureList { get; private set; }
+
+    /// <summary>A fixture's number from Titan's fixture list, by Titan's id for it (null if it isn't in the list).</summary>
+    public int? UserNumber(int titanId) =>
+        titanId > 0 && _userNumbers.TryGetValue((uint)titanId, out var number) && number > 0 ? number : null;
     public int FixtureCount => _userNumbers.Count;
     /// <summary>Titan's selection as user numbers, in Titan's order.</summary>
     public IReadOnlyList<int> Selection => _selection;

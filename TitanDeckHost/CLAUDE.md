@@ -125,6 +125,12 @@ TitanDeckHost/
   never emptied. `GET /api/v1/fx/probe` asks `GetControlIdFromName` for each
   name. Every FX action puts the 4430 user's selection back to the desk's
   (CITP). 409 in Show mode.
+- **Groups (0.17; `TitanActions.Groups.cs`):** `GET /api/v1/groups/{titanId}/fixtures`
+  recalls the group on the 4430 user (`Group/RecallGroup?handle_titanId=`),
+  reads `GetAllSelectedFixtureIds`, and numbers them from CITP's FixtureList
+  (`CitpService.UserNumbers`, assumes CITP fixture ids are Titan ids) or
+  `/titan/handles/Fixtures` (`FxRecipes.FixtureNumbers`). Refuses if any
+  fixture is unnumbered. Puts the 4430 selection back. Show mode too.
 - **Cue fade checks must read the cue, not the editor** (0.15.1): Titan's
   `Playbacks.Editor.Times.*` read back whatever was just set even when the
   cue kept 0 (0.14-0.15 reported OK wrongly). `TitanActions.ReadFromCue` lets

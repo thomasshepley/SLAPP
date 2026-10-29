@@ -87,6 +87,13 @@ final class AppState: ObservableObject {
         didSet { fxSettings.save() }
     }
     private var fxSubscriptions = Set<AnyCancellable>()
+    /// The Groups page's sets (Settings > Deck > Groups page) and the one in use.
+    @Published var groupSettings = DeckGroups.Settings.load() {
+        didSet {
+            groupSettings.save()
+            deck.groupSettings = groupSettings
+        }
+    }
     private var logSubscriptions = Set<AnyCancellable>()
     private let store: ProfileStore
 
@@ -195,6 +202,16 @@ final class AppState: ObservableObject {
         }
         deck.onNeedFXZones = { [weak self] in
             Task { await self?.refreshFXZones() }
+        }
+        deck.groupSettings = groupSettings
+        deck.onNeedGroups = { [weak self] set in
+            Task { await self?.refreshGroups(set: set) }
+        }
+        deck.onGroupSetChosen = { [weak self] set in
+            self?.groupSettings.chosen = set
+        }
+        deck.onPickGroup = { [weak self] titanId, _ in
+            Task { await self?.selectGroup(titanId: titanId) }
         }
         fxLibrary.$index
             .map { $0.items.compactMap(\.deckItem) }
@@ -906,6 +923,47 @@ final class AppState: ObservableObject {
             connectionLog.record(.app, .info, "Masters: couldn't read the level of " + unread.prefix(3).joined(separator: "; "))
         }
         deck.setPageMasters(masters)
+    }
+
+    // MARK: - Groups (Nothing Selected)
+
+    /// A set's groups: the groups on its page of Titan's Groups window.
+    private func refreshGroups(set: Int) async {
+        let page = groupSettings.titanPage(set)
+        for group in ["Groups", "Group"] {
+            guard let handles = await titan.handles(group: group, page: page) else { continue }
+            deck.setGroups(DeckGroups.groups(handles.map { (titanId: $0.titanId, legend: $0.legend, index: $0.index) }),
+                           forSet: set)
+            return
+        }
+        deck.setGroups([], forSet: set)
+        connectionLog.record(.app, .info, "Groups: Titan didn't list Groups page \(page + 1)")
+    }
+
+    /// A group selected on the desk: TitanDeck Host says which fixtures it
+    /// has, and they're typed on the desk ("1 THRU 10 AND 15 Enter"), so the
+    /// desk's own selection is the group. Titan's Group key is an Alt
+    /// shortcut, which Titan 19 ignores from the PC keyboard.
+    private func selectGroup(titanId: Int) async {
+        guard let client = host.client else {
+            connectionLog.record(.key, .info, "Group not selected: needs TitanDeck Host 0.17 or later, paired in Settings")
+            return
+        }
+        do {
+            let answer = try await client.groupFixtures(titanId: titanId)
+            Log.titan("Host group: \(answer.message)\n" + answer.steps.joined(separator: "\n"))
+            guard answer.ok, !answer.fixtures.isEmpty else {
+                connectionLog.record(.key, .info, "Group not selected: " + answer.message)
+                return
+            }
+            // Back out anything half typed first, so the numbers start a new selection.
+            let backOut = keypad.readout.current?.text == nil ? [] : ["exit"]
+            queueOnDesk(.deckChoice(.pickGroup(titanId: titanId)), keys: backOut + DeskKeys.selecting(answer.fixtures),
+                        keypadLine: nil, keyIndex: nil)
+            connectionLog.record(.key, .info, "Group: selecting \(answer.message) on the desk")
+        } catch {
+            connectionLog.record(.key, .info, "Group not selected: " + error.localizedDescription)
+        }
     }
 
     // MARK: - FX (Test mode)

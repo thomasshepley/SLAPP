@@ -184,6 +184,10 @@ public sealed record CueFadeRequest(int TitanId, bool FadeOut, double Seconds);
 /// line, and every step with Titan's answer.</summary>
 public sealed record TitanActionDto(bool Ok, string Message, IReadOnlyList<string> Steps);
 
+/// <summary>`GET /api/v1/groups/{titanId}/fixtures` (Host 0.17+): a Titan group's
+/// fixture numbers, for TitanDeck to type on the desk and select the group.</summary>
+public sealed record GroupFixturesDto(bool Ok, IReadOnlyList<int> Fixtures, string Message, IReadOnlyList<string> Steps);
+
 /// <summary>One control of a Prism layer fixture and its value, as Titan's attribute editor shows it.</summary>
 public sealed record FxControlValue(string Control, double Value);
 

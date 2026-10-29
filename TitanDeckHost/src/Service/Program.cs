@@ -192,6 +192,11 @@ network.MapPost("/actions/cue-fade", async (CueFadeRequest request, TitanActions
 network.MapPost("/actions/clear-selection", async (TitanActions actions, HttpContext http) =>
     Results.Ok(await actions.ClearSelection(http.RequestAborted)));
 
+// TitanDeck's Groups page: a group's fixture numbers, for the deck to type
+// on the desk (read only on Titan; the WebAPI user's selection is put back).
+network.MapGet("/groups/{titanId:int}/fixtures", async (int titanId, TitanActions actions, HttpContext http) =>
+    titanId <= 0 ? Results.BadRequest(new { error = "Which group?" }) : Results.Ok(await actions.GroupFixtures(titanId, http.RequestAborted)));
+
 // TitanDeck's FX page (Prism layers and their pixel maps): Test mode only
 // while it's new.
 network.MapPost("/fx/layer", async (FxLayerRequest request, TitanActions actions, HostModeStore mode, HttpContext http) =>
