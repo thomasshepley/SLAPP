@@ -146,9 +146,12 @@ struct HostClient: Sendable {
 
     /// A Titan group's fixture numbers (by its handle's Titan id), for the
     /// deck to type on the desk.
-    func groupFixtures(titanId: Int) async throws -> HostGroupFixtures {
-        var request = try request("groups/\(titanId)/fixtures")
-        request.timeoutInterval = 8
+    /// - Parameter number: the group's number in Titan, one more way for the
+    ///   Host to recall it (Host 0.18.1; older Hosts ignore it).
+    func groupFixtures(titanId: Int, number: Int? = nil) async throws -> HostGroupFixtures {
+        var request = try request("groups/\(titanId)/fixtures",
+                                  query: number.map { [URLQueryItem(name: "number", value: "\($0)")] } ?? [])
+        request.timeoutInterval = 12
         return try await send(request)
     }
 

@@ -63,12 +63,6 @@ struct RootView: View {
                 if appState.mode == .remote { appState.mode = .settings }
             }
         }
-        .alert("TitanDeck was in the background",
-               isPresented: Binding(get: { appState.wasBackgrounded }, set: { if !$0 { appState.dismissBackgroundWarning() } })) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text("Stream Deck keys only work while TitanDeck is on screen. Check the deck is responding before carrying on.")
-        }
     }
 
     private func showWhatsNewAfterUpdate() {

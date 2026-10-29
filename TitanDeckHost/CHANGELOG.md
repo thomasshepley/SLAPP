@@ -6,6 +6,11 @@ until it's show-ready (1.0): MINOR for features, PATCH for fixes. Keep
 (ChangelogTests checks). Each version is published as a GitHub release
 `host-v<version>` with the installer attached.
 
+## 0.18.1 - 2026-10-29 - Groups made of groups
+
+- **Fixed: TitanDeck's Groups page couldn't select a group made of other groups.** Recalling it by its handle selected nothing, so the Host now tries Titan's other ways in turn (by the group's id, by its number, as a range) until one selects fixtures. The steps say which worked.
+- Fixtures without a fixture number the Host knows no longer stop the whole group: the rest are selected and the answer says how many were left out.
+
 ## 0.18.0 - 2026-10-29 - Prism's clips for the FX Library
 
 - **New for TitanDeck 0.39's Sync with Prism:** `GET /api/v1/fx/media` lists the clips Prism has, bank by bank, with each clip's file on the PC and whether it's there. The Host looks through Avolites' Prism folders (every user's Documents\Avolites\Prism, AppData and ProgramData) for Prism's project and uses the newest one that lists media in banks. A folder or file set in TitanDeck's Prism Setup is read instead: Prism's project, or a folder of media with a subfolder per bank (Ai-style "001 Fire" names give the numbers). It only reads, so it works in Test and Show mode, and every file it weighed is in the answer's steps.

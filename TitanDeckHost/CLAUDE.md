@@ -126,11 +126,15 @@ TitanDeckHost/
   name. Every FX action puts the 4430 user's selection back to the desk's
   (CITP). 409 in Show mode.
 - **Groups (0.17; `TitanActions.Groups.cs`):** `GET /api/v1/groups/{titanId}/fixtures`
-  recalls the group on the 4430 user (`Group/RecallGroup?handle_titanId=`),
+  recalls the group on the 4430 user (`FxRecipes.RecallGroupWays`, 0.18.1:
+  `RecallGroup?handle_titanId=`, then `RecallGroupById?groupId=`,
+  `RecallGroupNumeric?userId=` with the iPad's `?number=`, `RecallGroups`,
+  until one selects something: a group of groups selected nothing by handle),
   reads `GetAllSelectedFixtureIds`, and numbers them from CITP's FixtureList
   (`CitpService.UserNumbers`, assumes CITP fixture ids are Titan ids) or
-  `/titan/handles/Fixtures` (`FxRecipes.FixtureNumbers`). Refuses if any
-  fixture is unnumbered. Puts the 4430 selection back. Show mode too.
+  `/titan/handles/Fixtures` (`FxRecipes.FixtureNumbers`). Unnumbered
+  fixtures are left out and counted in the message (0.18.1; refused only if
+  none is numbered). Puts the 4430 selection back. Show mode too.
 - **Prism media (0.18; `PrismLibrary` in Core/Prism, `PrismMediaFinder`):**
   `GET /api/v1/fx/media?folder=` for the iPad's Sync with Prism. Prism's
   project format is undocumented and unseen, so `PrismLibrary.Parse` reads

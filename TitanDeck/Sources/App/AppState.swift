@@ -43,8 +43,9 @@ final class AppState: ObservableObject {
     @Published private(set) var recentResults: [TitanResult] = []
     @Published private(set) var titanVersion: String?
     @Published private(set) var isCheckingConnection = false
-    /// Stream Deck Kit only gets key events while we're in the foreground.
-    @Published private(set) var wasBackgrounded = false
+    /// Stream Deck Kit only gets key events while we're in the foreground;
+    /// coming back is noted in the connection log (no pop-up since 0.39.2).
+    private var wasBackgrounded = false
     @Published var rdpSettings: RDPSettings {
         didSet { rdpSettings.save() }
     }
@@ -296,6 +297,7 @@ final class AppState: ObservableObject {
             Log.deck("App went to background - Stream Deck keys are inactive until it returns")
         case .active:
             if wasBackgrounded {
+                wasBackgrounded = false
                 connectionLog.record(.app, .info, "Back in foreground")
             }
             UIApplication.shared.isIdleTimerDisabled = true
@@ -312,10 +314,6 @@ final class AppState: ObservableObject {
     func finishStartup() {
         showingStartup = false
         deck.endSplash()
-    }
-
-    func dismissBackgroundWarning() {
-        wasBackgrounded = false
     }
 
     // MARK: - Titan
@@ -936,11 +934,18 @@ final class AppState: ObservableObject {
 
     // MARK: - Groups (Nothing Selected)
 
+    /// Group numbers by handle Titan id, from the Groups pages read: the Host
+    /// can recall a group by number too.
+    private var groupNumbers: [Int: Int] = [:]
+
     /// A set's groups: the groups on its page of Titan's Groups window.
     private func refreshGroups(set: Int) async {
         let page = groupSettings.titanPage(set)
         for group in ["Groups", "Group"] {
             guard let handles = await titan.handles(group: group, page: page) else { continue }
+            for handle in handles {
+                if let id = handle.titanId, let number = handle.userNumber { groupNumbers[id] = number }
+            }
             deck.setGroups(DeckGroups.groups(handles.map { (titanId: $0.titanId, legend: $0.legend, index: $0.index) }),
                            forSet: set)
             return
@@ -959,7 +964,7 @@ final class AppState: ObservableObject {
             return
         }
         do {
-            let answer = try await client.groupFixtures(titanId: titanId)
+            let answer = try await client.groupFixtures(titanId: titanId, number: groupNumbers[titanId])
             Log.titan("Host group: \(answer.message)\n" + answer.steps.joined(separator: "\n"))
             guard answer.ok, !answer.fixtures.isEmpty else {
                 connectionLog.record(.key, .info, "Group not selected: " + answer.message)
