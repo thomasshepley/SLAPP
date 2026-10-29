@@ -67,13 +67,24 @@ final class DeskKeysTests: XCTestCase {
     }
 
     func testAFadedFlashIsTypedInSteps() {
-        let down = DeskKeys.rampSteps(from: 80, to: 0, seconds: 1)
-        XCTAssertEqual(down.map(\.percent), [64, 48, 32, 16, 0], "five a second, ending on 0")
-        XCTAssertEqual(down.map(\.at), [0, 0.2, 0.4, 0.6, 0.8], "the first straight away")
-        XCTAssertEqual(DeskKeys.rampSteps(from: 0, to: 75, seconds: 0.4).map(\.percent), [38, 75])
-        XCTAssertEqual(DeskKeys.rampSteps(from: 50, to: 0, seconds: 0.1).map(\.percent), [0], "too short to step: one go")
-        XCTAssertEqual(DeskKeys.rampSteps(from: 100, to: 0, seconds: 60).count, 20, "never more than 20 steps")
+        let down = DeskKeys.rampSteps(from: 90, to: 0, seconds: 1.05)
+        XCTAssertEqual(down.map(\.percent), [60, 30, 0], "three a second, ending on 0")
+        for (step, at) in zip(down, [0, 0.35, 0.7]) { XCTAssertEqual(step.at, at, accuracy: 0.001, "the first straight away") }
+        XCTAssertEqual(DeskKeys.rampSteps(from: 0, to: 75, seconds: 0.7).map(\.percent), [38, 75])
+        XCTAssertEqual(DeskKeys.rampSteps(from: 50, to: 0, seconds: 0.2).map(\.percent), [0], "too short to step: one go")
+        XCTAssertEqual(DeskKeys.rampSteps(from: 100, to: 0, seconds: 60).count, 12, "never more than 12 steps")
         XCTAssertEqual(DeskKeys.rampSteps(from: 3, to: 0, seconds: 2).map(\.percent), [2, 1, 0], "no level typed twice")
         XCTAssertTrue(DeskKeys.rampSteps(from: 40, to: 40, seconds: 2).isEmpty, "already there")
+    }
+
+    func testOnlyTheNewestOfBackToBackLevelsIsTyped() {
+        XCTAssertEqual(DeskKeys.coalesced(["@", "6", "4", "enter", "@", "5", "6", "enter", "@", "4", "8", "enter"]),
+                       ["@", "4", "8", "enter"])
+        XCTAssertEqual(DeskKeys.coalesced(["1", "0", "1", "@", "5", "0", "enter", "@", "7", "0", "enter", "@", "6", "0", "enter"]),
+                       ["1", "0", "1", "@", "5", "0", "enter", "@", "6", "0", "enter"], "a selection's level stays")
+        XCTAssertEqual(DeskKeys.coalesced(["@", "5", "0", "enter", "1", "enter", "@", "6", "0", "enter"]),
+                       ["@", "5", "0", "enter", "1", "enter", "@", "6", "0", "enter"], "something in between keeps it")
+        XCTAssertEqual(DeskKeys.coalesced(["@", "5", "0", "enter", "1", "0"]), ["@", "5", "0", "enter", "1", "0"])
+        XCTAssertEqual(DeskKeys.coalesced([]), [])
     }
 }

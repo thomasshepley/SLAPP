@@ -43,16 +43,24 @@ internal static class DeskTyper
         }
     }
 
-    /// One key, as a hand would press it: down and up as separate events with
-    /// a short gap. No modifiers are ever held (see <see cref="DeskKeys"/>).
+    /// One key, as a hand would press it: down, held, up, then a gap, and a
+    /// longer one after Enter so Titan has taken the line before the next key.
+    /// 0.10-0.16 held keys 20 ms with a 15 ms gap, and in a fast run (a faded
+    /// flash's "@ 64 Enter @ 48 Enter...") Titan missed the odd "@" or Enter,
+    /// which turned a level into a fixture number. No modifiers are ever held
+    /// (see <see cref="DeskKeys"/>).
     private static void Type(string name)
     {
         if (!DeskKeys.All.TryGetValue(name, out var key)) return;
         Send(Scan(key.Scancode, key.Extended, up: false));
-        Thread.Sleep(20);
+        Thread.Sleep(HoldMs);
         Send(Scan(key.Scancode, key.Extended, up: true));
-        Thread.Sleep(15);
+        Thread.Sleep(name == "enter" ? AfterEnterMs : GapMs);
     }
+
+    private const int HoldMs = 35;
+    private const int GapMs = 30;
+    private const int AfterEnterMs = 90;
 
     /// <summary>
     /// Lets go of Alt, Ctrl and Shift (both sides) in case an older Host left

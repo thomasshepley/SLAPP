@@ -28,4 +28,20 @@ public class DeskKeysTests
         Assert.NotNull(DeskKeys.Problem(null));
         Assert.NotNull(DeskKeys.Problem(Enumerable.Repeat("1", DeskKeys.MaxPerRequest + 1).ToList()));
     }
+
+    [Fact]
+    public void OnlyTheNewestOfBackToBackLevelsIsTyped()
+    {
+        Assert.Equal(["@", "4", "8", "enter"],
+            DeskKeys.Coalesce(["@", "6", "4", "enter", "@", "5", "6", "enter", "@", "4", "8", "enter"]));
+        // A selection typed before a level is kept, and so is the level after it.
+        Assert.Equal(["1", "0", "1", "@", "5", "0", "enter", "@", "6", "0", "enter"],
+            DeskKeys.Coalesce(["1", "0", "1", "@", "5", "0", "enter", "@", "7", "0", "enter", "@", "6", "0", "enter"]));
+        // Something typed in between keeps the level before it.
+        Assert.Equal(["@", "5", "0", "enter", "1", "enter", "@", "6", "0", "enter"],
+            DeskKeys.Coalesce(["@", "5", "0", "enter", "1", "enter", "@", "6", "0", "enter"]));
+        // Keys still being typed (no Enter yet) are left alone.
+        Assert.Equal(["@", "5", "0", "enter", "1", "0"], DeskKeys.Coalesce(["@", "5", "0", "enter", "1", "0"]));
+        Assert.Empty(DeskKeys.Coalesce([]));
+    }
 }

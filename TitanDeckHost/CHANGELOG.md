@@ -6,6 +6,10 @@ until it's show-ready (1.0): MINOR for features, PATCH for fixes. Keep
 (ChangelogTests checks). Each version is published as a GitHub release
 `host-v<version>` with the installer attached.
 
+## 0.16.1 - 2026-10-29 - Steadier typing on the desk
+
+- **Fixed: intensity keys and faded flashes sometimes selected other fixtures.** The deck sets a level by typing "@ 64 Enter", and a faded flash types a run of them. Keys went in quickly (held 20 ms), and if Titan missed an "@" or an Enter, a level became a fixture number ("@ 64 @ 48" reads as fixture 64). Keys are now held longer with a pause after each Enter, everything waiting is typed in one go, and when several levels are waiting only the newest is typed.
+
 ## 0.16.0 - 2026-10-29 - FX: Prism layers from the deck (Test mode)
 
 - **New for TitanDeck 0.37's FX page, in Test mode only:** the Host sets a Prism layer fixture's controls (Dimmer, Folder, File, Speed, Colour Adjust...) on Titan's WebAPI user, releases them (RELEASE), and changes a layer's pixel map group: the fixtures selected (USE SEL), added (ADD) or taken out (REMOVE), or another group's fixtures (an FXZone group). Every group change is read back from Titan to check it, and a change that would empty the group is refused.

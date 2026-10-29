@@ -234,8 +234,13 @@ support posts):
   a failing CLEAR's 2 s checks and fallbacks and showed on the desk 3-15 s late.
   **Flash fades on the desk (0.35):** Titan's keyboard has no fade time, so a
   hold-for-0% with a fade (`FlashFadeRule`) is typed as levels in steps
-  (`DeskKeys.rampSteps`, about 5 a second, at most 20; `AppState.rampOnDesk`).
-  0.23-0.34 typed "@ 0 Enter" at once and the fade was ignored.
+  (`DeskKeys.rampSteps`, about 3 a second, at most 12; `AppState.rampOnDesk`).
+  0.23-0.34 typed "@ 0 Enter" at once and the fade was ignored. **Never type
+  fast runs of levels:** a missed "@" or Enter turns a level into a fixture
+  number ("@ 64 @ 48" = fixture 64), which selected stray fixtures (0.35-0.37).
+  `DeskKeys.coalesced` (and the Host's `DeskKeys.Coalesce`) keep only the
+  newest of back-to-back "@ n Enter"; the Host types keys held 35 ms, 30 ms
+  apart, 90 ms after Enter.
   **Master levels (0.36):** Titan has no getter for a fader's level; MASTERS
   reads each master with `Masters/ConnectToMaster` (on the 4430 user), `GET
   Masters/ConnectedMasterLevel`, `Masters/DisconnectMaster`
