@@ -281,6 +281,15 @@ final class DeckSessionController: ObservableObject {
         }
     }
 
+    /// Fixtures the deck selected on the desk itself (a Groups page group):
+    /// the deck's selection straight away, so the intensity keys act on them
+    /// even without the desk link (with it, CITP confirms it).
+    func selectTyped(_ fixtures: [Int]) {
+        keypad.select(fixtures)
+        if deskLinked { deskSelection = fixtures }
+        refreshSelection()
+    }
+
     /// The level the deck last typed for the selection (0...1), shown on the
     /// flash key when there's no live reading.
     var typedLevel: Double? {

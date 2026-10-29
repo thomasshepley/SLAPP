@@ -969,6 +969,9 @@ final class AppState: ObservableObject {
             let backOut = keypad.readout.current?.text == nil ? [] : ["exit"]
             queueOnDesk(.deckChoice(.pickGroup(titanId: titanId)), keys: backOut + DeskKeys.selecting(answer.fixtures),
                         keypadLine: nil, keyIndex: nil)
+            // The deck's own idea of the selection too, or the intensity keys
+            // would think nothing's selected and go to the WebAPI's programmer.
+            deck.selectTyped(answer.fixtures)
             connectionLog.record(.key, .info, "Group: selecting \(answer.message) on the desk")
         } catch {
             connectionLog.record(.key, .info, "Group not selected: " + error.localizedDescription)
