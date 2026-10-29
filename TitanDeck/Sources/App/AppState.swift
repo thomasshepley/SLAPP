@@ -43,8 +43,9 @@ final class AppState: ObservableObject {
     @Published private(set) var recentResults: [TitanResult] = []
     @Published private(set) var titanVersion: String?
     @Published private(set) var isCheckingConnection = false
-    /// Stream Deck Kit only gets key events while we're in the foreground.
-    @Published private(set) var wasBackgrounded = false
+    /// Stream Deck Kit only gets key events while we're in the foreground;
+    /// coming back is noted in the connection log (no pop-up since 0.39.2).
+    private var wasBackgrounded = false
     @Published var rdpSettings: RDPSettings {
         didSet { rdpSettings.save() }
     }
@@ -296,6 +297,7 @@ final class AppState: ObservableObject {
             Log.deck("App went to background - Stream Deck keys are inactive until it returns")
         case .active:
             if wasBackgrounded {
+                wasBackgrounded = false
                 connectionLog.record(.app, .info, "Back in foreground")
             }
             UIApplication.shared.isIdleTimerDisabled = true
@@ -312,10 +314,6 @@ final class AppState: ObservableObject {
     func finishStartup() {
         showingStartup = false
         deck.endSplash()
-    }
-
-    func dismissBackgroundWarning() {
-        wasBackgrounded = false
     }
 
     // MARK: - Titan

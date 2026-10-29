@@ -7,6 +7,10 @@ the GitHub Actions run that built it. The top entry is shown in the app
 so add an entry - and bump `MARKETING_VERSION` in `project.yml` to match -
 with every change that goes to `main`.
 
+## 0.39.2 - 2026-10-29 - No pop-up when you come back
+
+- **Removed the "TitanDeck was in the background" warning** that came up every time you reopened the app. Settings > Recent events still notes when TitanDeck went to the background and came back.
+
 ## 0.39.1 - 2026-10-29 - Intensity keys after a group, low levels
 
 - **Fixed: intensity keys and Hold for 0% did nothing after picking a group.** The Groups page typed the group on the desk, but the deck didn't know what was selected, so the intensity keys went to Titan's WebAPI (a separate user on Titan 19) instead of the desk. The deck now takes the group as its selection straight away.
