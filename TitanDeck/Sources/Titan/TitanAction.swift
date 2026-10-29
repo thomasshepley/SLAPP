@@ -212,4 +212,12 @@ enum DeckChoice: Codable, Hashable {
     case changeGroupSet
     /// Groups page: select this group on the desk.
     case pickGroup(titanId: Int)
+    /// FX layer page (0.40): RUN its faders, or STOP them if they run.
+    case fxRun
+    /// FX layer page: the FX group's level picker (typed on the desk).
+    case fxFaderLevel
+    /// FX page: release every layer's faders.
+    case fxStopAll
+    /// FX layer page: its FX group selected on the desk at 100%.
+    case fxSelectGroup
 }

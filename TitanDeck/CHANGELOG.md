@@ -7,6 +7,17 @@ the GitHub Actions run that built it. The top entry is shown in the app
 so add an entry - and bump `MARKETING_VERSION` in `project.yml` to match -
 with every change that goes to `main`.
 
+## 0.40.0 - 2026-10-29 - FX: your faders, your group
+
+The FX page now fits how you run FX in Titan: per Prism layer, a Prism layer fader (clip, play mode, speed, 100%) and a pixel map fader over your FX group, which you change on the desk yourself.
+
+- **Prism Setup** (FX tab): each layer's Prism fixture, its **FX group** number, and its Prism layer and pixel map faders (page and fader).
+- **Picking a clip** (FX > FIRE > a version > LAYER 1) puts it on the layer and **selects the FX group in your programmer at 100%**, so you can set its colour mode (CCT to RGB...) on the desk before you RUN.
+- **RUN** brings the layer's faders up and turns into **STOP**. The layer's key on the FX page goes green while it runs, and follows the faders if you run them from the desk.
+- **SELECT FX GROUP** puts the group in your programmer at 100% again; **LEVEL** sets its intensity (0-100%), and the Quick Keys work on it too.
+- **BRIGHT / SPEED / CONTRAST / SAT** are back as quick settings on the Prism layer; **RESET** puts the layer back to its fader (clip and quick settings).
+- **Gone:** USE SEL / ADD / REMOVE and the zone keys. On the FX page, RELEASE ALL is now **STOP ALL** (faders down) and **RESET CLIPS**.
+
 ## 0.39.3 - 2026-10-29 - Groups made of groups
 
 - **Fixed: a group made of other groups couldn't be picked on the Groups page.** TitanDeck Host now tries every way Titan has of recalling a group until one gives fixtures, and the deck tells it the group's number as well. Update TitanDeck Host to 0.18.1 too.
