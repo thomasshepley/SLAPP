@@ -44,8 +44,10 @@ struct FXTabView: View {
     }
 }
 
-/// Which Titan fixtures, groups and playbacks the deck's FX page drives, and
-/// the Prism personality's control names (with a check of them on Titan).
+/// Each Prism layer's faders in Titan (0.40: the Prism layer, the pixel map
+/// and the fixtures' level, which RUN / STOP / LEVEL run), its fixture and
+/// pixel map group (for CLIP and ZONE), and the Folder / File control names
+/// (with a check of them on Titan).
 struct FXSettingsView: View {
     @EnvironmentObject private var appState: AppState
     @Environment(\.dismiss) private var dismiss
@@ -56,10 +58,11 @@ struct FXSettingsView: View {
         Form {
             ForEach(DeckFX.layers, id: \.self) { layer in
                 Section {
-                    numberRow("Prism fixture", value: binding(layer, \.fixture))
-                    numberRow("Pixel map group", value: binding(layer, \.group))
-                    numberRow("Pixel map playback: page", value: binding(layer, \.playbackPage))
-                    numberRow("Pixel map playback: fader", value: binding(layer, \.playbackFader))
+                    faderRow("Prism layer fader", page: binding(layer, \.prismPage), fader: binding(layer, \.prismFader))
+                    faderRow("Pixel map fader", page: binding(layer, \.playbackPage), fader: binding(layer, \.playbackFader))
+                    faderRow("Level fader", page: binding(layer, \.levelPage), fader: binding(layer, \.levelFader))
+                    numberRow("Prism fixture (for CLIP)", value: binding(layer, \.fixture))
+                    numberRow("Pixel map group (for ZONE)", value: binding(layer, \.group))
                     Button {
                         Task { await check(layer) }
                     } label: {
@@ -74,22 +77,17 @@ struct FXSettingsView: View {
                 } header: {
                     Text("Layer \(layer)")
                 } footer: {
-                    Text("The Prism layer's fixture number in Titan, the group its pixel map uses (USE SEL / ADD / REMOVE replace that group), and the playback the pixel map is on (GO / STOP).")
+                    Text("The three faders you record for this layer, as Titan's playback page and fader number: the Prism layer (clip, play mode, speed, 100%), the pixel map FX, and the fixtures' level. RUN brings them all up (the level fader at the LEVEL you set) and STOP releases them. CLIP swaps the clip on the Prism layer fixture until RESET CLIP, and ZONE makes an FXZone group the pixel map's group.")
                 }
             }
 
             Section {
-                nameRow("Brightness", \.dimmer)
                 nameRow("Folder", \.folder)
                 nameRow("File", \.file)
-                nameRow("Speed", \.speed)
-                nameRow("Contrast", \.contrast)
-                nameRow("Saturation", \.saturation)
-                Toggle("Levels as 0-100", isOn: $appState.fxSettings.levelsAsPercent)
             } header: {
-                Text("Prism controls in Titan")
+                Text("Prism clip controls in Titan")
             } footer: {
-                Text("The names of the Prism layer's controls as Titan's attribute editor shows them. Check the Prism fixture above to see which names Titan has. Turn off Levels as 0-100 if Titan wants 0 to 1.")
+                Text("What CLIP sets on the Prism layer fixture, as Titan's attribute editor names them. Check the Prism fixture above to see which names Titan has. Everything else (play mode, speed, intensity) stays on your Prism layer fader.")
             }
 
             Section {
@@ -141,7 +139,7 @@ struct FXSettingsView: View {
             }
 
             Section {
-                Text("FX zones are your Titan groups whose names start with \(DeckFX.zonePrefix) (\"\(DeckFX.zonePrefix) Bar\" shows as Bar). They're on each layer's FIXTURES page.")
+                Text("FX zones are your Titan groups whose names start with \(DeckFX.zonePrefix) (\"\(DeckFX.zonePrefix) Bar\" shows as Bar). They're on each layer's ZONE page. Record your level fader over every zone's fixtures, so whichever zone the pixel map is on has a level.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }
@@ -170,6 +168,24 @@ struct FXSettingsView: View {
                 .keyboardType(.numberPad)
                 .multilineTextAlignment(.trailing)
                 .frame(maxWidth: 120)
+        }
+    }
+
+    /// A fader as Titan's playback page and fader number.
+    private func faderRow(_ title: String, page: Binding<Int>, fader: Binding<Int>) -> some View {
+        LabeledContent(title) {
+            HStack(spacing: 6) {
+                Text("Page").foregroundStyle(.secondary)
+                TextField("-", value: page, format: .number)
+                    .keyboardType(.numberPad)
+                    .multilineTextAlignment(.trailing)
+                    .frame(width: 50)
+                Text("Fader").foregroundStyle(.secondary)
+                TextField("-", value: fader, format: .number)
+                    .keyboardType(.numberPad)
+                    .multilineTextAlignment(.trailing)
+                    .frame(width: 50)
+            }
         }
     }
 

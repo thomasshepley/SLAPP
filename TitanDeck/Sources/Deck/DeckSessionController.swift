@@ -202,13 +202,12 @@ final class DeckSessionController: ObservableObject {
             return DeckFX.versionsPage(category: category, items: fxItems, keyCount: profile.keyCount)
         case .fxLayerPick(let id, _)?:
             return DeckFX.layerPickPage(item: fxItems.first { $0.id == id }, layers: fxLayers, keyCount: profile.keyCount)
-        case .fxLayer(let layer, _)?:
+        case .fxLayer(let layer, _)?, .fxLevel(let layer, _, _)?:
             return DeckFX.layerPage(layer: layer, state: fxLayers[layer] ?? DeckFX.LayerState(), keyCount: profile.keyCount)
-        case .fxLevel(let layer, let control, _)?:
-            return DeckFX.levelPage(layer: layer, control: control, current: fxLayers[layer]?.levels[control],
-                                    keyCount: profile.keyCount)
         case .fxFixtures(let layer, _)?:
-            return DeckFX.fixturesPage(layer: layer, zones: fxZones, keyCount: profile.keyCount)
+            return DeckFX.zonesPage(layer: layer, zones: fxZones, keyCount: profile.keyCount)
+        case .fxFaderLevel(let layer, _)?:
+            return DeckFX.faderLevelPage(layer: layer, current: fxLayers[layer]?.level, keyCount: profile.keyCount)
         case .groupSets?:
             return DeckGroups.setsPage(settings: groupSettings, keyCount: profile.keyCount)
         case .groups(let set, _)?:
@@ -647,7 +646,11 @@ final class DeckSessionController: ObservableObject {
             show(.fxLayer(layer: layer, returnTo: home))
         case (.fxReleaseAll, .fx):
             onFX?(.releaseAll, index)
-            fxLayers = [:]
+            for layer in fxLayers.keys { fxLayers[layer]?.clip = nil }
+            redraw()
+        case (.fxStopAll, .fx):
+            onFX?(.stopAll, index)
+            for layer in fxLayers.keys { fxLayers[layer]?.running = false }
             redraw()
         case (.fxItem(let raw), .fxVersions):
             guard let id = UUID(uuidString: raw), let item = fxItems.first(where: { $0.id == id }) else { return }
@@ -663,39 +666,35 @@ final class DeckSessionController: ObservableObject {
         case (.fxPickVideo, .fxLayer(let layer, _)):
             fxTargetLayer = layer
             show(.fx(returnTo: home))
-        case (.fxControl(let raw), .fxLayer(let layer, _)):
-            guard let control = DeckFX.Control(rawValue: raw) else { return }
-            show(.fxLevel(layer: layer, control: control, returnTo: home))
-        case (.fxLevel(let level), .fxLevel(let layer, let control, _)):
-            fxLayers[layer, default: DeckFX.LayerState()].levels[control] = level
+        case (.fxRun, .fxLayer(let layer, _)):
+            // A latch: STOP while the deck has it running, else RUN.
+            let state = fxLayers[layer] ?? DeckFX.LayerState()
+            fxLayers[layer, default: DeckFX.LayerState()].running = !state.running
+            redraw()
+            onFX?(state.running ? .stop(layer: layer) : .go(layer: layer, level: state.level ?? 1), index)
+        case (.fxFaderLevel, .fxLayer(let layer, _)):
+            show(.fxFaderLevel(layer: layer, returnTo: home))
+        case (.fxLevel(let level), .fxFaderLevel(let layer, _)):
+            fxLayers[layer, default: DeckFX.LayerState()].level = level
             show(.fxLayer(layer: layer, returnTo: home))
-            // Its result shows on the control's key on the layer page.
-            onFX?(.setLevel(layer: layer, control: control, level: level), 1 + (DeckFX.Control.allCases.firstIndex(of: control) ?? 0))
-        case (.fxGo, .fxLayer(let layer, _)):
-            onFX?(.go(layer: layer), index)
-        case (.fxStop, .fxLayer(let layer, _)):
-            onFX?(.stop(layer: layer), index)
+            // Running: the fader moves now (its result on LEVEL); else at the next RUN.
+            if fxLayers[layer]?.running == true { onFX?(.level(layer: layer, level: level), 2) }
         case (.fxRelease, .fxLayer(let layer, _)):
             onFX?(.release(layer: layer), index)
-            fxLayers[layer] = nil
+            fxLayers[layer]?.clip = nil
             redraw()
         case (.fxFixtures, .fxLayer(let layer, _)):
             show(.fxFixtures(layer: layer, returnTo: home))
-        case (.fxUseSelection, .fxFixtures(let layer, _)):
-            onFX?(.fixtures(layer: layer, change: .replace), index)
-        case (.fxAdd, .fxFixtures(let layer, _)):
-            onFX?(.fixtures(layer: layer, change: .add), index)
-        case (.fxRemove, .fxFixtures(let layer, _)):
-            onFX?(.fixtures(layer: layer, change: .remove), index)
         case (.fxZone(let titanId), .fxFixtures(let layer, _)):
             guard let zone = fxZones.first(where: { $0.titanId == titanId }) else { return }
-            onFX?(.zone(layer: layer, zone: zone), index)
+            show(.fxLayer(layer: layer, returnTo: home))
+            onFX?(.zone(layer: layer, zone: zone), 3)   // its result on ZONE
         case (.back, .fxVersions), (.back, .fxLayerPick):
             show(.fx(returnTo: home))
         case (.back, .fxLayer):
             fxTargetLayer = nil
             show(.fx(returnTo: home))
-        case (.back, .fxLevel(let layer, _, _)), (.back, .fxFixtures(let layer, _)):
+        case (.back, .fxLevel(let layer, _, _)), (.back, .fxFixtures(let layer, _)), (.back, .fxFaderLevel(let layer, _)):
             show(.fxLayer(layer: layer, returnTo: home))
         // Groups (Nothing Selected).
         case (.pickGroupSet(let set), .groupSets):
@@ -759,7 +758,14 @@ final class DeckSessionController: ObservableObject {
         onFX?(.setVideo(layer: layer, item: item), 0)
     }
 
-    /// The FXZone groups, for the FX fixtures page.
+    /// A layer's faders as they turned out (RUN or STOP that Titan didn't take).
+    func setFXRunning(_ running: Bool, layer: Int) {
+        guard fxLayers[layer]?.running != running else { return }
+        fxLayers[layer, default: DeckFX.LayerState()].running = running
+        if flowOverlay.map(Self.showsFX) == true { redraw() }
+    }
+
+    /// The FXZone groups, for the FX zone page.
     func setFXZones(_ zones: [DeckFX.Zone]) {
         guard zones != fxZones else { return }
         fxZones = zones
@@ -768,7 +774,7 @@ final class DeckSessionController: ObservableObject {
 
     private static func showsFX(_ overlay: DeckFlow.Overlay) -> Bool {
         switch overlay {
-        case .fx, .fxVersions, .fxLayerPick, .fxLayer, .fxLevel, .fxFixtures: return true
+        case .fx, .fxVersions, .fxLayerPick, .fxLayer, .fxLevel, .fxFixtures, .fxFaderLevel: return true
         default: return false
         }
     }

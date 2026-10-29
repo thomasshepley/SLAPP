@@ -194,7 +194,10 @@ final class AppState: ObservableObject {
             self?.deck.setWorkspaceNames(names)
         }
         playbackState.onHandles = { [weak self] handles in
-            self?.deck.setAvailableCues(Self.cueChoices(handles))
+            guard let self else { return }
+            let cues = Self.cueChoices(handles)
+            self.deck.setAvailableCues(cues)
+            self.syncFXRunning(cues)
         }
         deck.onNeedCues = { [weak self] in
             guard let self else { return }
@@ -997,18 +1000,36 @@ final class AppState: ObservableObject {
     private func fxResult(_ command: DeckFX.Command) async -> (ok: Bool, message: String) {
         let settings = fxSettings
         switch command {
-        case .go(let layer), .stop(let layer):
-            var go = false
-            if case .go = command { go = true }
-            guard let titanId = await fxPlayback(layer) else {
-                return (false, "Layer \(layer)'s pixel map playback isn't set (FX tab > Prism Setup: page and fader), or Titan has no playback there")
+        case .go(let layer, let level):
+            let result = await runFXFaders(layer: layer, go: true, level: level)
+            if !result.anyTaken { deck.setFXRunning(false, layer: layer) }
+            return (result.ok, result.message)
+        case .stop(let layer):
+            let result = await runFXFaders(layer: layer, go: false, level: 0)
+            if !result.anyTaken { deck.setFXRunning(true, layer: layer) }
+            return (result.ok, result.message)
+        case .stopAll:
+            var messages: [String] = []
+            var ok = true
+            for layer in DeckFX.layers where !settings.layer(layer).faders.isEmpty {
+                let result = await runFXFaders(layer: layer, go: false, level: 0)
+                ok = ok && result.ok
+                messages.append(result.message)
             }
-            let result = await (deskLink.commandClient ?? titan).perform(go ? .fireHandle(titanId: titanId) : .releaseHandle(titanId: titanId))
-            return (result.ok, "Layer \(layer) pixel map \(go ? "GO" : "STOP")" + (result.ok ? "" : ": " + (result.error ?? "Titan didn't take it")))
+            return messages.isEmpty ? (false, "No FX faders set (FX tab > Prism Setup)") : (ok, messages.joined(separator: "; "))
+        case .level(let layer, let level):
+            guard let spot = settings.layer(layer).spot(.level) else {
+                return (false, "Layer \(layer)'s level fader isn't set (FX tab > Prism Setup)")
+            }
+            guard let id = await playbackHandle(page: spot.page, fader: spot.fader) else {
+                return (false, "Titan has no playback on page \(spot.page) fader \(spot.fader) (layer \(layer)'s level fader)")
+            }
+            let result = await (deskLink.commandClient ?? titan).perform(Self.faderLevel(id, level))
+            return (result.ok, "Layer \(layer) level \(DeckFlow.percentText(level))" + (result.ok ? "" : ": " + (result.error ?? "Titan didn't take it")))
         default:
             break
         }
-        guard let client = host.client else { return (false, "FX needs TitanDeck Host 0.16 or later, paired in Settings") }
+        guard let client = host.client else { return (false, "FX clips and zones need TitanDeck Host 0.16 or later, paired in Settings") }
         func fixture(_ layer: Int) -> Int? {
             let number = settings.layer(layer).fixture
             return number > 0 ? number : nil
@@ -1023,11 +1044,6 @@ final class AppState: ObservableObject {
                     HostFxControlValue(control: settings.folder, value: Double(item.folder)),
                     HostFxControlValue(control: settings.file, value: Double(item.file)),
                 ], release: false))
-            case .setLevel(let layer, let control, let level):
-                guard let number = fixture(layer) else { return unset(layer, "Prism fixture") }
-                answer = try await client.fxLayer(HostFxLayerRequest(fixture: number, values: [
-                    HostFxControlValue(control: settings.controlName(control), value: settings.value(level)),
-                ], release: false))
             case .release(let layer):
                 guard let number = fixture(layer) else { return unset(layer, "Prism fixture") }
                 answer = try await client.fxLayer(HostFxLayerRequest(fixture: number, values: [], release: true))
@@ -1041,17 +1057,11 @@ final class AppState: ObservableObject {
                     messages.append(one.message)
                 }
                 return messages.isEmpty ? unset(1, "Prism fixture") : (ok, messages.joined(separator: "; "))
-            case .fixtures(let layer, let change):
-                let group = settings.layer(layer).group
-                guard group > 0 else { return unset(layer, "pixel map group") }
-                let selected = deck.selectedFixtures
-                guard !selected.isEmpty else { return (false, "Select fixtures on the desk first, then \(change.rawValue.uppercased())") }
-                answer = try await client.fxGroup(HostFxGroupRequest(group: group, mode: change.rawValue, fixtures: selected, zoneTitanId: nil))
             case .zone(let layer, let zone):
                 let group = settings.layer(layer).group
                 guard group > 0 else { return unset(layer, "pixel map group") }
                 answer = try await client.fxGroup(HostFxGroupRequest(group: group, mode: "zone", fixtures: [], zoneTitanId: zone.titanId))
-            case .go, .stop:
+            case .go, .stop, .stopAll, .level:
                 return (false, "")
             }
             Log.titan("Host FX: \(answer.message)\n" + answer.steps.joined(separator: "\n"))
@@ -1061,12 +1071,61 @@ final class AppState: ObservableObject {
         }
     }
 
-    /// A layer's pixel map playback (page and fader from the FX settings) as Titan's handle.
-    private func fxPlayback(_ layer: Int) async -> Int? {
+    /// When the deck last pressed RUN / STOP on each layer: Titan's
+    /// playbacks are only believed over it after a moment.
+    private var fxPressed: [Int: Date] = [:]
+
+    /// RUN / STOP follow the faders, so a layer brought up or down on the
+    /// desk shows as such on the deck.
+    private func syncFXRunning(_ cues: [CueChoice]) {
+        for layer in DeckFX.layers {
+            if let pressed = fxPressed[layer], Date().timeIntervalSince(pressed) < 3 { continue }
+            if let running = DeckFX.running(fxSettings.layer(layer), cues: cues) { deck.setFXRunning(running, layer: layer) }
+        }
+    }
+
+    /// RUN or STOP a layer: its faders (Prism layer, pixel map, level) up,
+    /// the level fader at `level` so the fixtures' intensity stays a fader;
+    /// or all released. Each fader set in Prism Setup is tried.
+    private func runFXFaders(layer: Int, go: Bool, level: Double) async -> (ok: Bool, anyTaken: Bool, message: String) {
+        fxPressed[layer] = Date()
         let setting = fxSettings.layer(layer)
-        guard setting.playbackPage > 0, setting.playbackFader > 0 else { return nil }
+        guard !setting.faders.isEmpty else {
+            return (false, false, "Layer \(layer) has no faders set (FX tab > Prism Setup: its Prism layer, pixel map and level faders)")
+        }
+        let client = deskLink.commandClient ?? titan
+        var taken = 0
+        var problems: [String] = []
+        for fader in setting.faders {
+            guard let spot = setting.spot(fader) else { continue }
+            guard let id = await playbackHandle(page: spot.page, fader: spot.fader) else {
+                problems.append("no playback on page \(spot.page) fader \(spot.fader) (\(fader.label))")
+                continue
+            }
+            let action: TitanAction = switch (go, fader) {
+            case (true, .level): Self.faderLevel(id, level, fire: true)
+            case (true, _): .fireHandle(titanId: id)
+            case (false, _): .releaseHandle(titanId: id)
+            }
+            let result = await client.perform(action)
+            if result.ok { taken += 1 } else { problems.append("\(fader.label): \(result.error ?? "Titan didn't take it")") }
+        }
+        let what = "Layer \(layer) \(go ? "RUN" : "STOP")" + (go && setting.spot(.level) != nil ? " at \(DeckFlow.percentText(level))" : "")
+        return (problems.isEmpty, taken > 0, problems.isEmpty ? what : what + ": " + problems.joined(separator: "; "))
+    }
+
+    /// The level fader to a level (0...1): fired at it for RUN, else moved.
+    private static func faderLevel(_ titanId: Int, _ level: Double, fire: Bool = false) -> TitanAction {
+        let value = TitanEndpoints.format(number: min(max(level, 0), 1))
+        return fire
+            ? .raw("Playbacks/FirePlaybackAtLevel?handle_titanId=\(titanId)&level_level=\(value)&alwaysRefire=false")
+            : .raw("Playbacks/SetPlaybackLevel?srcHandle_titanId=\(titanId)&level_level=\(value)")
+    }
+
+    /// The playback on a page and fader (both from 1) as Titan's handle.
+    private func playbackHandle(page: Int, fader: Int) async -> Int? {
         func find() -> Int? {
-            deck.availableCues.first { $0.page == setting.playbackPage - 1 && $0.index == setting.playbackFader - 1 }?.titanId
+            deck.availableCues.first { $0.page == page - 1 && $0.index == fader - 1 }?.titanId
         }
         if let id = find() { return id }
         if let handles = await titan.playbackHandles() { deck.setAvailableCues(Self.cueChoices(handles)) }

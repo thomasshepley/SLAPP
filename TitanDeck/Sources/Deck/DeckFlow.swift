@@ -38,12 +38,14 @@ enum DeckFlow {
         case fxVersions(category: DeckFX.Category, returnTo: Int)
         /// Which Prism layer a picked version goes on.
         case fxLayerPick(item: UUID, returnTo: Int)
-        /// One Prism layer: clip, levels, GO / STOP, fixtures, release.
+        /// One Prism layer: clip, RUN / STOP, level, zone, reset clip.
         case fxLayer(layer: Int, returnTo: Int)
-        /// One level of a layer, 0% to 100% in tens.
+        /// One level of a layer, 0% to 100% in tens (before 0.40; unused).
         case fxLevel(layer: Int, control: DeckFX.Control, returnTo: Int)
-        /// A layer's fixtures: USE SEL / ADD / REMOVE and the FXZone groups.
+        /// A layer's zones: the FXZone groups.
         case fxFixtures(layer: Int, returnTo: Int)
+        /// A layer's level fader, 0% to 100% in tens (0.40).
+        case fxFaderLevel(layer: Int, returnTo: Int)
         /// The group sets (Nothing Selected, before a set is picked, or SET).
         case groupSets(returnTo: Int)
         /// One set's groups: a press selects that group on the desk.
@@ -56,7 +58,7 @@ enum DeckFlow {
             case .selection(let page), .colour(let page), .connectCue(let page), .slate(let page),
                  .rig(let page), .masters(let page), .masterLevel(_, let page): return page
             case .fx(let page), .fxVersions(_, let page), .fxLayerPick(_, let page), .fxLayer(_, let page),
-                 .fxLevel(_, _, let page), .fxFixtures(_, let page): return page
+                 .fxLevel(_, _, let page), .fxFixtures(_, let page), .fxFaderLevel(_, let page): return page
             case .groupSets(let page), .groups(_, let page): return page
             case .titanPages(_, _, _, let page), .titanCues(_, _, _, let page), .fadePicker(_, _, let page): return page
             }

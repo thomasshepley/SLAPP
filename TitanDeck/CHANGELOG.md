@@ -7,6 +7,17 @@ the GitHub Actions run that built it. The top entry is shown in the app
 so add an entry - and bump `MARKETING_VERSION` in `project.yml` to match -
 with every change that goes to `main`.
 
+## 0.40.0 - 2026-10-29 - FX runs your faders
+
+The FX page now works the way you build FX in Titan: per Prism layer, a Prism layer fader (clip, play mode, speed, 100%), a pixel map fader and a fixture level fader.
+
+- **Prism Setup** (FX tab) asks for those three faders for each layer, as page and fader number.
+- **RUN** on a layer's page brings all three up; it turns into **STOP**, which releases them. The layer's key on the FX page goes green while it runs, and follows the faders if you run them from the desk.
+- **LEVEL** moves the level fader (0-100%), so the fixtures' intensity stays a fader you can see and change. It's used straight away while the layer runs, or at the next RUN.
+- **CLIP** still swaps the clip from your FX library (pick FIRE, a version, then the layer); **RESET CLIP** goes back to the clip on your Prism fader.
+- **ZONE** lists your FXZone groups: pick one and the pixel map runs over it. Record your level fader over every zone's fixtures.
+- **Gone:** BRIGHT, SPEED, CONTRAST and SAT (your Prism fader has them now) and USE SEL / ADD / REMOVE. On the FX page, RELEASE ALL is now **STOP ALL** (faders down) and **RESET CLIPS**.
+
 ## 0.39.3 - 2026-10-29 - Groups made of groups
 
 - **Fixed: a group made of other groups couldn't be picked on the Groups page.** TitanDeck Host now tries every way Titan has of recalling a group until one gives fixtures, and the deck tells it the group's number as well. Update TitanDeck Host to 0.18.1 too.
