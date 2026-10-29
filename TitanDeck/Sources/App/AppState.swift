@@ -1123,8 +1123,8 @@ final class AppState: ObservableObject {
     private static func faderLevel(_ titanId: Int, _ level: Double, fire: Bool = false) -> TitanAction {
         let value = TitanEndpoints.format(number: min(max(level, 0), 1))
         return fire
-            ? .raw("Playbacks/FirePlaybackAtLevel?handle_titanId=\(titanId)&level_level=\(value)&alwaysRefire=false")
-            : .raw("Playbacks/SetPlaybackLevel?srcHandle_titanId=\(titanId)&level_level=\(value)")
+            ? .raw(path: "Playbacks/FirePlaybackAtLevel?handle_titanId=\(titanId)&level_level=\(value)&alwaysRefire=false")
+            : .raw(path: "Playbacks/SetPlaybackLevel?srcHandle_titanId=\(titanId)&level_level=\(value)")
     }
 
     /// The layer's FX group selected on the desk (its fixture numbers typed,
