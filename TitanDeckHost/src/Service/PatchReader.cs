@@ -215,7 +215,11 @@ public sealed class PatchReader(TitanLog log, HostModeStore mode, ILogger<PatchR
     }
 
     /// <summary>Every user's Documents (the service runs as LocalSystem, so not "my" Documents).</summary>
-    private static IEnumerable<string> UserDocuments()
+    internal static IEnumerable<string> UserDocuments() => UserProfiles().SelectMany(profile =>
+        new[] { Path.Combine(profile, "Documents"), Path.Combine(profile, "OneDrive", "Documents") });
+
+    /// <summary>Every user's profile folder (C:\Users\name).</summary>
+    internal static IEnumerable<string> UserProfiles()
     {
         var users = Path.Combine(Path.GetPathRoot(Environment.SystemDirectory) is { Length: > 0 } root ? root : "C:\\", "Users");
         if (!Directory.Exists(users)) yield break;
@@ -228,11 +232,7 @@ public sealed class PatchReader(TitanLog log, HostModeStore mode, ILogger<PatchR
         {
             yield break;
         }
-        foreach (var profile in profiles)
-        {
-            yield return Path.Combine(profile, "Documents");
-            yield return Path.Combine(profile, "OneDrive", "Documents");
-        }
+        foreach (var profile in profiles) yield return profile;
     }
 
     public static IEnumerable<string> ReportFolders() =>

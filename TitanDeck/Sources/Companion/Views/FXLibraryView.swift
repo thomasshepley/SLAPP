@@ -9,6 +9,7 @@ import UniformTypeIdentifiers
 /// run through Prism / the pixel mapper. Add from Photos or Files, tag them,
 /// and send them to the Titan PC with the file uploader. In the FX tab
 /// (0.37); an effect with its Prism Folder and File is on the deck's FX page.
+/// Sync with Prism (0.39) brings in the clips Prism has, which stay on the PC.
 struct FXLibraryView: View {
     @EnvironmentObject private var appState: AppState
     @ObservedObject var store: FXLibraryStore
@@ -39,13 +40,17 @@ struct FXLibraryView: View {
                                 Button {
                                     if selecting { toggle(item) } else { detail = item }
                                 } label: {
-                                    FXCard(item: item, url: store.url(for: item), isChosen: selecting && chosen.contains(item.id))
+                                    FXCard(item: item, url: store.localURL(for: item), isChosen: selecting && chosen.contains(item.id))
                                 }
                                 .buttonStyle(.plain)
                                 .contextMenu {
-                                    Button("Send to PC", systemImage: "paperplane") { send([item]) }
-                                    ShareLink(item: store.url(for: item))
-                                    Button("Delete", systemImage: "trash", role: .destructive) { store.delete(item) }
+                                    if let url = store.localURL(for: item) {
+                                        Button("Send to PC", systemImage: "paperplane") { send([item]) }
+                                        ShareLink(item: url)
+                                    }
+                                    Button(item.isOnIPad ? "Delete" : "Remove from Library", systemImage: "trash", role: .destructive) {
+                                        store.delete(item)
+                                    }
                                 }
                             }
                         }
@@ -60,9 +65,14 @@ struct FXLibraryView: View {
                 ContentUnavailableView {
                     Label("No effects yet", systemImage: "film.stack")
                 } description: {
-                    Text("Add videos and bitmaps for pixel effects - fire, police lights, fireworks, lightning - then send them to the Titan PC for Prism.")
+                    Text("Sync with Prism to bring in the clips Prism has, or add videos and bitmaps for pixel effects - fire, police lights, fireworks, lightning - and send them to the Titan PC.")
                 } actions: {
-                    addMenu.buttonStyle(.glassProminent)
+                    Button("Sync with Prism", systemImage: "arrow.triangle.2.circlepath") {
+                        Task { await appState.syncPrism() }
+                    }
+                    .buttonStyle(.glassProminent)
+                    .disabled(appState.syncingPrism)
+                    addMenu.buttonStyle(.glass)
                 }
             } else if groups.isEmpty {
                 ContentUnavailableView.search(text: search)
@@ -76,7 +86,7 @@ struct FXLibraryView: View {
                     Button("Send \(chosen.count)", systemImage: "paperplane.fill") {
                         send(store.index.items.filter { chosen.contains($0.id) })
                     }
-                    .disabled(chosen.isEmpty)
+                    .disabled(!store.index.items.contains { chosen.contains($0.id) && $0.isOnIPad })
                     Button("Done") {
                         selecting = false
                         chosen.removeAll()
@@ -159,6 +169,7 @@ struct FXLibraryView: View {
 
     /// Hands the files to the Send to PC sheet (through the Host or the shared folder).
     private func send(_ items: [FXItem]) {
+        let items = items.filter(\.isOnIPad)
         guard !items.isEmpty else { return }
         appState.fileDrop.add(items.map(store.url(for:)))
         store.markSent(items)
@@ -171,7 +182,7 @@ struct FXLibraryView: View {
 
 private struct FXCard: View {
     let item: FXItem
-    let url: URL
+    let url: URL?
     let isChosen: Bool
     @State private var thumbnail: UIImage?
 
@@ -197,6 +208,24 @@ private struct FXCard: View {
                         .padding(6)
                 }
             }
+            .overlay(alignment: .topLeading) {
+                if item.prismMissing == true {
+                    Label("Not in Prism", systemImage: "exclamationmark.triangle.fill")
+                        .font(.caption2.weight(.bold))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 3)
+                        .background(.orange.opacity(0.85), in: .capsule)
+                        .foregroundStyle(.white)
+                        .padding(6)
+                } else if !item.isOnIPad {
+                    Label("On the PC", systemImage: "desktopcomputer")
+                        .font(.caption2.weight(.bold))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 3)
+                        .background(.ultraThinMaterial, in: .capsule)
+                        .padding(6)
+                }
+            }
             .overlay(alignment: .topTrailing) {
                 if isChosen {
                     Image(systemName: "checkmark.circle.fill")
@@ -212,10 +241,12 @@ private struct FXCard: View {
                 }
             }
             Text(item.title).font(.callout.weight(.semibold)).lineLimit(1)
-            Text(item.summary).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+            Text([item.prismBank, item.summary].compactMap { $0?.isEmpty == false ? $0 : nil }.joined(separator: " · "))
+                .font(.caption).foregroundStyle(.secondary).lineLimit(1)
         }
         .contentShape(.rect)
         .task(id: url) {
+            guard let url else { return }
             let request = QLThumbnailGenerator.Request(fileAt: url, size: CGSize(width: 340, height: 208),
                                                        scale: 2, representationTypes: .thumbnail)
             thumbnail = try? await QLThumbnailGenerator.shared.generateBestRepresentation(for: request).uiImage
@@ -231,22 +262,31 @@ private struct FXDetailView: View {
     @State private var confirmDelete = false
     @Environment(\.dismiss) private var dismiss
 
-    private var url: URL { store.url(for: item) }
+    private var url: URL? { store.localURL(for: item) }
+
+    private var prismFooter: String {
+        let deck = item.deckCategory == nil
+            ? "The deck's FX page has Fire, Candle, Lightning, Police, Fireworks and TV. Pick one of those categories to put this on it."
+            : "Where Prism has this clip, as the Prism layer's Folder and File show in Titan. With both set, it's on the deck: FX > \(item.category.rawValue)."
+        return item.prismPath == nil ? deck : deck + " Sync with Prism sets these from Prism's banks."
+    }
 
     var body: some View {
         Form {
-            Section {
-                Group {
-                    if item.kind == .video, let player {
-                        VideoPlayer(player: player)
-                    } else if let image = UIImage(contentsOfFile: url.path) {
-                        Image(uiImage: image).resizable().scaledToFit()
+            if let url {
+                Section {
+                    Group {
+                        if item.kind == .video, let player {
+                            VideoPlayer(player: player)
+                        } else if let image = UIImage(contentsOfFile: url.path) {
+                            Image(uiImage: image).resizable().scaledToFit()
+                        }
                     }
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 240)
+                    .clipShape(.rect(cornerRadius: 14))
+                    .listRowInsets(EdgeInsets())
                 }
-                .frame(maxWidth: .infinity)
-                .frame(height: 240)
-                .clipShape(.rect(cornerRadius: 14))
-                .listRowInsets(EdgeInsets())
             }
 
             Section {
@@ -259,6 +299,7 @@ private struct FXDetailView: View {
             }
 
             Section {
+                if let bank = item.prismBank { LabeledContent("Prism bank", value: bank) }
                 LabeledContent("Folder") {
                     TextField("Number", value: $item.prismFolder, format: .number)
                         .keyboardType(.numberPad)
@@ -272,14 +313,19 @@ private struct FXDetailView: View {
             } header: {
                 Text("Prism (deck FX)")
             } footer: {
-                Text(item.deckCategory == nil
-                     ? "The deck's FX page has Fire, Candle, Lightning, Police, Fireworks and TV. Pick one of those categories to put this on it."
-                     : "Where Prism has this clip, as the Prism layer's Folder and File show in Titan. With both set, it's on the deck: FX > \(item.category.rawValue).")
+                Text(prismFooter)
             }
 
             Section {
-                if !item.summary.isEmpty { LabeledContent("Clip", value: item.summary) }
-                LabeledContent("File", value: item.fileName)
+                if !item.summary.isEmpty, item.isOnIPad { LabeledContent("Clip", value: item.summary) }
+                if item.isOnIPad { LabeledContent("File", value: item.fileName) }
+                if let path = item.prismPath {
+                    LabeledContent("On the PC") { Text(path).font(.caption).textSelection(.enabled) }
+                }
+                if item.prismMissing == true {
+                    Label("The last Sync with Prism didn't find this clip in Prism.", systemImage: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.orange)
+                }
                 LabeledContent("Added", value: item.added.formatted(date: .abbreviated, time: .shortened))
                 if let sent = item.lastSent {
                     LabeledContent("Last sent to PC", value: sent.formatted(date: .abbreviated, time: .shortened))
@@ -289,12 +335,20 @@ private struct FXDetailView: View {
             }
 
             Section {
-                Button("Send to PC", systemImage: "paperplane.fill") {
-                    store.update(item)
-                    send(item)
+                if let url {
+                    Button("Send to PC", systemImage: "paperplane.fill") {
+                        store.update(item)
+                        send(item)
+                    }
+                    ShareLink(item: url) { Label("Share", systemImage: "square.and.arrow.up") }
                 }
-                ShareLink(item: url) { Label("Share", systemImage: "square.and.arrow.up") }
-                Button("Delete Effect", systemImage: "trash", role: .destructive) { confirmDelete = true }
+                Button(item.isOnIPad ? "Delete Effect" : "Remove from Library", systemImage: "trash", role: .destructive) {
+                    confirmDelete = true
+                }
+            } footer: {
+                if !item.isOnIPad {
+                    Text("This clip is on the Titan PC. Removing it here leaves it in Prism, and the next Sync with Prism brings it back while Prism has it.")
+                }
             }
         }
         .navigationTitle(item.title)
@@ -308,7 +362,7 @@ private struct FXDetailView: View {
             }
         }
         .onAppear {
-            if item.kind == .video {
+            if item.kind == .video, let url {
                 let player = AVPlayer(url: url)
                 player.isMuted = true
                 self.player = player
@@ -319,8 +373,9 @@ private struct FXDetailView: View {
             player?.pause()
             store.update(item)
         }
-        .confirmationDialog("Delete \(item.title)?", isPresented: $confirmDelete, titleVisibility: .visible) {
-            Button("Delete", role: .destructive) {
+        .confirmationDialog(item.isOnIPad ? "Delete \(item.title)?" : "Remove \(item.title) from the library?",
+                            isPresented: $confirmDelete, titleVisibility: .visible) {
+            Button(item.isOnIPad ? "Delete" : "Remove", role: .destructive) {
                 store.delete(item)
                 dismiss()
             }

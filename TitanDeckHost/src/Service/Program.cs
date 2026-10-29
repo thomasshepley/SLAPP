@@ -52,6 +52,7 @@ builder.Services.AddSingleton<SlateService>();
 builder.Services.AddHostedService(services => services.GetRequiredService<SlateService>());
 builder.Services.AddSingleton<CitpService>();
 builder.Services.AddSingleton<TitanActions>();
+builder.Services.AddSingleton<PrismMediaFinder>();
 builder.Services.AddHostedService(services => services.GetRequiredService<CitpService>());
 
 var app = builder.Build();
@@ -220,6 +221,11 @@ network.MapGet("/fx/probe", async (int fixture, string? names, TitanActions acti
     var extra = (names ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
     return Results.Ok(await actions.FxProbe(fixture, extra, http.RequestAborted));
 });
+
+// The FX tab's Prism sync: which clips Prism has in which bank, read from
+// Prism's files on this PC (nothing is sent to Titan or Prism, so any mode).
+network.MapGet("/fx/media", async (string? folder, PrismMediaFinder prism, HttpContext http) =>
+    Results.Ok(await Task.Run(() => prism.Read(folder), http.RequestAborted)));
 
 // The desk's selection over CITP (experimental, Test mode only).
 network.MapGet("/citp/selection", (CitpService citp) => citp.Selection());

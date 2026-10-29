@@ -4,6 +4,7 @@ import SwiftUI
 /// The FX tab (0.37): the FX Library (moved from the Companion), and the
 /// Prism setup the deck's FX page needs. Effects with a Prism Folder and File
 /// show on the deck: FX > Fire, Candle, Lightning, Police, Fireworks, TV.
+/// Sync with Prism (0.39) reads Prism's banks through TitanDeck Host.
 struct FXTabView: View {
     @EnvironmentObject private var appState: AppState
     @AppStorage(SettingsKeys.showMode) private var showMode = false
@@ -22,6 +23,16 @@ struct FXTabView: View {
                     }
                 }
                 .toolbar {
+                    ToolbarItem(placement: .topBarLeading) {
+                        if appState.syncingPrism {
+                            ProgressView()
+                        } else {
+                            Button("Sync with Prism", systemImage: "arrow.triangle.2.circlepath") {
+                                Task { await appState.syncPrism() }
+                            }
+                            .help("Bring in the clips Prism has, bank by bank")
+                        }
+                    }
                     ToolbarItem(placement: .secondaryAction) {
                         Button("Prism Setup", systemImage: "slider.horizontal.3") { settingUp = true }
                     }
@@ -79,6 +90,54 @@ struct FXSettingsView: View {
                 Text("Prism controls in Titan")
             } footer: {
                 Text("The names of the Prism layer's controls as Titan's attribute editor shows them. Check the Prism fixture above to see which names Titan has. Turn off Levels as 0-100 if Titan wants 0 to 1.")
+            }
+
+            Section {
+                LabeledContent("Prism's files") {
+                    TextField("Found automatically", text: $appState.prismSync.folder)
+                        .multilineTextAlignment(.trailing)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                }
+                Stepper(value: $appState.prismSync.firstFolder, in: 0 ... 1) {
+                    LabeledContent("Prism's first bank is Folder", value: "\(appState.prismSync.firstFolder)")
+                }
+                Stepper(value: $appState.prismSync.firstFile, in: 0 ... 1) {
+                    LabeledContent("A bank's first clip is File", value: "\(appState.prismSync.firstFile)")
+                }
+                Button {
+                    Task { await appState.syncPrism() }
+                } label: {
+                    if appState.syncingPrism {
+                        HStack { ProgressView(); Text("Reading Prism's banks...") }
+                    } else {
+                        Label("Sync with Prism now", systemImage: "arrow.triangle.2.circlepath")
+                    }
+                }
+                .disabled(appState.syncingPrism)
+                if let media = appState.lastPrismMedia {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(media.message).foregroundStyle(media.ok ? Color.primary : Color.red)
+                        if !media.source.isEmpty {
+                            Text("From " + media.source).font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
+                        }
+                    }
+                    .font(.callout)
+                    if !media.steps.isEmpty {
+                        DisclosureGroup("What TitanDeck Host looked at") {
+                            ForEach(Array(media.steps.enumerated()), id: \.offset) { _, step in
+                                Text(step).font(.caption.monospaced()).textSelection(.enabled)
+                            }
+                        }
+                    }
+                }
+                if let error = appState.prismSyncError, error != appState.lastPrismMedia?.message {
+                    Text(error).font(.callout).foregroundStyle(.red)
+                }
+            } header: {
+                Text("Prism media")
+            } footer: {
+                Text("Sync with Prism has TitanDeck Host (0.18 or later) read which clips Prism has in which bank, from Prism's files on the Titan PC. Each bank is a Folder in Titan and each clip's place in its bank its File, counting from the numbers above: check one clip against Titan and change them if it's out by one. If the Host can't find Prism's files, put the folder Prism keeps its project in (or a folder of your Prism media, one subfolder per bank) in Prism's files.")
             }
 
             Section {

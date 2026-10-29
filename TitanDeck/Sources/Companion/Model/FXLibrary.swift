@@ -79,6 +79,14 @@ struct FXItem: Codable, Identifiable, Hashable {
     /// (the deck's FX page uses it when both are set).
     var prismFolder: Int? = nil
     var prismFile: Int? = nil
+    /// From Prism (Sync with Prism, 0.39): the bank's name, the clip's file
+    /// on the PC, and whether the last sync didn't find it in Prism.
+    var prismBank: String? = nil
+    var prismPath: String? = nil
+    var prismMissing: Bool? = nil
+
+    /// A clip only on the PC (from Prism) has no file on the iPad.
+    var isOnIPad: Bool { !fileName.isEmpty }
 
     /// The deck FX page's kind for this category, if it has one.
     var deckCategory: DeckFX.Category? {
@@ -106,6 +114,7 @@ struct FXItem: Codable, Identifiable, Hashable {
         if let fps = framesPerSecond, fps > 0 { parts.append("\(fps.formatted(.number.precision(.fractionLength(0 ... 2)))) fps") }
         if let seconds = durationSeconds, seconds > 0 { parts.append(Self.clock(seconds)) }
         if kind == .image { parts.append("still") }
+        if parts.isEmpty, let prismFolder, let prismFile { parts.append("Folder \(prismFolder) · File \(prismFile)") }
         return parts.joined(separator: " · ")
     }
 
@@ -116,8 +125,8 @@ struct FXItem: Codable, Identifiable, Hashable {
 
     static func kind(forExtension ext: String) -> Kind? {
         let ext = ext.lowercased()
-        if ["mov", "mp4", "m4v", "avi", "mkv", "webm", "mpg", "mpeg", "wmv"].contains(ext) { return .video }
-        if ["png", "jpg", "jpeg", "gif", "bmp", "tif", "tiff", "heic", "webp"].contains(ext) { return .image }
+        if ["mov", "mp4", "m4v", "avi", "mkv", "webm", "mpg", "mpeg", "wmv", "mxf", "aim", "hap", "dxv"].contains(ext) { return .video }
+        if ["png", "jpg", "jpeg", "gif", "bmp", "tif", "tiff", "heic", "webp", "tga"].contains(ext) { return .image }
         return nil
     }
 }
@@ -130,7 +139,7 @@ struct FXIndex: Codable, Equatable {
         let words = search.lowercased().split(separator: " ")
         let matching = items.filter { item in
             if let category, item.category != category { return false }
-            let text = "\(item.title) \(item.category.rawValue) \(item.notes) \(item.fileName)".lowercased()
+            let text = "\(item.title) \(item.category.rawValue) \(item.notes) \(item.fileName) \(item.prismBank ?? "")".lowercased()
             return words.allSatisfy { text.contains($0) }
         }
         return FXItem.Category.allCases.compactMap { category in

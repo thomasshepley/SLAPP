@@ -200,6 +200,19 @@ public sealed record FxLayerRequest(int Fixture, IReadOnlyList<FxControlValue> V
 /// (another group's fixtures, by its handle's Titan id).</summary>
 public sealed record FxGroupRequest(int Group, string Mode, IReadOnlyList<int> Fixtures, int? ZoneTitanId);
 
+/// <summary>A clip in a Prism bank: its place from 0, the number its name starts with (a media folder), and its file on the PC.</summary>
+public sealed record PrismClipDto(int Index, int? Number, string Name, string? Path, long? Bytes, bool Exists);
+
+/// <summary>A Prism bank (Titan's Folder): its place from 0, a number from its folder name, its name and clips (Titan's File).</summary>
+public sealed record PrismBankDto(int Index, int? Number, string Name, IReadOnlyList<PrismClipDto> Clips);
+
+/// <summary>
+/// `GET /api/v1/fx/media?folder=`: the clips Prism has, bank by bank, read
+/// from the file named in Source (Prism's project, or a folder of media).
+/// </summary>
+public sealed record PrismMediaDto(bool Ok, string Source, DateTimeOffset? Modified, IReadOnlyList<PrismBankDto> Banks,
+                                   string Message, IReadOnlyList<string> Steps);
+
 /// <summary>A control name and its id on the probed fixture (null: it hasn't got one).</summary>
 public sealed record FxControlDto(string Name, int? Id);
 

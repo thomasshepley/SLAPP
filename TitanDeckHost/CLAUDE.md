@@ -131,6 +131,18 @@ TitanDeckHost/
   (`CitpService.UserNumbers`, assumes CITP fixture ids are Titan ids) or
   `/titan/handles/Fixtures` (`FxRecipes.FixtureNumbers`). Refuses if any
   fixture is unnumbered. Puts the 4430 selection back. Show mode too.
+- **Prism media (0.18; `PrismLibrary` in Core/Prism, `PrismMediaFinder`):**
+  `GET /api/v1/fx/media?folder=` for the iPad's Sync with Prism. Prism's
+  project format is undocumented and unseen, so `PrismLibrary.Parse` reads
+  any JSON or XML generically: the innermost lists whose entries point at
+  media files (directly, in a nested object, or by a media id) are banks,
+  preferring lists under a "bank" / "playlist" key; XML becomes objects
+  (attributes, children as lists by name, "_text"). `FromFolder` reads a
+  media folder (subfolder = bank, leading digits = numbers). The finder
+  scans `Documents\Avolites\Prism`, AppData and ProgramData Avolites\Prism
+  (exported banks in Playlists only as a last resort), newest file wins,
+  and lists every candidate in the steps: ask the user for those steps when
+  it picks the wrong file. Read only, any mode.
 - **Cue fade checks must read the cue, not the editor** (0.15.1): Titan's
   `Playbacks.Editor.Times.*` read back whatever was just set even when the
   cue kept 0 (0.14-0.15 reported OK wrongly). `TitanActions.ReadFromCue` lets

@@ -172,6 +172,15 @@ struct HostClient: Sendable {
         return try await send(request)
     }
 
+    /// Which clips Prism has in which bank, from Prism's files on the PC (or
+    /// the folder or file given in Prism Setup).
+    func prismMedia(folder: String) async throws -> HostPrismMedia {
+        let trimmed = folder.trimmingCharacters(in: .whitespacesAndNewlines)
+        var request = try request("fx/media", query: trimmed.isEmpty ? [] : [URLQueryItem(name: "folder", value: trimmed)])
+        request.timeoutInterval = 45
+        return try await send(request)
+    }
+
     /// - Parameter timeout: a cue fade's several tries are each read back from Titan, so it gets time.
     private func actionPost<Body: Encodable>(_ path: String, body: Body?, timeout: TimeInterval = 20) async throws -> HostTitanAction {
         var request = try request(path, method: "POST")

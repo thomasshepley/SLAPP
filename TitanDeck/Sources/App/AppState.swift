@@ -86,6 +86,15 @@ final class AppState: ObservableObject {
     @Published var fxSettings = DeckFX.Settings.load() {
         didSet { fxSettings.save() }
     }
+    /// Sync with Prism's folder and numbering (FX tab > Prism Setup), and the Host's last answer.
+    @Published var prismSync = PrismSync.Settings.load() {
+        didSet { prismSync.save() }
+    }
+    @Published private(set) var lastPrismMedia: HostPrismMedia?
+    @Published private(set) var syncingPrism = false
+    @Published private(set) var prismSyncError: String? = nil {
+        didSet { if let prismSyncError { fxLibrary.lastMessage = prismSyncError } }
+    }
     private var fxSubscriptions = Set<AnyCancellable>()
     /// The Groups page's sets (Settings > Deck > Groups page) and the one in use.
     @Published var groupSettings = DeckGroups.Settings.load() {
@@ -1071,6 +1080,32 @@ final class AppState: ObservableObject {
     }
 
     /// The FX tab's check of a layer's Prism fixture: which control names Titan has.
+    /// Sync with Prism: TitanDeck Host reads which clips Prism has in which
+    /// bank, and the FX Library takes them in (your names, categories and
+    /// notes stay; the Folder / File numbers follow Prism).
+    func syncPrism() async {
+        guard let client = host.client else {
+            prismSyncError = "Pair TitanDeck Host 0.18 or later in Settings to sync with Prism."
+            return
+        }
+        syncingPrism = true
+        defer { syncingPrism = false }
+        do {
+            let media = try await client.prismMedia(folder: prismSync.folder)
+            lastPrismMedia = media
+            Log.titan("Prism media: \(media.message) (\(media.source))\n" + media.steps.joined(separator: "\n"))
+            guard media.ok else {
+                prismSyncError = media.message
+                return
+            }
+            prismSyncError = nil
+            let (items, report) = PrismSync.merge(media.banks, into: fxLibrary.index.items, settings: prismSync)
+            fxLibrary.replaceAll(items, message: report.text)
+        } catch {
+            prismSyncError = "Couldn't sync with Prism (it needs TitanDeck Host 0.18): " + error.localizedDescription
+        }
+    }
+
     func probeFX(layer: Int) async -> Result<HostFxProbe, Error> {
         guard let client = host.client else { return .failure(HostError.unreachable("Pair TitanDeck Host 0.16 or later in Settings.")) }
         let fixture = fxSettings.layer(layer).fixture
