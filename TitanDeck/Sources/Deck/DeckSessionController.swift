@@ -33,6 +33,11 @@ final class DeckSessionController: ObservableObject {
     var onNeedCues: (() -> Void)?
     /// Called when the Masters page needs Titan's page 60 fresh.
     var onNeedMasters: (() -> Void)?
+    /// Called for the FX pages' presses (Test mode), with the key that
+    /// shows the result: AppState sends them to TitanDeck Host.
+    var onFX: ((DeckFX.Command, Int) -> Void)?
+    /// Called when the FX fixtures page needs Titan's FXZone groups.
+    var onNeedFXZones: (() -> Void)?
 
     /// Per-key press/failure highlight. Published so the on-screen deck mirrors it.
     @Published private(set) var overlays: [Int: DeckRenderer.Overlay] = [:]
@@ -107,6 +112,21 @@ final class DeckSessionController: ObservableObject {
     /// Group master levels set from the deck (titanId: 0...1), shown when
     /// Titan doesn't report the fader's level itself.
     @Published private(set) var masterLevels: [Int: Double] = [:]
+    /// The FX page is on the main menu (Test mode).
+    var fxEnabled = false {
+        didSet { if fxEnabled != oldValue, flowOverlay == .menu { redraw() } }
+    }
+    /// The FX tab's effects that have a Prism Folder and File.
+    var fxItems: [DeckFX.Item] = [] {
+        didSet { if fxItems != oldValue, flowOverlay.map(Self.showsFX) == true { redraw() } }
+    }
+    /// What the deck set on each Prism layer (clip, levels), for the FX keys.
+    @Published private(set) var fxLayers: [Int: DeckFX.LayerState] = [:]
+    /// The FXZone groups, read when the FX fixtures page opens.
+    private(set) var fxZones: [DeckFX.Zone] = []
+    /// The layer a video is being picked for from its own page (no layer pick then).
+    private var fxTargetLayer: Int?
+
     /// What's on Titan's page 60, read when Masters opens (nil until Titan
     /// answers; then Titan's whole playback list is used).
     @Published private(set) var pageMasters: [CueChoice]?
@@ -138,7 +158,7 @@ final class DeckSessionController: ObservableObject {
             return DeckFlow.splashPage(columns: profile.geometry.logicalColumns, keyCount: profile.keyCount, frame: splashFrame)
         }
         switch flowOverlay {
-        case .menu?: return DeckFlow.menuPage(profile: profile)
+        case .menu?: return DeckFlow.menuPage(profile: profile, fx: fxEnabled)
         case .selection(let returnTo)?: return DeckFlow.selectionPage(profile: profile, returnTo: returnTo)
         case .colour(let returnTo)?: return DeckFlow.colourPage(profile: profile, returnTo: returnTo)
         case .connectCue(let returnTo)?:
@@ -159,6 +179,19 @@ final class DeckSessionController: ObservableObject {
             return DeckFlow.mastersPage(profile: profile, masters: groupMasters)
         case .masterLevel(let titanId, _)?:
             return DeckFlow.masterLevelPage(master: groupMasters.first { $0.titanId == titanId }, keyCount: profile.keyCount)
+        case .fx(let returnTo)?:
+            return DeckFX.fxPage(profile: profile, layers: fxLayers, returnTo: returnTo)
+        case .fxVersions(let category, _)?:
+            return DeckFX.versionsPage(category: category, items: fxItems, keyCount: profile.keyCount)
+        case .fxLayerPick(let id, _)?:
+            return DeckFX.layerPickPage(item: fxItems.first { $0.id == id }, layers: fxLayers, keyCount: profile.keyCount)
+        case .fxLayer(let layer, _)?:
+            return DeckFX.layerPage(layer: layer, state: fxLayers[layer] ?? DeckFX.LayerState(), keyCount: profile.keyCount)
+        case .fxLevel(let layer, let control, _)?:
+            return DeckFX.levelPage(layer: layer, control: control, current: fxLayers[layer]?.levels[control],
+                                    keyCount: profile.keyCount)
+        case .fxFixtures(let layer, _)?:
+            return DeckFX.fixturesPage(layer: layer, zones: fxZones, keyCount: profile.keyCount)
         case nil:
             // The Quick Keys page always comes with its flash, CCT and way back.
             if currentPageIndex == DeckFlow.quickKeysPageIndex(in: profile) {
@@ -296,6 +329,7 @@ final class DeckSessionController: ObservableObject {
         switch overlay {
         case .titanPages?: onNeedCues?()
         case .masters?: if let onNeedMasters { onNeedMasters() } else { onNeedCues?() }
+        case .fxFixtures?: onNeedFXZones?()
         case .colour?: onColourShown?()
         default: break
         }
@@ -528,6 +562,11 @@ final class DeckSessionController: ObservableObject {
             show(.masters(returnTo: DeckFlow.keypadPageIndex(in: profile) ?? currentPageIndex))
             return
         }
+        if case .openFX = choice {
+            fxTargetLayer = nil
+            show(.fx(returnTo: DeckFlow.keypadPageIndex(in: profile) ?? currentPageIndex))
+            return
+        }
         if case .selectionStrip = choice {
             // On to the next selected fixtures (back to the start after the last).
             stripOffset = DeckFlow.selectionStrip(selectedFixtures, offset: stripOffset, slots: stripSlots).next
@@ -568,6 +607,65 @@ final class DeckSessionController: ObservableObject {
             show(.masters(returnTo: home))
         case (.back, .masterLevel):
             show(.masters(returnTo: home))
+        // FX (Test mode).
+        case (.fxCategory(let raw), .fx):
+            guard let category = DeckFX.Category(rawValue: raw) else { return }
+            show(.fxVersions(category: category, returnTo: home))
+        case (.fxLayer(let layer), .fx):
+            fxTargetLayer = nil
+            show(.fxLayer(layer: layer, returnTo: home))
+        case (.fxReleaseAll, .fx):
+            onFX?(.releaseAll, index)
+            fxLayers = [:]
+            redraw()
+        case (.fxItem(let raw), .fxVersions):
+            guard let id = UUID(uuidString: raw), let item = fxItems.first(where: { $0.id == id }) else { return }
+            if let layer = fxTargetLayer {
+                fxTargetLayer = nil
+                setVideo(item, on: layer, home: home)
+            } else {
+                show(.fxLayerPick(item: id, returnTo: home))
+            }
+        case (.fxLayer(let layer), .fxLayerPick(let id, _)):
+            guard let item = fxItems.first(where: { $0.id == id }) else { return }
+            setVideo(item, on: layer, home: home)
+        case (.fxPickVideo, .fxLayer(let layer, _)):
+            fxTargetLayer = layer
+            show(.fx(returnTo: home))
+        case (.fxControl(let raw), .fxLayer(let layer, _)):
+            guard let control = DeckFX.Control(rawValue: raw) else { return }
+            show(.fxLevel(layer: layer, control: control, returnTo: home))
+        case (.fxLevel(let level), .fxLevel(let layer, let control, _)):
+            fxLayers[layer, default: DeckFX.LayerState()].levels[control] = level
+            show(.fxLayer(layer: layer, returnTo: home))
+            // Its result shows on the control's key on the layer page.
+            onFX?(.setLevel(layer: layer, control: control, level: level), 1 + (DeckFX.Control.allCases.firstIndex(of: control) ?? 0))
+        case (.fxGo, .fxLayer(let layer, _)):
+            onFX?(.go(layer: layer), index)
+        case (.fxStop, .fxLayer(let layer, _)):
+            onFX?(.stop(layer: layer), index)
+        case (.fxRelease, .fxLayer(let layer, _)):
+            onFX?(.release(layer: layer), index)
+            fxLayers[layer] = nil
+            redraw()
+        case (.fxFixtures, .fxLayer(let layer, _)):
+            show(.fxFixtures(layer: layer, returnTo: home))
+        case (.fxUseSelection, .fxFixtures(let layer, _)):
+            onFX?(.fixtures(layer: layer, change: .replace), index)
+        case (.fxAdd, .fxFixtures(let layer, _)):
+            onFX?(.fixtures(layer: layer, change: .add), index)
+        case (.fxRemove, .fxFixtures(let layer, _)):
+            onFX?(.fixtures(layer: layer, change: .remove), index)
+        case (.fxZone(let titanId), .fxFixtures(let layer, _)):
+            guard let zone = fxZones.first(where: { $0.titanId == titanId }) else { return }
+            onFX?(.zone(layer: layer, zone: zone), index)
+        case (.back, .fxVersions), (.back, .fxLayerPick):
+            show(.fx(returnTo: home))
+        case (.back, .fxLayer):
+            fxTargetLayer = nil
+            show(.fx(returnTo: home))
+        case (.back, .fxLevel(let layer, _, _)), (.back, .fxFixtures(let layer, _)):
+            show(.fxLayer(layer: layer, returnTo: home))
         case (.intensity, _):
             show(.selection(returnTo: home))
         case (.back, _), (.done, _):
@@ -594,6 +692,27 @@ final class DeckSessionController: ObservableObject {
         activeTitanIds.insert(titanId)
         redraw()
         return .fireHandle(titanId: titanId)
+    }
+
+    /// A video onto a layer, then that layer's page (the result shows on its clip key).
+    private func setVideo(_ item: DeckFX.Item, on layer: Int, home: Int) {
+        fxLayers[layer, default: DeckFX.LayerState()].clip = item.title
+        show(.fxLayer(layer: layer, returnTo: home))
+        onFX?(.setVideo(layer: layer, item: item), 0)
+    }
+
+    /// The FXZone groups, for the FX fixtures page.
+    func setFXZones(_ zones: [DeckFX.Zone]) {
+        guard zones != fxZones else { return }
+        fxZones = zones
+        if case .fxFixtures? = flowOverlay { redraw() }
+    }
+
+    private static func showsFX(_ overlay: DeckFlow.Overlay) -> Bool {
+        switch overlay {
+        case .fx, .fxVersions, .fxLayerPick, .fxLayer, .fxLevel, .fxFixtures: return true
+        default: return false
+        }
     }
 
     /// The handles on Titan's page 60, for the Masters page.

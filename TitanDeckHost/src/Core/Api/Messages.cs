@@ -183,3 +183,21 @@ public sealed record CueFadeRequest(int TitanId, bool FadeOut, double Seconds);
 /// <summary>What the Host did for a Titan action: whether it worked (checked), in a
 /// line, and every step with Titan's answer.</summary>
 public sealed record TitanActionDto(bool Ok, string Message, IReadOnlyList<string> Steps);
+
+/// <summary>One control of a Prism layer fixture and its value, as Titan's attribute editor shows it.</summary>
+public sealed record FxControlValue(string Control, double Value);
+
+/// <summary>`POST /api/v1/fx/layer` (Host 0.16+, Test mode): a Prism layer fixture's
+/// controls set on the WebAPI user's programmer, and/or released.</summary>
+public sealed record FxLayerRequest(int Fixture, IReadOnlyList<FxControlValue> Values, bool Release);
+
+/// <summary>`POST /api/v1/fx/group` (Host 0.16+, Test mode): a pixel map's group
+/// changed. Mode is replace, add or remove (Fixtures, by user number) or zone
+/// (another group's fixtures, by its handle's Titan id).</summary>
+public sealed record FxGroupRequest(int Group, string Mode, IReadOnlyList<int> Fixtures, int? ZoneTitanId);
+
+/// <summary>A control name and its id on the probed fixture (null: it hasn't got one).</summary>
+public sealed record FxControlDto(string Name, int? Id);
+
+/// <summary>`GET /api/v1/fx/probe?fixture=N&amp;names=a,b`: which controls a Prism layer fixture has.</summary>
+public sealed record FxProbeDto(int Fixture, IReadOnlyList<FxControlDto> Controls, IReadOnlyList<string> Steps);

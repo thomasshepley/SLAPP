@@ -197,6 +197,45 @@ struct HostTitanAction: Codable, Equatable {
     let steps: [String]
 }
 
+// MARK: - FX (Host 0.16+, Test mode)
+
+/// One control of a Prism layer fixture and its value, as Titan's attribute editor shows it.
+struct HostFxControlValue: Codable, Equatable {
+    let control: String
+    let value: Double
+}
+
+/// `POST /api/v1/fx/layer`: a Prism layer fixture's controls set on the
+/// WebAPI user's programmer, and/or released.
+struct HostFxLayerRequest: Codable, Equatable {
+    let fixture: Int
+    let values: [HostFxControlValue]
+    let release: Bool
+}
+
+/// `POST /api/v1/fx/group`: a pixel map's group changed: "replace", "add" or
+/// "remove" the fixtures (user numbers), or "zone" (an FXZone group by its
+/// handle's Titan id).
+struct HostFxGroupRequest: Codable, Equatable {
+    let group: Int
+    let mode: String
+    let fixtures: [Int]
+    let zoneTitanId: Int?
+}
+
+/// A control name and its id on the probed fixture (nil: it hasn't got one).
+struct HostFxControl: Codable, Equatable {
+    let name: String
+    let id: Int?
+}
+
+/// `GET /api/v1/fx/probe`: which controls a Prism layer fixture has.
+struct HostFxProbe: Codable, Equatable {
+    let fixture: Int
+    let controls: [HostFxControl]
+    let steps: [String]
+}
+
 // MARK: - Slate Book (Host 0.13+)
 
 /// The slate showing: slate on the clapper, take, day or night, FX.

@@ -13,6 +13,7 @@ final class AppState: ObservableObject {
         case companion
         case network
         case slates
+        case fx
         case settings
     }
 
@@ -79,6 +80,13 @@ final class AppState: ObservableObject {
     let deskLink: DeskLink
     /// The selected fixture's live level from sACN, through the Host.
     let intensity: IntensityReader
+    /// The FX tab's effects (videos and bitmaps for Prism).
+    let fxLibrary: FXLibraryStore
+    /// Which Titan fixtures, groups and playbacks the deck's FX page drives.
+    @Published var fxSettings = DeckFX.Settings.load() {
+        didSet { fxSettings.save() }
+    }
+    private var fxSubscriptions = Set<AnyCancellable>()
     private var logSubscriptions = Set<AnyCancellable>()
     private let store: ProfileStore
 
@@ -103,6 +111,7 @@ final class AppState: ObservableObject {
         self.host = hostStore
         slates = SlateStore(client: { [weak hostStore] in hostStore?.client })
         keypad = KeypadReadoutStore()
+        fxLibrary = FXLibraryStore()
         let titan = TitanClient(host: host, port: viaHost ? TitanEndpoints.viaHostPort : TitanEndpoints.defaultPort)
         self.titan = titan
         let deskLink = DeskLink(api: titan)
@@ -181,6 +190,25 @@ final class AppState: ObservableObject {
         deck.onNeedMasters = { [weak self] in
             Task { await self?.refreshMasters() }
         }
+        deck.onFX = { [weak self] command, keyIndex in
+            Task { await self?.runFX(command, keyIndex: keyIndex) }
+        }
+        deck.onNeedFXZones = { [weak self] in
+            Task { await self?.refreshFXZones() }
+        }
+        fxLibrary.$index
+            .map { $0.items.compactMap(\.deckItem) }
+            .removeDuplicates()
+            .sink { [weak self] items in self?.deck.fxItems = items }
+            .store(in: &fxSubscriptions)
+        // The FX page is Test mode only for now.
+        deck.fxEnabled = !UserDefaults.standard.bool(forKey: SettingsKeys.showMode)
+        NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)
+            .map { _ in !UserDefaults.standard.bool(forKey: SettingsKeys.showMode) }
+            .removeDuplicates()
+            .receive(on: RunLoop.main)
+            .sink { [weak self] enabled in self?.deck.fxEnabled = enabled }
+            .store(in: &fxSubscriptions)
         deck.flashFadeRules = flashFadeRules
         deck.heldColorHex = heldKeyColour
         deskLink.citpSelection = { [weak self] in
@@ -878,6 +906,121 @@ final class AppState: ObservableObject {
             connectionLog.record(.app, .info, "Masters: couldn't read the level of " + unread.prefix(3).joined(separator: "; "))
         }
         deck.setPageMasters(masters)
+    }
+
+    // MARK: - FX (Test mode)
+
+    /// An FX page press, done by TitanDeck Host (0.16+) on Titan's WebAPI
+    /// user; GO / STOP fire the pixel map's playback here. The key shows
+    /// whether it worked and Recent events says what happened.
+    private func runFX(_ command: DeckFX.Command, keyIndex: Int) async {
+        let (ok, message) = await fxResult(command)
+        deck.report(success: ok, forKey: keyIndex)
+        connectionLog.record(.key, .info, "FX: " + message)
+    }
+
+    private func fxResult(_ command: DeckFX.Command) async -> (ok: Bool, message: String) {
+        let settings = fxSettings
+        switch command {
+        case .go(let layer), .stop(let layer):
+            var go = false
+            if case .go = command { go = true }
+            guard let titanId = await fxPlayback(layer) else {
+                return (false, "Layer \(layer)'s pixel map playback isn't set (FX tab > Prism Setup: page and fader), or Titan has no playback there")
+            }
+            let result = await (deskLink.commandClient ?? titan).perform(go ? .fireHandle(titanId: titanId) : .releaseHandle(titanId: titanId))
+            return (result.ok, "Layer \(layer) pixel map \(go ? "GO" : "STOP")" + (result.ok ? "" : ": " + (result.error ?? "Titan didn't take it")))
+        default:
+            break
+        }
+        guard let client = host.client else { return (false, "FX needs TitanDeck Host 0.16 or later, paired in Settings") }
+        func fixture(_ layer: Int) -> Int? {
+            let number = settings.layer(layer).fixture
+            return number > 0 ? number : nil
+        }
+        let unset = { (layer: Int, what: String) in (false, "Layer \(layer)'s \(what) isn't set (FX tab > Prism Setup)") }
+        do {
+            let answer: HostTitanAction
+            switch command {
+            case .setVideo(let layer, let item):
+                guard let number = fixture(layer) else { return unset(layer, "Prism fixture") }
+                answer = try await client.fxLayer(HostFxLayerRequest(fixture: number, values: [
+                    HostFxControlValue(control: settings.folder, value: Double(item.folder)),
+                    HostFxControlValue(control: settings.file, value: Double(item.file)),
+                ], release: false))
+            case .setLevel(let layer, let control, let level):
+                guard let number = fixture(layer) else { return unset(layer, "Prism fixture") }
+                answer = try await client.fxLayer(HostFxLayerRequest(fixture: number, values: [
+                    HostFxControlValue(control: settings.controlName(control), value: settings.value(level)),
+                ], release: false))
+            case .release(let layer):
+                guard let number = fixture(layer) else { return unset(layer, "Prism fixture") }
+                answer = try await client.fxLayer(HostFxLayerRequest(fixture: number, values: [], release: true))
+            case .releaseAll:
+                var messages: [String] = []
+                var ok = true
+                for layer in DeckFX.layers {
+                    guard let number = fixture(layer) else { continue }
+                    let one = try await client.fxLayer(HostFxLayerRequest(fixture: number, values: [], release: true))
+                    ok = ok && one.ok
+                    messages.append(one.message)
+                }
+                return messages.isEmpty ? unset(1, "Prism fixture") : (ok, messages.joined(separator: "; "))
+            case .fixtures(let layer, let change):
+                let group = settings.layer(layer).group
+                guard group > 0 else { return unset(layer, "pixel map group") }
+                let selected = deck.selectedFixtures
+                guard !selected.isEmpty else { return (false, "Select fixtures on the desk first, then \(change.rawValue.uppercased())") }
+                answer = try await client.fxGroup(HostFxGroupRequest(group: group, mode: change.rawValue, fixtures: selected, zoneTitanId: nil))
+            case .zone(let layer, let zone):
+                let group = settings.layer(layer).group
+                guard group > 0 else { return unset(layer, "pixel map group") }
+                answer = try await client.fxGroup(HostFxGroupRequest(group: group, mode: "zone", fixtures: [], zoneTitanId: zone.titanId))
+            case .go, .stop:
+                return (false, "")
+            }
+            Log.titan("Host FX: \(answer.message)\n" + answer.steps.joined(separator: "\n"))
+            return (answer.ok, answer.message)
+        } catch {
+            return (false, error.localizedDescription)
+        }
+    }
+
+    /// A layer's pixel map playback (page and fader from the FX settings) as Titan's handle.
+    private func fxPlayback(_ layer: Int) async -> Int? {
+        let setting = fxSettings.layer(layer)
+        guard setting.playbackPage > 0, setting.playbackFader > 0 else { return nil }
+        func find() -> Int? {
+            deck.availableCues.first { $0.page == setting.playbackPage - 1 && $0.index == setting.playbackFader - 1 }?.titanId
+        }
+        if let id = find() { return id }
+        if let handles = await titan.playbackHandles() { deck.setAvailableCues(Self.cueChoices(handles)) }
+        return find()
+    }
+
+    /// The FXZone groups, for a layer's FIXTURES page.
+    private func refreshFXZones() async {
+        for group in ["Groups", "Group"] {
+            guard let handles = await titan.handles(group: group), !handles.isEmpty else { continue }
+            let zones = DeckFX.zones(handles.map { (titanId: $0.titanId, legend: $0.legend) })
+            deck.setFXZones(zones)
+            if zones.isEmpty {
+                connectionLog.record(.app, .info, "FX: no groups named \(DeckFX.zonePrefix)... in Titan's \(group) (\(handles.count) groups)")
+            }
+            return
+        }
+        connectionLog.record(.app, .info, "FX: Titan didn't list its groups, so there are no FX zones")
+    }
+
+    /// The FX tab's check of a layer's Prism fixture: which control names Titan has.
+    func probeFX(layer: Int) async -> Result<HostFxProbe, Error> {
+        guard let client = host.client else { return .failure(HostError.unreachable("Pair TitanDeck Host 0.16 or later in Settings.")) }
+        let fixture = fxSettings.layer(layer).fixture
+        do {
+            return .success(try await client.fxProbe(fixture: fixture, names: fxSettings.controlNames))
+        } catch {
+            return .failure(error)
+        }
     }
 
     /// Titan's playback handles as the deck's Connect Cue choices.

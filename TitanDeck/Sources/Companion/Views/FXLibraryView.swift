@@ -7,10 +7,11 @@ import UniformTypeIdentifiers
 
 /// Pixel-effect clips and bitmaps (fire, police, fireworks, lightning...) to
 /// run through Prism / the pixel mapper. Add from Photos or Files, tag them,
-/// and send them to the Titan PC with the file uploader.
+/// and send them to the Titan PC with the file uploader. In the FX tab
+/// (0.37); an effect with its Prism Folder and File is on the deck's FX page.
 struct FXLibraryView: View {
     @EnvironmentObject private var appState: AppState
-    @StateObject private var store = FXLibraryStore()
+    @ObservedObject var store: FXLibraryStore
     @State private var search = ""
     @State private var category: FXItem.Category?
     @State private var photoSelection: [PhotosPickerItem] = []
@@ -255,6 +256,25 @@ private struct FXDetailView: View {
                 }
                 TextField("Notes (e.g. which fixtures, speed)", text: $item.notes, axis: .vertical)
                     .lineLimit(2 ... 5)
+            }
+
+            Section {
+                LabeledContent("Folder") {
+                    TextField("Number", value: $item.prismFolder, format: .number)
+                        .keyboardType(.numberPad)
+                        .multilineTextAlignment(.trailing)
+                }
+                LabeledContent("File") {
+                    TextField("Number", value: $item.prismFile, format: .number)
+                        .keyboardType(.numberPad)
+                        .multilineTextAlignment(.trailing)
+                }
+            } header: {
+                Text("Prism (deck FX)")
+            } footer: {
+                Text(item.deckCategory == nil
+                     ? "The deck's FX page has Fire, Candle, Lightning, Police, Fireworks and TV. Pick one of those categories to put this on it."
+                     : "Where Prism has this clip, as the Prism layer's Folder and File show in Titan. With both set, it's on the deck: FX > \(item.category.rawValue).")
             }
 
             Section {

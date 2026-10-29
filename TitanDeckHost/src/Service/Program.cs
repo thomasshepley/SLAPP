@@ -192,6 +192,30 @@ network.MapPost("/actions/cue-fade", async (CueFadeRequest request, TitanActions
 network.MapPost("/actions/clear-selection", async (TitanActions actions, HttpContext http) =>
     Results.Ok(await actions.ClearSelection(http.RequestAborted)));
 
+// TitanDeck's FX page (Prism layers and their pixel maps): Test mode only
+// while it's new.
+network.MapPost("/fx/layer", async (FxLayerRequest request, TitanActions actions, HostModeStore mode, HttpContext http) =>
+{
+    if (mode.IsShow) return FxShowMode();
+    if (request.Fixture <= 0 || request.Values.Any(v => string.IsNullOrWhiteSpace(v.Control) || !double.IsFinite(v.Value)))
+        return Results.BadRequest(new { error = "That isn't a Prism layer fixture number and control values." });
+    return Results.Ok(await actions.FxLayer(request, http.RequestAborted));
+});
+network.MapPost("/fx/group", async (FxGroupRequest request, TitanActions actions, HostModeStore mode, HttpContext http) =>
+{
+    if (mode.IsShow) return FxShowMode();
+    if (request.Group <= 0 || request.Fixtures.Any(f => f <= 0))
+        return Results.BadRequest(new { error = "That isn't a group number and fixture numbers." });
+    return Results.Ok(await actions.FxGroup(request, http.RequestAborted));
+});
+network.MapGet("/fx/probe", async (int fixture, string? names, TitanActions actions, HostModeStore mode, HttpContext http) =>
+{
+    if (mode.IsShow) return FxShowMode();
+    if (fixture <= 0) return Results.BadRequest(new { error = "Which Prism layer fixture?" });
+    var extra = (names ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+    return Results.Ok(await actions.FxProbe(fixture, extra, http.RequestAborted));
+});
+
 // The desk's selection over CITP (experimental, Test mode only).
 network.MapGet("/citp/selection", (CitpService citp) => citp.Selection());
 
@@ -355,6 +379,10 @@ static IResult DmxLevels(int universe, int start, int count, DmxUniverses store,
     return Results.Ok(new DmxLevelsDto(universe, first, levels.Slice(first, count).Select(b => (int)b).ToList(),
         levels.Priority, levels.Sources, (int)levels.Age.TotalMilliseconds));
 }
+
+static IResult FxShowMode() => Results.Json(
+    new { error = "FX is Test mode only for now: switch TitanDeck Host to Test mode to use it." },
+    statusCode: StatusCodes.Status409Conflict);
 
 static StatusResponse Status(WindowsProbe probe, DeskLink desk, HostPaths paths, HostModeStore mode)
 {

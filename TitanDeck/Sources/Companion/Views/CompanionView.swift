@@ -17,7 +17,6 @@ struct CompanionView: View {
                 Section("Library") {
                     sidebarRow(.fixtures, detail: "\(library.fixtures.count)")
                     sidebarRow(.gels, detail: "\(library.gels.count)")
-                    sidebarRow(.fx)
                 }
                 Section("Tools") {
                     ForEach([CompanionSection.beam, .stops, .power, .colour, .flicker, .sun]) { sidebarRow($0) }
@@ -74,7 +73,6 @@ struct CompanionView: View {
         switch section {
         case .fixtures: FixtureLibraryView(library: library)
         case .gels: GelLibraryView(library: library)
-        case .fx: FXLibraryView()
         case .beam: BeamToolView(library: library)
         case .stops: StopsToolView(library: library)
         case .power: PowerToolView(library: library)

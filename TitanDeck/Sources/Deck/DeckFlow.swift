@@ -32,6 +32,18 @@ enum DeckFlow {
         case masters(returnTo: Int)
         /// One group master's level, 0% to 100% in tens.
         case masterLevel(titanId: Int, returnTo: Int)
+        /// FX (Test mode): the effect kinds and the Prism layers.
+        case fx(returnTo: Int)
+        /// One kind's versions from the FX tab.
+        case fxVersions(category: DeckFX.Category, returnTo: Int)
+        /// Which Prism layer a picked version goes on.
+        case fxLayerPick(item: UUID, returnTo: Int)
+        /// One Prism layer: clip, levels, GO / STOP, fixtures, release.
+        case fxLayer(layer: Int, returnTo: Int)
+        /// One level of a layer, 0% to 100% in tens.
+        case fxLevel(layer: Int, control: DeckFX.Control, returnTo: Int)
+        /// A layer's fixtures: USE SEL / ADD / REMOVE and the FXZone groups.
+        case fxFixtures(layer: Int, returnTo: Int)
 
         /// The profile page to go back to.
         var returnTo: Int {
@@ -39,6 +51,8 @@ enum DeckFlow {
             case .menu: return 0
             case .selection(let page), .colour(let page), .connectCue(let page), .slate(let page),
                  .rig(let page), .masters(let page), .masterLevel(_, let page): return page
+            case .fx(let page), .fxVersions(_, let page), .fxLayerPick(_, let page), .fxLayer(_, let page),
+                 .fxLevel(_, _, let page), .fxFixtures(_, let page): return page
             case .titanPages(_, _, _, let page), .titanCues(_, _, _, let page), .fadePicker(_, _, let page): return page
             }
         }
@@ -343,7 +357,7 @@ enum DeckFlow {
     }
 
     /// The shipped 15-key layout: 3 wide, 5 high (the deck in portrait).
-    private static func isThreeWide(_ profile: DeckProfile) -> Bool {
+    static func isThreeWide(_ profile: DeckProfile) -> Bool {
         profile.keyCount == 15 && DeckGeometry(keyCount: 15, orientation: profile.orientation).logicalColumns == 3
     }
 
@@ -351,7 +365,7 @@ enum DeckFlow {
     /// deck (bottom middle) so the same key always goes keypad <-> Quick Keys,
     /// else on the last key. It's still a Menu key underneath: a tap goes to
     /// the keypad, a hold opens the menu of pages.
-    private static func withReturnKey(_ source: [KeyDefinition], keyCount: Int, threeWide: Bool) -> [KeyDefinition] {
+    static func withReturnKey(_ source: [KeyDefinition], keyCount: Int, threeWide: Bool) -> [KeyDefinition] {
         let returnIndex = threeWide ? 13 : max(keyCount - 1, 0)
         var keys = source.filter { $0.action != .mainMenu && $0.index != returnIndex }
         keys.append(KeyDefinition(index: returnIndex, label: returnLabel, colorHex: DeckProfile.pageColor,
@@ -427,20 +441,26 @@ enum DeckFlow {
     }
 
     /// The main menu: one key per page, so new pages appear by themselves.
-    static func menuPage(profile: DeckProfile) -> DeckPage {
+    /// - Parameter fx: the FX page is offered (Test mode).
+    static func menuPage(profile: DeckProfile, fx: Bool = false) -> DeckPage {
         let palette = ["#2D4FA3", "#1E7D32", "#8A5A00", "#6A3FA0", "#0E7C86", "#B23B1E"]
         var keys = profile.pages.prefix(profile.keyCount).enumerated().map { index, page in
             KeyDefinition(index: index, label: page.name, colorHex: palette[index % palette.count],
                           action: .switchPage(index))
         }
-        // Rig, Masters and the Slate Book after the pages, taking the last
-        // keys if the pages fill the deck.
-        let extras = [
+        // Rig, Masters, FX (Test mode) and the Slate Book after the pages,
+        // taking the last keys if the pages fill the deck.
+        var all = [
             KeyDefinition(index: 0, label: "RIG", colorHex: rigColour, sfSymbol: "lightbulb.max", action: .deckChoice(.openRig)),
             KeyDefinition(index: 0, label: "MASTERS", colorHex: mastersColour, sfSymbol: "slider.vertical.3",
                           action: .deckChoice(.openMasters)),
             KeyDefinition(index: 0, label: "SLATES", colorHex: slateColour, sfSymbol: "film", action: .deckChoice(.openSlates)),
-        ].suffix(max(profile.keyCount, 0))
+        ]
+        if fx {
+            all.insert(KeyDefinition(index: 0, label: "FX", colorHex: DeckFX.fxColour, sfSymbol: "sparkles",
+                                     action: .deckChoice(.openFX)), at: 2)
+        }
+        let extras = all.suffix(max(profile.keyCount, 0))
         let start = max(min(keys.count, profile.keyCount - extras.count), 0)
         keys.removeAll { $0.index >= start }
         for (offset, var extra) in extras.enumerated() {

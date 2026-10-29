@@ -6,6 +6,12 @@ until it's show-ready (1.0): MINOR for features, PATCH for fixes. Keep
 (ChangelogTests checks). Each version is published as a GitHub release
 `host-v<version>` with the installer attached.
 
+## 0.16.0 - 2026-10-29 - FX: Prism layers from the deck (Test mode)
+
+- **New for TitanDeck 0.37's FX page, in Test mode only:** the Host sets a Prism layer fixture's controls (Dimmer, Folder, File, Speed, Colour Adjust...) on Titan's WebAPI user, releases them (RELEASE), and changes a layer's pixel map group: the fixtures selected (USE SEL), added (ADD) or taken out (REMOVE), or another group's fixtures (an FXZone group). Every group change is read back from Titan to check it, and a change that would empty the group is refused.
+- **Check Prism layer:** TitanDeck's FX tab can ask which controls a layer fixture has, by name, so the deck uses the names your Prism personality has.
+- The WebAPI user's selection is put back to the desk's after each FX action. In Show mode the Host refuses FX.
+
 ## 0.15.2 - 2026-10-28 - CLEAR shows as cleared
 
 - **Fixed: after CLEAR, TitanDeck still showed the fixtures as selected.** Titan clears the desk's selection when told over CITP but doesn't send the now-empty selection back to whoever cleared it, so the Host kept the old one. The Host now empties its own copy once the clear is sent, and CLEAR answers straight away. The desk's next selection comes through as usual.

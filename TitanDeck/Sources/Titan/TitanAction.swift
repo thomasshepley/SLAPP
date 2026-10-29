@@ -177,4 +177,33 @@ enum DeckChoice: Codable, Hashable {
     case pickMaster(titanId: Int)
     /// A group master's level picker: 0...1.
     case masterLevel(Double)
+    /// The main menu's way to the FX page (Prism layers, Test mode).
+    case openFX
+    /// FX page: an effect kind (DeckFX.Category's raw value).
+    case fxCategory(String)
+    /// FX versions: one of the FX tab's effects, by id.
+    case fxItem(String)
+    /// FX page or layer pick: Prism layer 1 or 2.
+    case fxLayer(Int)
+    /// FX layer page: pick another video for this layer.
+    case fxPickVideo
+    /// FX layer page: a level to set (DeckFX.Control's raw value).
+    case fxControl(String)
+    /// FX level picker: 0...1.
+    case fxLevel(Double)
+    /// FX layer page: the pixel map's playback on / off.
+    case fxGo
+    case fxStop
+    /// FX layer page: let go of the layer in the WebAPI user's programmer.
+    case fxRelease
+    /// FX page: let go of both layers.
+    case fxReleaseAll
+    /// FX layer page: its fixtures.
+    case fxFixtures
+    /// FX fixtures: the layer's group becomes the desk's selection, gains it, or loses it.
+    case fxUseSelection
+    case fxAdd
+    case fxRemove
+    /// FX fixtures: the layer's group becomes an FXZone group's fixtures.
+    case fxZone(titanId: Int)
 }

@@ -13,7 +13,7 @@ namespace TitanDeckHost.Service;
 /// every call is in the Titan log. One action at a time: the WebAPI user's
 /// editor is shared.
 /// </summary>
-public sealed class TitanActions(TitanLog titanLog, CitpService citp)
+public sealed partial class TitanActions(TitanLog titanLog, CitpService citp)
 {
     private const string Who = "Host - Titan actions";
     private static readonly HttpClient Titan = new() { Timeout = TimeSpan.FromSeconds(3) };
