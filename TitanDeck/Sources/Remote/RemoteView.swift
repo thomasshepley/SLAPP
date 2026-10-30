@@ -226,7 +226,8 @@ struct RemoteView: View {
 }
 
 /// What's selected, along the top: every fixture number that fits the bar,
-/// then "+N more"; a tap lists them all. Gone with nothing selected.
+/// then "+N more", and (0.42) its level and colour temperature when the deck
+/// knows them; a tap lists them all. Gone with nothing selected.
 private struct SelectionStrip: View {
     @ObservedObject var deck: DeckSessionController
     @State private var showingAll = false
@@ -249,6 +250,19 @@ private struct SelectionStrip: View {
                             Text(text).lineLimit(1).fixedSize()
                         }
                         Text("\(fixtures.count) fixtures").lineLimit(1).fixedSize()
+                    }
+                    if let level = deck.liveLevel ?? deck.typedLevel {
+                        Divider().frame(height: 12)
+                        Label(DeckFlow.percentText(level), systemImage: "light.max")
+                            .labelStyle(.titleAndIcon)
+                            .fixedSize()
+                    }
+                    if let kelvin = deck.currentKelvin {
+                        Divider().frame(height: 12)
+                        Label("\(kelvin)K", systemImage: "thermometer.sun.fill")
+                            .labelStyle(.titleAndIcon)
+                            .foregroundStyle(Color(kelvin: Double(kelvin)))
+                            .fixedSize()
                     }
                 }
                 .font(.caption.weight(.semibold).monospacedDigit())
