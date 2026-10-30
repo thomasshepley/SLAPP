@@ -45,6 +45,18 @@ enum TitanUsers {
         return User(id: id, name: name)
     }
 
+    /// Users from Titan's user handles: each with a Titan id, named by its
+    /// legend (or "User n").
+    static func fromHandles(_ handles: [(titanId: Int?, userNumber: Int?, legend: String)]) -> [User] {
+        var users: [User] = []
+        for handle in handles {
+            guard let id = handle.titanId, !users.contains(where: { $0.id == id }) else { continue }
+            let legend = handle.legend.trimmingCharacters(in: .whitespacesAndNewlines)
+            users.append(User(id: id, name: legend.isEmpty ? "User \(handle.userNumber ?? id)" : legend))
+        }
+        return users
+    }
+
     /// A Titan answer that's a plain value ("Operator", 1234), as text.
     static func value(_ data: Data) -> String? {
         if let text = try? JSONDecoder().decode(String.self, from: data) { return text }

@@ -447,10 +447,35 @@ actor TitanClient {
 
     // MARK: - Users (sharing the desk's, 0.42)
 
-    /// The show's users, and Titan's answer as text (its shape isn't documented).
+    /// The show's users: Titan's user handles (`/titan/handles/Users`,
+    /// 0.42.1), else its Users menu list; and when neither lists any, what
+    /// Titan said (its status and answer) for Settings to show.
     func users() async -> (users: [TitanUsers.User], answer: String?) {
-        guard let data = await body(TitanEndpoints.usersURL(host: host, port: port)) else { return ([], nil) }
-        return (TitanUsers.parse(data), String(decoding: data.prefix(400), as: UTF8.self))
+        var said: [String] = []
+        for group in ["Users", "User"] {
+            guard let handles = await handles(group: group) else {
+                said.append("handles/\(group): no answer")
+                continue
+            }
+            let users = TitanUsers.fromHandles(handles.map { (titanId: $0.titanId, userNumber: $0.userNumber, legend: $0.legend) })
+            if !users.isEmpty { return (users, nil) }
+            said.append("handles/\(group): \(handles.count) handles, none a user")
+        }
+        guard let url = TitanEndpoints.usersURL(host: host, port: port) else { return ([], "No Titan host set") }
+        do {
+            let (data, response) = try await fetch(url)
+            let status = (response as? HTTPURLResponse)?.statusCode
+            if status == 200 {
+                let users = TitanUsers.parse(data)
+                if !users.isEmpty { return (users, nil) }
+                said.append("GetUserListMenuItems: " + String(decoding: data.prefix(200), as: UTF8.self))
+            } else {
+                said.append("GetUserListMenuItems: " + (Self.errorText(status: status, body: data) ?? "HTTP \(status ?? 0)"))
+            }
+        } catch {
+            said.append("GetUserListMenuItems: " + error.localizedDescription)
+        }
+        return ([], said.joined(separator: "; "))
     }
 
     /// This WebAPI client's user (id, name), if Titan says.

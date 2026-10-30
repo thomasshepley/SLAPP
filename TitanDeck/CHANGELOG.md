@@ -7,6 +7,11 @@ the GitHub Actions run that built it. The top entry is shown in the app
 so add an entry - and bump `MARKETING_VERSION` in `project.yml` to match -
 with every change that goes to `main`.
 
+## 0.42.1 - 2026-10-30 - Finding Titan's users
+
+- **Fixed: Share the desk's user found no users.** Titan didn't answer the Users menu list over the WebAPI, so the deck now reads Titan's user handles first (the way it reads groups and playbacks), then the menu list.
+- If Titan still lists none, the section says exactly what Titan answered, and there's a box to type the user's Titan id instead.
+
 ## 0.42.0 - 2026-10-30 - Level and CCT at a glance, sharing the desk's user
 
 - **Level and CCT on the screen:** the Selected bar along the top of the Remote screen now shows the selection's level and colour temperature next to the fixture numbers, when the deck knows them. On the deck they're on HOLD FOR 0% and the CCT key, as before.
