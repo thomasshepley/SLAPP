@@ -7,6 +7,14 @@ the GitHub Actions run that built it. The top entry is shown in the app
 so add an entry - and bump `MARKETING_VERSION` in `project.yml` to match -
 with every change that goes to `main`.
 
+## 0.41.0 - 2026-10-30 - Everything through the WebAPI
+
+- **The deck no longer types on the desk.** Typing keys on the Titan PC glitched (missed keys, and once it selected every fixture at 100%), so the keypad, Quick Keys, Groups and FX now all talk to Titan's WebAPI directly.
+- **Keypad:** the deck reads what you type. Enter selects the fixtures ("101", "1 THRU 10") and sets "@ 50" levels; levels need two digits ("@ 05" for 5%, "@ @" for full). Clear clears what's typed, then the selection and programmer.
+- **Groups page and FX:** the group is recalled through the WebAPI, and FX's SELECT / LEVEL set its level there too. The deck shows what got selected.
+- On Titan 19 the WebAPI is a user of its own: what the deck selects and sets is in its own programmer (it outputs like any other), not in the desk's. Settings > Desk link > Keypad types on the desk is gone.
+- Update TitanDeck Host to 0.18.2 too: it now leaves the deck's selection as it was after FX and group actions.
+
 ## 0.40.0 - 2026-10-29 - FX: your faders, your group
 
 The FX page now fits how you run FX in Titan: per Prism layer, a Prism layer fader (clip, play mode, speed, 100%) and a pixel map fader over your FX group, which you change on the desk yourself.

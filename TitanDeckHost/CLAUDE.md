@@ -95,7 +95,8 @@ TitanDeckHost/
   `WebAPIService.dll.config` alongside Titan's own settings files;
   `FixAction.EnableWebApiCompatibility` (PC only) backs it up, turns it on and
   restarts the Windows service whose ImagePath contains WebAPIService, if any.
-- **Desk keys** (`Core/Titan/DeskKeys`, `DeskKeyQueue`, paired `POST /api/v1/desk/keys`,
+- **Desk keys (unused by TitanDeck 0.41+, which does everything through the
+  WebAPI; kept for older iPads)** (`Core/Titan/DeskKeys`, `DeskKeyQueue`, paired `POST /api/v1/desk/keys`,
   window long-polls `GET /local/desk/keys/wait`, `App/DeskTyper` SendInput with
   scan codes): the deck's keypad typed on the PC for Titan, which captures the
   keyboard. Only `DeskKeys.All` keys can be typed (never letters); refused when
@@ -125,6 +126,10 @@ TitanDeckHost/
   never emptied. `GET /api/v1/fx/probe` asks `GetControlIdFromName` for each
   name. Every FX action puts the 4430 user's selection back to the desk's
   (CITP). 409 in Show mode.
+- **The 4430 selection is kept (0.18.2):** FX and group actions read the
+  WebAPI user's selection first (`KeepSelection`) and put exactly that back
+  (`PutBackSelection`), as TitanDeck 0.41 works through it; only if it
+  couldn't be read do they fall back to the desk's (CITP), as 0.16-0.18.1 did.
 - **Groups (0.17; `TitanActions.Groups.cs`):** `GET /api/v1/groups/{titanId}/fixtures`
   recalls the group on the 4430 user (`FxRecipes.RecallGroupWays`, 0.18.1:
   `RecallGroup?handle_titanId=`, then `RecallGroupById?groupId=`,
