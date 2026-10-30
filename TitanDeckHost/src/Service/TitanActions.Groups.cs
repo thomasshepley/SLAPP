@@ -18,6 +18,7 @@ public sealed partial class TitanActions
     public async Task<GroupFixturesDto> GroupFixtures(int groupTitanId, int? groupNumber, CancellationToken token)
     {
         await one.WaitAsync(token);
+        var before = await KeepSelection(token);
         try
         {
             var steps = new List<string>();
@@ -58,7 +59,7 @@ public sealed partial class TitanActions
         }
         finally
         {
-            await PutBackDeskSelection(token);
+            await PutBackSelection(before);
             one.Release();
         }
     }

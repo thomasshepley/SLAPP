@@ -6,6 +6,11 @@ until it's show-ready (1.0): MINOR for features, PATCH for fixes. Keep
 (ChangelogTests checks). Each version is published as a GitHub release
 `host-v<version>` with the installer attached.
 
+## 0.18.2 - 2026-10-30 - Keeps the deck's selection
+
+- **Fixed for TitanDeck 0.41, which works through the WebAPI:** after an FX or Groups action the Host put the WebAPI user's selection back to the desk's, which threw away what the deck had selected (an FX group at 100%, a group from the Groups page). It now puts back exactly what the WebAPI user had selected before; only if that can't be read does it use the desk's, as before.
+- The deck no longer asks the Host to type keys on the desk; the Host still can for older versions of TitanDeck.
+
 ## 0.18.1 - 2026-10-29 - Groups made of groups
 
 - **Fixed: TitanDeck's Groups page couldn't select a group made of other groups.** Recalling it by its handle selected nothing, so the Host now tries Titan's other ways in turn (by the group's id, by its number, as a range) until one selects fixtures. The steps say which worked.

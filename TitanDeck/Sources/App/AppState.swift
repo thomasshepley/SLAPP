@@ -325,9 +325,11 @@ final class AppState: ObservableObject {
     /// so a failure can flash that key red.
     /// The keypad types on the Titan PC (Settings > Desk link), so it's on the
     /// desk's own command line and its selection shows on the desk.
-    var keypadTypesOnDesk: Bool {
-        UserDefaults.standard.object(forKey: SettingsKeys.keypadTypesOnDesk) as? Bool ?? true
-    }
+    /// Off for good since 0.41: the user asked for everything through the
+    /// WebAPI, as typing on the desk glitched (once it selected every
+    /// fixture at 100%). The keypad, Quick Keys, Groups and FX use
+    /// `runKeypad` and the WebAPI calls; the typing code is left unused.
+    var keypadTypesOnDesk: Bool { false }
     /// A key press waiting to be typed on the desk.
     private struct DeskPress {
         let action: TitanAction
@@ -378,6 +380,7 @@ final class AppState: ObservableObject {
         let typing = keypad.readout.current?.text
         let keypadLine = keypad.press(action)
         intensity.deckWillSend(action)
+        if runKeypad(action, typing: typing, keypadLine: keypadLine, keyIndex: keyIndex) { return }
         if keypadTypesOnDesk, action == .keypadEnter, let typing, let level = DeskKeys.typedLevel(typing) {
             // "101 @ 50" is about 101 (the deck selects it after this key); "@ 50" the selection now.
             rememberTyped(level / 100, fixtures: DeskKeys.typedFixtures(typing) ?? deck.selectedFixtures)
@@ -441,6 +444,108 @@ final class AppState: ObservableObject {
             let result = await client.perform(action)
             finish(result, keypadLine: keypadLine, keyIndex: keyIndex)
         }
+    }
+
+    // MARK: - Keypad through the WebAPI (0.41)
+
+    /// The deck's keypad done through Titan's WebAPI: the deck reads its own
+    /// line, so nothing is typed anywhere. Numbers, @, THRU and Exit only
+    /// build the line; Enter selects the fixtures named (clear, then select
+    /// by number) and sets "@ level" (SetDimmerLevel); Clear clears the line,
+    /// then the selection and programmer. On Titan 19 that's the WebAPI
+    /// user's own (it outputs like any other), on 14-18 with the desk link
+    /// the operator's. False for anything that isn't a keypad key.
+    private func runKeypad(_ action: TitanAction, typing: String?, keypadLine: UUID?, keyIndex: Int?) -> Bool {
+        let client = deskLink.commandClient ?? titan
+        let done = { (ok: Bool, error: String?, detail: String?) in
+            self.finish(TitanResult(action: action, ok: ok, statusCode: nil, milliseconds: 0, error: error, date: Date(), detail: detail),
+                        keypadLine: keypadLine, keyIndex: keyIndex)
+        }
+        switch action {
+        case .keypadDigit, .keypadAt, .keypadThro, .keypadExit:
+            done(true, nil, nil)
+            return true
+        case .keypadEnter:
+            guard let typing, !typing.isEmpty else {
+                done(true, nil, nil)
+                return true
+            }
+            let fixtures = DeskKeys.typedFixtures(typing)
+            let level = DeskKeys.typedLevel(typing)
+            // An "@" needs a level the deck can read (two digits): never just the selection.
+            guard fixtures != nil || level != nil, level != nil || !typing.contains("@") else {
+                done(false, "TitanDeck couldn't read \"\(typing)\": a fixture number (\"101\", \"1 THRU 10\"), then @ and a level in two digits (\"@ 05\", \"@ 50\", \"@ @\" for full)", nil)
+                return true
+            }
+            if let level { rememberTyped(level / 100, fixtures: fixtures ?? deck.selectedFixtures) }
+            Task {
+                var problems: [String] = []
+                if let fixtures, !(await client.selectFixtures(userNumbers: fixtures)) {
+                    problems.append("Titan didn't select \(DeckFlow.compactSelection(fixtures) ?? "them")")
+                }
+                if let level {
+                    let set = await client.perform(Self.dimmerLevel(level))
+                    if !set.ok { problems.append("level \(Int(level))%: " + (set.error ?? "Titan didn't take it")) }
+                }
+                done(problems.isEmpty, problems.isEmpty ? nil : problems.joined(separator: "; "), "\"\(typing)\" through the WebAPI")
+            }
+            return true
+        case .keypadClear:
+            // Like the desk: the first Clear empties what's typed.
+            if typing != nil {
+                done(true, nil, nil)
+                return true
+            }
+            Task {
+                let selection = await client.clearSelection()
+                let programmer = await client.perform(.keypadClear)
+                let ok = selection.ok && programmer.ok
+                done(ok, ok ? nil : (selection.error ?? programmer.error), "cleared the selection and programmer")
+            }
+            return true
+        default:
+            return false
+        }
+    }
+
+    /// The selection's intensity to a level in percent (no fade).
+    private static func dimmerLevel(_ percent: Double) -> TitanAction {
+        .raw(path: "Programmer/Editor/Fixtures/SetDimmerLevel?level=\(TitanEndpoints.format(number: min(max(percent, 0), 100)))")
+    }
+
+    /// Titan ids to fixture numbers, from Titan's fixture handles (read again
+    /// when one isn't known).
+    private var fixtureNumbers: [Int: Int] = [:]
+
+    /// The WebAPI user's selection as fixture numbers (the deck shows them).
+    private func selectionNumbers(_ client: TitanClient) async -> [Int] {
+        guard let ids = await client.selectedFixtureIds(), !ids.isEmpty else { return [] }
+        if ids.contains(where: { fixtureNumbers[$0] == nil }), let numbers = await titan.fixtureUserNumbers() {
+            fixtureNumbers = numbers
+        }
+        return ids.compactMap { fixtureNumbers[$0] }
+    }
+
+    /// A group recalled onto the WebAPI user's cleared selection, by its
+    /// number and its handle in turn until one selects something (a group
+    /// made of groups may only answer to one). Its fixture numbers (empty
+    /// if Titan's handles don't number them), or nil if nothing was selected.
+    private func recallGroup(titanId: Int?, number: Int?, client: TitanClient) async -> [Int]? {
+        var ways: [String] = []
+        if let number { ways.append("Group/RecallGroupNumeric?userId=\(number)") }
+        if let titanId {
+            ways.append("Group/RecallGroup?handle_titanId=\(titanId)")
+            ways.append("Group/RecallGroupById?groupId=\(titanId)")
+        }
+        for way in ways {
+            _ = await client.selectFixtures(userNumbers: [])
+            guard await client.perform(.raw(path: way)).ok else { continue }
+            if let ids = await client.selectedFixtureIds(), !ids.isEmpty {
+                Log.titan("Group recalled with \(way): \(ids.count) selected")
+                return await selectionNumbers(client)
+            }
+        }
+        return nil
     }
 
     /// Keys typed on the desk go in the order pressed.
@@ -962,28 +1067,15 @@ final class AppState: ObservableObject {
     /// desk's own selection is the group. Titan's Group key is an Alt
     /// shortcut, which Titan 19 ignores from the PC keyboard.
     private func selectGroup(titanId: Int) async {
-        guard let client = host.client else {
-            connectionLog.record(.key, .info, "Group not selected: needs TitanDeck Host 0.17 or later, paired in Settings")
+        let client = deskLink.commandClient ?? titan
+        guard let fixtures = await recallGroup(titanId: titanId, number: groupNumbers[titanId], client: client) else {
+            connectionLog.record(.key, .info, "Group not selected: Titan selected nothing for it through the WebAPI")
             return
         }
-        do {
-            let answer = try await client.groupFixtures(titanId: titanId, number: groupNumbers[titanId])
-            Log.titan("Host group: \(answer.message)\n" + answer.steps.joined(separator: "\n"))
-            guard answer.ok, !answer.fixtures.isEmpty else {
-                connectionLog.record(.key, .info, "Group not selected: " + answer.message)
-                return
-            }
-            // Back out anything half typed first, so the numbers start a new selection.
-            let backOut = keypad.readout.current?.text == nil ? [] : ["exit"]
-            queueOnDesk(.deckChoice(.pickGroup(titanId: titanId)), keys: backOut + DeskKeys.selecting(answer.fixtures),
-                        keypadLine: nil, keyIndex: nil)
-            // The deck's own idea of the selection too, or the intensity keys
-            // would think nothing's selected and go to the WebAPI's programmer.
-            deck.selectTyped(answer.fixtures)
-            connectionLog.record(.key, .info, "Group: selecting \(answer.message) on the desk")
-        } catch {
-            connectionLog.record(.key, .info, "Group not selected: " + error.localizedDescription)
-        }
+        // The deck's own idea of the selection too, so it shows and the
+        // intensity keys know their level.
+        deck.selectTyped(fixtures)
+        connectionLog.record(.key, .info, "Group: \(fixtures.count) fixture\(fixtures.count == 1 ? "" : "s") selected (\(DeckFlow.compactSelection(fixtures) ?? "fixture numbers not known"))")
     }
 
     // MARK: - FX (Test mode)
@@ -1135,27 +1227,23 @@ final class AppState: ObservableObject {
     private func selectFXGroup(layer: Int, level: Double) async -> (ok: Bool, message: String) {
         let number = fxSettings.layer(layer).group
         guard number > 0 else { return (false, "Layer \(layer)'s FX group isn't set (FX tab > Prism Setup)") }
-        guard let client = host.client else { return (false, "Selecting the FX group needs TitanDeck Host 0.17 or later, paired in Settings") }
+        let client = deskLink.commandClient ?? titan
         var titanId: Int?
         for name in ["Groups", "Group"] {
             guard let handles = await titan.handles(group: name), !handles.isEmpty else { continue }
             titanId = handles.first { $0.userNumber == number }?.titanId
             break
         }
-        guard let titanId else { return (false, "Titan has no group \(number) (layer \(layer)'s FX group)") }
-        do {
-            let answer = try await client.groupFixtures(titanId: titanId, number: number)
-            Log.titan("Host group: \(answer.message)\n" + answer.steps.joined(separator: "\n"))
-            guard answer.ok, !answer.fixtures.isEmpty else { return (false, "FX group \(number) not selected: " + answer.message) }
-            let backOut = keypad.readout.current?.text == nil ? [] : ["exit"]
-            queueOnDesk(.deckChoice(.fxSelectGroup), keys: backOut + DeskKeys.selecting(answer.fixtures) + DeskKeys.level(level * 100),
-                        keypadLine: nil, keyIndex: nil)
-            deck.selectTyped(answer.fixtures)
-            rememberTyped(level, fixtures: answer.fixtures)
-            return (true, "FX group \(number) (\(answer.message)) at \(DeckFlow.percentText(level)) on the desk")
-        } catch {
-            return (false, "FX group \(number) not selected: " + error.localizedDescription)
+        guard let fixtures = await recallGroup(titanId: titanId, number: number, client: client) else {
+            return (false, "FX group \(number) not selected: Titan selected nothing for it")
         }
+        let set = await client.perform(Self.dimmerLevel(level * 100))
+        deck.selectTyped(fixtures)
+        rememberTyped(level, fixtures: fixtures)
+        let what = fixtures.isEmpty ? "FX group \(number)" : "FX group \(number) (\(fixtures.count) fixtures)"
+        return set.ok
+            ? (true, "\(what) selected at \(DeckFlow.percentText(level))")
+            : (false, "\(what) selected, but its level wasn't set: " + (set.error ?? "Titan didn't take it"))
     }
 
     /// The playback on a page and fader (both from 1) as Titan's handle.

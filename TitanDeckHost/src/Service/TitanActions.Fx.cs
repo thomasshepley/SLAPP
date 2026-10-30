@@ -7,21 +7,22 @@ namespace TitanDeckHost.Service;
 /// TitanDeck's FX page (Host 0.16, Test mode): a Prism layer's controls set
 /// or released, a layer's pixel map group changed, and a probe of which
 /// controls a layer fixture has. Done on the WebAPI user (4430), which can
-/// only change things through its own selection, so the desk's selection
-/// (CITP) is put back on it afterwards. See <see cref="FxRecipes"/>.
+/// only change things through its own selection, so that selection is put
+/// back as it was afterwards (0.18.2; the desk's before). See <see cref="FxRecipes"/>.
 /// </summary>
 public sealed partial class TitanActions
 {
     public async Task<TitanActionDto> FxLayer(FxLayerRequest request, CancellationToken token)
     {
         await one.WaitAsync(token);
+        var before = await KeepSelection(token);
         try
         {
             return await RunFxLayer(request, token);
         }
         finally
         {
-            await PutBackDeskSelection(token);
+            await PutBackSelection(before);
             one.Release();
         }
     }
@@ -29,13 +30,14 @@ public sealed partial class TitanActions
     public async Task<TitanActionDto> FxGroup(FxGroupRequest request, CancellationToken token)
     {
         await one.WaitAsync(token);
+        var before = await KeepSelection(token);
         try
         {
             return await RunFxGroup(request, token);
         }
         finally
         {
-            await PutBackDeskSelection(token);
+            await PutBackSelection(before);
             one.Release();
         }
     }
@@ -43,6 +45,7 @@ public sealed partial class TitanActions
     public async Task<FxProbeDto> FxProbe(int fixture, IReadOnlyList<string> names, CancellationToken token)
     {
         await one.WaitAsync(token);
+        var before = await KeepSelection(token);
         try
         {
             var steps = new List<string>();
@@ -60,7 +63,7 @@ public sealed partial class TitanActions
         }
         finally
         {
-            await PutBackDeskSelection(token);
+            await PutBackSelection(before);
             one.Release();
         }
     }
@@ -179,18 +182,45 @@ public sealed partial class TitanActions
         return ids;
     }
 
-    /// <summary>The WebAPI user's selection back to the desk's (CITP), as TitanDeck mirrors it.</summary>
-    private async Task PutBackDeskSelection(CancellationToken token)
+    /// <summary>
+    /// The WebAPI user's selection before an action that has to change it,
+    /// to put back afterwards: TitanDeck works through this selection (0.41:
+    /// the deck's keypad, Groups and FX all go through the WebAPI), so it's
+    /// left as it was. Null if Titan didn't say.
+    /// </summary>
+    private async Task<IReadOnlyList<int>?> KeepSelection(CancellationToken token)
+    {
+        try
+        {
+            var answer = await Read(FxRecipes.ReadSelection(), token);
+            return answer is null ? null : FxRecipes.Ids(answer);
+        }
+        catch (Exception)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// The WebAPI user's selection as it was before (see <see cref="KeepSelection"/>);
+    /// if that couldn't be read, the desk's (CITP), as 0.16-0.18 did.
+    /// </summary>
+    private async Task PutBackSelection(IReadOnlyList<int>? before)
     {
         try
         {
             await Send(FxRecipes.ClearSelection(), CancellationToken.None);
+            if (before is not null)
+            {
+                if (before.Count > 0) await Send(FxRecipes.SelectTitanIds(before), CancellationToken.None);
+                return;
+            }
             var desk = citp.Selection();
             if (desk.Linked && desk.Fixtures.Count > 0) await Send(FxRecipes.SelectFixtures(desk.Fixtures), CancellationToken.None);
         }
         catch (Exception)
         {
-            // Titan not answering: the iPad mirrors the desk again on its next change.
+            // Titan not answering: nothing to put back onto.
         }
     }
 }
