@@ -232,9 +232,12 @@ support posts):
   `sharedUserId`): `Users/SetUser?userId=` to the desk's user, re-applied
   whenever the heartbeat comes back (Titan forgets it), `Users/CurrentUserId`
   / `CurrentUserName` read back; off sets the WebAPI's own user back
-  (`ownWebAPIUser`, remembered before the first switch). User list:
-  `Users/GetUserListMenuItems`, shape undocumented (`TitanUsers.parse` reads
-  any JSON id + name; also in the Watch target, as TitanClient uses it).
+  (`ownWebAPIUser`, remembered before the first switch). User list (0.42.1):
+  `/titan/handles/Users` (`TitanUsers.fromHandles`), as the user found
+  Titan didn't answer `Users/GetUserListMenuItems`, which is the fallback
+  (shape undocumented `TitanUsers.parse` reads
+  any JSON id + name); a typed Titan id is the last resort. TitanUsers.swift
+  is in the Watch target, as TitanClient uses it.
 - **Keypad types on the desk (unused since 0.41)** (`DeskKeys`, `AppState.typeOnDesk`,
   `deck.keypadTypesOnDesk`): keypad actions become Titan's PC keyboard shortcuts
   (number keys, number-pad * = @, / = Thro, Enter, Esc = Exit),

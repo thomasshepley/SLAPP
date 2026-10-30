@@ -23,6 +23,12 @@ struct SharedUserSection: View {
                     Text("User \(id)").tag(Int?.some(id))
                 }
             }
+            LabeledContent("Or the user's Titan id") {
+                TextField("Titan id", value: $appState.sharedUserId, format: .number.grouping(.never))
+                    .keyboardType(.numberPad)
+                    .multilineTextAlignment(.trailing)
+                    .frame(maxWidth: 120)
+            }
             Button {
                 Task {
                     loading = true

@@ -10,6 +10,14 @@ final class TitanUsersTests: XCTestCase {
         XCTAssertEqual(TitanUsers.parse(Data("not json".utf8)), [])
     }
 
+    func testUsersFromHandles() {
+        let users = TitanUsers.fromHandles([(titanId: 1201, userNumber: 1, legend: " Operator "),
+                                            (titanId: 1202, userNumber: 2, legend: ""),
+                                            (titanId: nil, userNumber: 3, legend: "Lost"),
+                                            (titanId: 1201, userNumber: 1, legend: "Operator")])
+        XCTAssertEqual(users, [.init(id: 1201, name: "Operator"), .init(id: 1202, name: "User 2")])
+    }
+
     func testPlainValues() {
         XCTAssertEqual(TitanUsers.value(Data(#""Operator""#.utf8)), "Operator")
         XCTAssertEqual(TitanUsers.value(Data("1201".utf8)), "1201")
