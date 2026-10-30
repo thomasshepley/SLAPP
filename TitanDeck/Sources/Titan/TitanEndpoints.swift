@@ -229,6 +229,22 @@ enum TitanEndpoints {
         script(host, port, "Programmer/Editor/ClearSelection", [("disable", "false"), ("clearAllProgrammers", everyUser ? "true" : "false")])
     }
 
+    // MARK: Users (sharing the desk's, 0.42)
+
+    /// Every user in the show.
+    static func usersURL(host: String, port: Int = defaultPort) -> URL? {
+        script(host, port, "Users/GetUserListMenuItems", [])
+    }
+
+    /// The user this WebAPI client is (its programmer is that user's).
+    static func setUserURL(_ userId: Int, host: String, port: Int = defaultPort) -> URL? {
+        script(host, port, "Users/SetUser", [("userId", "\(userId)")])
+    }
+
+    static func currentUserURL(name: Bool, host: String, port: Int = defaultPort) -> URL? {
+        URL(string: "http://\(authority(host, port))/titan/get/2/Users/\(name ? "CurrentUserName" : "CurrentUserId")")
+    }
+
     /// Empties that WebAPI user's own selection.
     static func clearSelectionURL(host: String, port: Int = defaultPort) -> URL? {
         script(host, port, "Selection/Context/Global/Clear", [])

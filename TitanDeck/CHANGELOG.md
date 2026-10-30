@@ -7,6 +7,12 @@ the GitHub Actions run that built it. The top entry is shown in the app
 so add an entry - and bump `MARKETING_VERSION` in `project.yml` to match -
 with every change that goes to `main`.
 
+## 0.42.0 - 2026-10-30 - Level and CCT at a glance, sharing the desk's user
+
+- **Level and CCT on the screen:** the Selected bar along the top of the Remote screen now shows the selection's level and colour temperature next to the fixture numbers, when the deck knows them. On the deck they're on HOLD FOR 0% and the CCT key, as before.
+- **+/- keep the level up to date:** without a live reading, the level the deck shows now follows the intensity keys (the level before plus the nudge).
+- **New, experimental: Settings > Share the desk's user.** Titan keeps a programmer for each user, and the deck's WebAPI is a user of its own, so what the deck selects doesn't show on the desk. Pick the desk's user (usually Operator) and turn it on, and the deck's WebAPI becomes that user, which may put its selection and levels in the desk's programmer. Titan doesn't document this, so try it with nothing important live and tell me what happens. Turning it off gives the WebAPI its own user back.
+
 ## 0.41.0 - 2026-10-30 - Everything through the WebAPI
 
 - **The deck no longer types on the desk.** Typing keys on the Titan PC glitched (missed keys, and once it selected every fixture at 100%), so the keypad, Quick Keys, Groups and FX now all talk to Titan's WebAPI directly.

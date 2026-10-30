@@ -445,6 +445,29 @@ actor TitanClient {
         return await get(TitanEndpoints.selectFixturesURL(userNumbers: userNumbers, host: host, port: port)).ok
     }
 
+    // MARK: - Users (sharing the desk's, 0.42)
+
+    /// The show's users, and Titan's answer as text (its shape isn't documented).
+    func users() async -> (users: [TitanUsers.User], answer: String?) {
+        guard let data = await body(TitanEndpoints.usersURL(host: host, port: port)) else { return ([], nil) }
+        return (TitanUsers.parse(data), String(decoding: data.prefix(400), as: UTF8.self))
+    }
+
+    /// This WebAPI client's user (id, name), if Titan says.
+    func currentUser() async -> (id: Int?, name: String?) {
+        let id = await body(TitanEndpoints.currentUserURL(name: false, host: host, port: port)).flatMap(TitanUsers.value).flatMap { Int($0) }
+        let name = await body(TitanEndpoints.currentUserURL(name: true, host: host, port: port)).flatMap(TitanUsers.value)
+        return (id, name)
+    }
+
+    /// Makes this WebAPI client that user.
+    func setUser(_ userId: Int) async -> TitanResult {
+        let start = Date()
+        let result = await get(TitanEndpoints.setUserURL(userId, host: host, port: port))
+        return TitanResult(action: .raw(path: "Users/SetUser?userId=\(userId)"), ok: result.ok, statusCode: result.status,
+                           milliseconds: Self.elapsed(since: start), error: result.error, date: start)
+    }
+
     /// titanId -> fixture user number, or nil if Titan didn't answer.
     func fixtureUserNumbers() async -> [Int: Int]? {
         await handles(group: "Fixtures").map(TitanSelectionParser.userNumbers)

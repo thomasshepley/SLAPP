@@ -294,7 +294,7 @@ final class DeckSessionController: ObservableObject {
 
     /// The level the deck last typed for the selection (0...1), shown on the
     /// flash key when there's no live reading.
-    var typedLevel: Double? {
+    @Published var typedLevel: Double? {
         didSet {
             guard typedLevel != oldValue, liveLevel == nil, let page = currentPage else { return }
             for key in page.keys where key.action == .flashSelection { draw(logicalIndex: key.index) }

@@ -187,6 +187,13 @@ final class AppState: ObservableObject {
         heartbeat.start(client: titan) { [weak self] in
             !(self?.titanHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
         }
+        // Titan back (or first answering): the WebAPI is the desk's user again if asked.
+        heartbeat.$health
+            .map(\.isReachable)
+            .removeDuplicates()
+            .filter { $0 }
+            .sink { [weak self] _ in Task { await self?.applySharedUser() } }
+            .store(in: &fxSubscriptions)
         playbackState.onChange = { [weak self] active in
             self?.deck.setActivePlaybacks(active)
         }
@@ -440,10 +447,76 @@ final class AppState: ObservableObject {
                 return
             }
         }
+        // A nudge through the WebAPI: without a live reading, the level the
+        // deck shows follows it (the level before plus the nudge).
+        let nudgedFrom: Double? = {
+            guard case .adjustIntensity = action, deck.liveLevel == nil else { return nil }
+            return currentLevel
+        }()
         Task {
             let result = await client.perform(action)
+            if result.ok, case .adjustIntensity(let percent) = action, let nudgedFrom {
+                rememberTyped(DeskKeys.nudged(nudgedFrom * 100, by: percent) / 100)
+            }
             finish(result, keypadLine: keypadLine, keyIndex: keyIndex)
         }
+    }
+
+    // MARK: - Sharing the desk's user (0.42, experimental)
+
+    /// The deck's WebAPI client as one of the show's users (Settings > Desk
+    /// link > Share the desk's user): Titan keeps a programmer per user, so
+    /// as the desk's user the deck's selection and levels may be the desk's.
+    /// Not documented; the user is testing it. Titan forgets it when it
+    /// restarts, so it's set again whenever Titan comes back.
+    @Published var sharesDeskUser = UserDefaults.standard.bool(forKey: "titan.sharesDeskUser") {
+        didSet {
+            UserDefaults.standard.set(sharesDeskUser, forKey: "titan.sharesDeskUser")
+            Task { await applySharedUser() }
+        }
+    }
+    @Published var sharedUserId: Int? = UserDefaults.standard.object(forKey: "titan.sharedUserId") as? Int {
+        didSet {
+            UserDefaults.standard.set(sharedUserId, forKey: "titan.sharedUserId")
+            if sharesDeskUser { Task { await applySharedUser() } }
+        }
+    }
+    @Published private(set) var titanUsers: [TitanUsers.User] = []
+    @Published private(set) var sharedUserStatus: String?
+    /// The WebAPI's own user, to go back to when sharing's turned off.
+    private var ownWebAPIUser: Int? = UserDefaults.standard.object(forKey: "titan.ownWebAPIUser") as? Int
+
+    func loadTitanUsers() async {
+        let (users, answer) = await titan.users()
+        titanUsers = users
+        let current = await titan.currentUser()
+        if ownWebAPIUser == nil, !sharesDeskUser, let id = current.id {
+            ownWebAPIUser = id
+            UserDefaults.standard.set(id, forKey: "titan.ownWebAPIUser")
+        }
+        sharedUserStatus = users.isEmpty
+            ? "Titan didn't list its users" + (answer.map { ": " + String($0.prefix(160)) } ?? " (no answer)")
+            : "The deck's WebAPI is user \(current.name ?? "?")"
+    }
+
+    private func applySharedUser() async {
+        guard sharesDeskUser || ownWebAPIUser != nil else { return }
+        let before = await titan.currentUser()
+        if ownWebAPIUser == nil, let id = before.id, id != sharedUserId {
+            ownWebAPIUser = id
+            UserDefaults.standard.set(id, forKey: "titan.ownWebAPIUser")
+        }
+        guard let target = sharesDeskUser ? sharedUserId : ownWebAPIUser else { return }
+        guard before.id != target else {
+            sharedUserStatus = "The deck's WebAPI is user \(before.name ?? "\(target)")"
+            return
+        }
+        let result = await titan.setUser(target)
+        let after = await titan.currentUser()
+        sharedUserStatus = result.ok
+            ? "The deck's WebAPI is now user \(after.name ?? "\(target)")" + (after.id == target ? "" : " (Titan says user \(after.id.map(String.init) ?? "?"))")
+            : "Titan didn't change the WebAPI's user: " + (result.error ?? "no answer")
+        connectionLog.record(.app, .info, sharedUserStatus ?? "")
     }
 
     // MARK: - Keypad through the WebAPI (0.41)
