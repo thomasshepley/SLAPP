@@ -91,18 +91,36 @@ struct StartupView: View {
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
-            HStack(spacing: 14) {
-                Button("Check again", systemImage: "arrow.clockwise") { start() }
-                    .buttonStyle(.bordered)
-                    .disabled(!checks.isDone)
-                Button(action: onContinue) {
-                    Text("Continue").frame(minWidth: 160)
+            // Side by side, or Continue above Check again on a narrow screen.
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 14) {
+                    checkAgainButton
+                    continueButton
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-                .disabled(!checks.isDone)
+                VStack(spacing: 10) {
+                    continueButton
+                    checkAgainButton
+                }
             }
         }
+    }
+
+    private var checkAgainButton: some View {
+        Button("Check again", systemImage: "arrow.clockwise") { start() }
+            .buttonStyle(.bordered)
+            .lineLimit(1)
+            .fixedSize()
+            .disabled(!checks.isDone)
+    }
+
+    private var continueButton: some View {
+        Button(action: onContinue) {
+            Text("Continue").lineLimit(1).frame(minWidth: 160)
+        }
+        .buttonStyle(.borderedProminent)
+        .controlSize(.large)
+        .fixedSize()
+        .disabled(!checks.isDone)
     }
 
     private var summary: String {

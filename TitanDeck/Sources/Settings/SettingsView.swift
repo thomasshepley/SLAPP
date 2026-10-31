@@ -571,7 +571,7 @@ private struct WatchSection: View {
             } header: {
                 Text("Apple Watch")
             } footer: {
-                Text("Install TitanDeck on the Watch from the Watch app on this iPhone. Turn the Digital Crown to pick a playback, then hold GO (or double tap) to fire. The Watch goes through this iPhone when it's nearby, or straight to Titan over Wi-Fi when it isn't.")
+                Text("Install TitanDeck on the Watch from the Watch app on this iPhone. Turn the Digital Crown to pick a playback, then tap GO (or double tap) to fire. The Watch goes through this iPhone when it's nearby, or straight to Titan over Wi-Fi when it isn't.")
             }
         }
     }
