@@ -135,6 +135,14 @@ them together (e.g. `deck.onAction` -> `titan.perform`). Keep it that way.
   Xcode 27.1 or later** (`runs-on: xcode-27` in `titandeck.yml`, 0.42.2): an
   app built with an older SDK opens letterboxed on the Duo's inner display (a
   phone-sized window, black bars, a rotate button), whatever its layout does.
+- **iPhone Duo layouts (0.43):** the on-screen deck keeps the profile's
+  columns and sizes keys to fit (`OnScreenDeckLayout.grid`, 48-180 pt keys,
+  reflowing only when even that won't fit across). Wider than tall with room,
+  it's two sides split down the middle with `foldGap` between them (selection
+  card and pages leading, keys trailing): Apple says keep controls off the
+  fold, except scrolling content. Settings is a `NavigationSplitView` of
+  pages (`SettingsView.Page`); the startup checks go side by side when wide.
+  The Duo's inner display is regular x regular in both orientations.
 - **Network on set:** the iPad reaches the show network through the AirWire,
   USB-C into the hub, so it appears as Ethernet. iPad Wi-Fi should be off on set.
   Don't assume Wi-Fi APIs (SSID etc.) are meaningful on the iPad.

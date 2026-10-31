@@ -7,9 +7,13 @@ the GitHub Actions run that built it. The top entry is shown in the app
 so add an entry - and bump `MARKETING_VERSION` in `project.yml` to match -
 with every change that goes to `main`.
 
-## 0.42.2 - 2026-10-31 - Full screen on iPhone Duo
+## 0.43.0 - 2026-10-31 - Made for iPhone Duo
 
-- **Fixed: black bars on iPhone Duo.** Opened up, the Duo ran TitanDeck in a phone-sized window with black bars and a rotate button, because the app was still built with Xcode 26. It's now built with Xcode 27.1, so it fills the inner screen and turns with the phone, using the bigger layout (the same one the iPad gets). Folded, the outer screen is unchanged.
+- **Fixed: black bars on iPhone Duo.** Opened up, the Duo ran TitanDeck in a phone-sized window with black bars and a rotate button, because the app was still built with Xcode 26. It's now built with Xcode 27.1, so it fills the inner screen.
+- **The deck fills the screen.** The on-screen keys keep your deck's own layout (the keypad stays 3 wide) and grow to fill the space instead of scrolling, folded or open, upright or sideways. Above them: the command line, what's selected (with level and CCT) and a row of pages. Tap the title to jump to a page too.
+- **Duo open and held like a book:** two sides. What's selected, its level and CCT, big, plus the pages on the left; the keys on the right, under your thumb, with a gap down the middle so no key sits on the fold. A phone or iPad on its side gets the same.
+- **Settings in pages:** Titan, Desk, Deck, Remote desktop, TitanDeck Host, Apple Watch, Diagnostics and About. Open, the list sits beside the page; folded, it's a list you tap into. Folding or unfolding keeps your place.
+- **Loading screen:** sideways, the checks get their own side.
 
 ## 0.42.1 - 2026-10-30 - Finding Titan's users
 

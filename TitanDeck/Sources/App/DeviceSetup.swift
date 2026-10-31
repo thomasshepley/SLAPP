@@ -7,7 +7,7 @@ import UIKit
 /// says it here too, and (0.39) iPadOS 26 can still turn a landscape-only
 /// app to portrait with the rotation lock off, so `holdLandscape` turns it
 /// straight back whenever that happens. Landscape either way up, so
-/// turning the iPad over still flips it. (iPhone keeps portrait for the deck.)
+/// turning the iPad over still flips it. (iPhone and iPhone Duo turn every way.)
 @MainActor
 final class TitanDeckAppDelegate: NSObject, UIApplicationDelegate {
     func application(_ application: UIApplication,
@@ -19,7 +19,7 @@ final class TitanDeckAppDelegate: NSObject, UIApplicationDelegate {
 @MainActor
 enum DeviceSetup {
     static var orientations: UIInterfaceOrientationMask {
-        UIDevice.current.userInterfaceIdiom == .pad ? .landscape : .allButUpsideDown
+        UIDevice.current.userInterfaceIdiom == .pad ? .landscape : .all
     }
 
     /// Call whenever the app comes to the front: iOS turns auto-lock back
