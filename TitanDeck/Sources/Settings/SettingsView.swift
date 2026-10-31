@@ -4,33 +4,132 @@ import UIKit
 import UniformTypeIdentifiers
 import StreamDeckSimulator
 
-/// M3 settings: Titan host, connection test, test fire buttons and a latency
-/// log. The deck editor (DeckEditorView / KeyInspectorView) arrives in M4.
+/// Settings, in pages (0.43): a list of pages beside the page you're on
+/// when there's room (iPhone Duo open, iPad), the list and then the page on
+/// a phone. Folding or unfolding keeps your place.
 struct SettingsView: View {
     @EnvironmentObject private var appState: AppState
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var showingWhatsNew = false
+    @State private var page: Page?
     /// Show mode hides the test tools (Settings > Mode).
     @AppStorage(SettingsKeys.showMode) private var showMode = false
 
+    enum Page: String, CaseIterable, Identifiable, Hashable {
+        case titan, desk, deck, remoteDesktop, host, watch, diagnostics, about
+
+        var id: Self { self }
+
+        var title: String {
+            switch self {
+            case .titan: "Titan"
+            case .desk: "Desk"
+            case .deck: "Deck"
+            case .remoteDesktop: "Remote desktop"
+            case .host: "TitanDeck Host"
+            case .watch: "Apple Watch"
+            case .diagnostics: "Diagnostics"
+            case .about: "About"
+            }
+        }
+
+        var subtitle: String {
+            switch self {
+            case .titan: "Mode, the Titan PC's address"
+            case .desk: "Desk link, sharing the desk's user"
+            case .deck: "Stream Deck, layouts, Groups page"
+            case .remoteDesktop: "The Titan PC's screen"
+            case .host: "Pairing, sending files"
+            case .watch: "GO from your wrist"
+            case .diagnostics: "Soak test log, recent calls"
+            case .about: "Version, What's New"
+            }
+        }
+
+        var symbol: String {
+            switch self {
+            case .titan: "slider.horizontal.3"
+            case .desk: "link"
+            case .deck: "square.grid.3x3.fill"
+            case .remoteDesktop: "display"
+            case .host: "desktopcomputer"
+            case .watch: "applewatch"
+            case .diagnostics: "stethoscope"
+            case .about: "info.circle"
+            }
+        }
+    }
+
+    private var pages: [Page] {
+        Page.allCases.filter { $0 != .diagnostics || !showMode }
+    }
+
     var body: some View {
-        NavigationStack {
-            Form {
-                ModeSection(intensity: appState.intensity)
-                connectionSection
-                RemoteDesktopSection(session: appState.rdp)
-                HostSection(host: appState.host)
-                DeskLinkSection(desk: appState.deskLink, intensity: appState.intensity, host: appState.host)
-                SharedUserSection()
-                FileDropSection(store: appState.fileDrop, host: appState.host)
-                if !showMode { testSection }
-                DeckSection(deck: appState.deck)
-                GroupSetsSection()
-                if !showMode { SoakLogSection(store: appState.connectionLog) }
-                WatchSection(watch: appState.watch)
-                if !showMode { logSection }
-                aboutSection
+        NavigationSplitView {
+            List(selection: $page) {
+                ForEach(pages) { page in
+                    NavigationLink(value: page) {
+                        Label {
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text(page.title)
+                                if horizontalSizeClass == .compact {
+                                    Text(page.subtitle)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                        } icon: {
+                            Image(systemName: page.symbol)
+                        }
+                    }
+                }
             }
             .navigationTitle("Settings")
+        } detail: {
+            let shown = page.flatMap { pages.contains($0) ? $0 : nil } ?? .titan
+            NavigationStack {
+                Form {
+                    sections(shown)
+                }
+                .navigationTitle(shown.title)
+            }
+            .id(shown)
+        }
+        .navigationSplitViewStyle(.balanced)
+        .onAppear(perform: pickFirstPage)
+        .onChange(of: horizontalSizeClass) { _, _ in pickFirstPage() }
+    }
+
+    /// Side by side, a page is always showing; on a phone the list comes first.
+    private func pickFirstPage() {
+        if horizontalSizeClass == .regular && page == nil { page = .titan }
+    }
+
+    @ViewBuilder
+    private func sections(_ page: Page) -> some View {
+        switch page {
+        case .titan:
+            ModeSection(intensity: appState.intensity)
+            connectionSection
+            if !showMode { testSection }
+        case .desk:
+            DeskLinkSection(desk: appState.deskLink, intensity: appState.intensity, host: appState.host)
+            SharedUserSection()
+        case .deck:
+            DeckSection(deck: appState.deck)
+            GroupSetsSection()
+        case .remoteDesktop:
+            RemoteDesktopSection(session: appState.rdp)
+        case .host:
+            HostSection(host: appState.host)
+            FileDropSection(store: appState.fileDrop, host: appState.host)
+        case .watch:
+            WatchSection(watch: appState.watch)
+        case .diagnostics:
+            SoakLogSection(store: appState.connectionLog)
+            logSection
+        case .about:
+            aboutSection
         }
     }
 

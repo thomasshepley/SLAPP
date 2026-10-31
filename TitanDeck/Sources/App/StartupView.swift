@@ -4,7 +4,8 @@ import UIKit
 
 /// Shown at launch: the TitanDeck logo, then a health check of everything the
 /// show needs, and Continue. Meanwhile the Stream Deck shows the logo with a
-/// shine across it, so you can see the deck is alive.
+/// shine across it, so you can see the deck is alive. Sideways (0.43) the
+/// checks get a side of their own.
 struct StartupView: View {
     @EnvironmentObject private var appState: AppState
     @StateObject private var checks = StartupChecks()
@@ -16,57 +17,92 @@ struct StartupView: View {
     var body: some View {
         ZStack {
             Color(red: 0.05, green: 0.05, blue: 0.06).ignoresSafeArea()
-            ScrollView {
-                VStack(spacing: 28) {
-                    VStack(spacing: 14) {
-                        TitanDeckLogo()
-                            .frame(width: 132, height: 132)
-                        Text("TitanDeck")
-                            .font(.largeTitle.weight(.bold))
-                        HStack(spacing: 8) {
-                            Text("Version \(Bundle.main.shortVersion)")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                            ModeBadge()
-                        }
-                    }
-                    .padding(.top, 40)
-
-                    VStack(spacing: 0) {
-                        ForEach(checks.rows) { row in
-                            CheckRow(row: row)
-                            if row.id != checks.rows.last?.id { Divider().padding(.leading, 52) }
-                        }
-                    }
-                    .padding(.vertical, 6)
-                    .glassEffect(.regular, in: .rect(cornerRadius: 20))
-                    .frame(maxWidth: 620)
-
-                    VStack(spacing: 12) {
-                        Text(summary)
-                            .font(.callout)
-                            .foregroundStyle(.secondary)
-                            .multilineTextAlignment(.center)
-                        HStack(spacing: 14) {
-                            Button("Check again", systemImage: "arrow.clockwise") { start() }
-                                .buttonStyle(.bordered)
-                                .disabled(!checks.isDone)
-                            Button(action: onContinue) {
-                                Text("Continue").frame(minWidth: 160)
+            GeometryReader { proxy in
+                // Sideways with room (iPhone Duo open like a book, iPad, a phone
+                // on its side): the logo and buttons on one side, the checks on
+                // the other, nothing on the fold. Upright: one column.
+                if proxy.size.width > proxy.size.height * 1.15 && proxy.size.width >= 640 {
+                    HStack(spacing: 40) {
+                        ScrollView {
+                            VStack(spacing: 28) {
+                                header
+                                footer
                             }
-                            .buttonStyle(.borderedProminent)
-                            .controlSize(.large)
-                            .disabled(!checks.isDone)
+                            .padding(.vertical, 24)
+                            .frame(maxWidth: .infinity, minHeight: proxy.size.height)
+                        }
+                        ScrollView {
+                            checkList
+                                .padding(.vertical, 24)
+                                .frame(maxWidth: .infinity, minHeight: proxy.size.height)
                         }
                     }
-                    .padding(.bottom, 40)
+                    .scrollIndicators(.hidden)
+                    .padding(.horizontal, 24)
+                } else {
+                    ScrollView {
+                        VStack(spacing: 28) {
+                            header
+                                .padding(.top, 40)
+                            checkList
+                            footer
+                                .padding(.bottom, 40)
+                        }
+                        .padding(.horizontal, 24)
+                        .frame(maxWidth: .infinity)
+                    }
                 }
-                .padding(.horizontal, 24)
-                .frame(maxWidth: .infinity)
             }
         }
         .preferredColorScheme(.dark)
         .onAppear(perform: start)
+    }
+
+    private var header: some View {
+        VStack(spacing: 14) {
+            TitanDeckLogo()
+                .frame(width: 132, height: 132)
+            Text("TitanDeck")
+                .font(.largeTitle.weight(.bold))
+            HStack(spacing: 8) {
+                Text("Version \(Bundle.main.shortVersion)")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                ModeBadge()
+            }
+        }
+    }
+
+    private var checkList: some View {
+        VStack(spacing: 0) {
+            ForEach(checks.rows) { row in
+                CheckRow(row: row)
+                if row.id != checks.rows.last?.id { Divider().padding(.leading, 52) }
+            }
+        }
+        .padding(.vertical, 6)
+        .glassEffect(.regular, in: .rect(cornerRadius: 20))
+        .frame(maxWidth: 620)
+    }
+
+    private var footer: some View {
+        VStack(spacing: 12) {
+            Text(summary)
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+            HStack(spacing: 14) {
+                Button("Check again", systemImage: "arrow.clockwise") { start() }
+                    .buttonStyle(.bordered)
+                    .disabled(!checks.isDone)
+                Button(action: onContinue) {
+                    Text("Continue").frame(minWidth: 160)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .disabled(!checks.isDone)
+            }
+        }
     }
 
     private var summary: String {

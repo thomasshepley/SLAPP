@@ -228,7 +228,7 @@ struct RemoteView: View {
 /// What's selected, along the top: every fixture number that fits the bar,
 /// then "+N more", and (0.42) its level and colour temperature when the deck
 /// knows them; a tap lists them all. Gone with nothing selected.
-private struct SelectionStrip: View {
+struct SelectionStrip: View {
     @ObservedObject var deck: DeckSessionController
     @State private var showingAll = false
 
@@ -282,7 +282,7 @@ private struct SelectionStrip: View {
 }
 
 /// Every selected fixture, from a tap on the selection strip.
-private struct SelectionList: View {
+struct SelectionList: View {
     let fixtures: [Int]
 
     var body: some View {

@@ -12,10 +12,11 @@ settings:
   base:
     SWIFT_VERSION: "5.0"
     # Keep in step with the top entry of CHANGELOG.md (a unit test checks).
-    MARKETING_VERSION: "0.42.1"
+    MARKETING_VERSION: "0.43.0"
     CURRENT_PROJECT_VERSION: "1"
     # iPhone + iPad. Layout follows size classes (see CLAUDE.md), so iPhone
-    # Duo's inner display gets the full deck layout.
+    # Duo's inner display gets the full deck layout - as long as CI builds
+    # with Xcode 27.1 or later, or the Duo letterboxes the app.
     TARGETED_DEVICE_FAMILY: "1,2"
 
 packages:
@@ -73,10 +74,12 @@ targets:
         UISupportedInterfaceOrientations~ipad:
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
-        # iPhone (outer display on iPhone Duo): upright for the deck, sideways
-        # for the remote desktop or propped up like a tent.
+        # iPhone and iPhone Duo: every way round (0.43). Upright for the deck,
+        # sideways for the remote desktop, propped up like a tent, and the
+        # Duo's inner display either way up (Face ID iPhones skip upside down).
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
         UIApplicationSupportsIndirectInputEvents: true
