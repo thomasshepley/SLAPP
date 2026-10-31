@@ -7,6 +7,10 @@ the GitHub Actions run that built it. The top entry is shown in the app
 so add an entry - and bump `MARKETING_VERSION` in `project.yml` to match -
 with every change that goes to `main`.
 
+## 0.42.2 - 2026-10-31 - Full screen on iPhone Duo
+
+- **Fixed: black bars on iPhone Duo.** Opened up, the Duo ran TitanDeck in a phone-sized window with black bars and a rotate button, because the app was still built with Xcode 26. It's now built with Xcode 27.1, so it fills the inner screen and turns with the phone, using the bigger layout (the same one the iPad gets). Folded, the outer screen is unchanged.
+
 ## 0.42.1 - 2026-10-30 - Finding Titan's users
 
 - **Fixed: Share the desk's user found no users.** Titan didn't answer the Users menu list over the WebAPI, so the deck now reads Titan's user handles first (the way it reads groups and playbacks), then the menu list.

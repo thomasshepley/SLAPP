@@ -131,7 +131,10 @@ them together (e.g. `deck.onAction` -> `titan.perform`). Keep it that way.
   inner display is regular x regular and ignores supported orientations. Avoid
   `UIScreen.main`. Use the environment, trait collection or
   `windowScene.screen`. Use `ConcentricRectangle` for corner-fitted shapes.
-  Testing on the iPhone Duo simulator needs Xcode 27.1.
+  Testing on the iPhone Duo simulator needs Xcode 27.1. **CI must build with
+  Xcode 27.1 or later** (`runs-on: xcode-27` in `titandeck.yml`, 0.42.2): an
+  app built with an older SDK opens letterboxed on the Duo's inner display (a
+  phone-sized window, black bars, a rotate button), whatever its layout does.
 - **Network on set:** the iPad reaches the show network through the AirWire,
   USB-C into the hub, so it appears as Ethernet. iPad Wi-Fi should be off on set.
   Don't assume Wi-Fi APIs (SSID etc.) are meaningful on the iPad.

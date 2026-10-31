@@ -74,7 +74,9 @@ jobs:
   build-and-test:
     name: Build and test (iPad Simulator)
     needs: freerdp
-    runs-on: macos-15
+    # Xcode 27.1 or later (the xcode-27 image): apps built with an older SDK
+    # open letterboxed, in a phone-sized window, on iPhone Duo's inner display.
+    runs-on: xcode-27
     timeout-minutes: 45
     defaults:
       run:
@@ -84,7 +86,7 @@ jobs:
 
       - uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: latest-stable
+          xcode-version: '27.1'
 
       - name: Fetch FreeRDPKit
         run: FreeRDP/fetch.sh
@@ -127,7 +129,8 @@ jobs:
     if: >-
       (github.event_name == 'workflow_dispatch' && inputs.testflight) ||
       (github.event_name == 'push' && github.ref == 'refs/heads/main')
-    runs-on: macos-15
+    # Xcode 27.1, as build-and-test (or iPhone Duo letterboxes the app).
+    runs-on: xcode-27
     timeout-minutes: 45
     # One upload at a time, from any branch, so a run never revokes another's
     # fresh certificate mid-archive.
@@ -160,7 +163,7 @@ jobs:
       - uses: maxim-lobanov/setup-xcode@v1
         if: steps.secrets.outputs.ready == 'true'
         with:
-          xcode-version: latest-stable
+          xcode-version: '27.1'
 
       - name: Fetch FreeRDPKit
         if: steps.secrets.outputs.ready == 'true'
