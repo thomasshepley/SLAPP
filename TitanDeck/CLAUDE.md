@@ -102,7 +102,7 @@ them together (e.g. `deck.onAction` -> `titan.perform`). Keep it that way.
 | M7 | 8-hour show-day soak test + in-app connection log (Settings -> Soak test log: totals, events, CSV export) | Log built - the soak test itself is on set |
 | M8 | Light keys for live playbacks (polls /titan/handles/Playbacks every 1 s), profile export/import via Files / iCloud Drive | Built - check on the real Titan that handles report user numbers |
 | M9 | iPhone + iPhone Duo: on-screen deck drawn from the same profiles (Stream Deck Kit is iPad-only), adaptive layouts, App Intents (Shortcuts, Siri, Action button, Control Center) | Built - needs testing on an iPhone. iPhone Duo simulator needs Xcode 27.1 |
-| M10 | Apple Watch GO button: hold-to-fire or double-tap gesture, via the iPhone app or direct HTTP | Built - needs testing on a Watch |
+| M10 | Apple Watch GO button: tap to fire (0.43.1; was hold) or double-tap gesture, via the iPhone app or direct HTTP | Built - needs testing on a Watch |
 | M11 | Default deck: 15-key Stream Deck in portrait - Avolites keypad (digits, Exit, Enter, Clear, @), Intensity +/-1/5/10%, Playbacks; Menu key (hold 1 s since 0.17) opens a menu of layouts; Titan command line shown on the Deck tab | Built - test on Titan |
 | M12 | Companion tab, core: fixture library (search, filters, specs, DMX chart, compare), beam/photometry, stops, power + cable, colour + gels (RGB/HSI converter, green/magenta), flicker (per fixture, with fixes), sun on a map with a time slider, units & mains | Built |
 | M13 | Companion: shows, patch builder (packer), universe plan, PDF cheat sheet, CSV / MA3 / Titan exports, `.slapp.json` import/export | Next |

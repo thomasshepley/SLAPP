@@ -41,6 +41,8 @@ struct OnScreenDeckView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     ConnectionDot(heartbeat: appState.heartbeat)
                 }
+                // A status light, not a button: no glass bubble round it.
+                .sharedBackgroundVisibility(.hidden)
             }
             .sensoryFeedback(.impact(weight: .medium), trigger: pressCount)
             .task {
@@ -125,6 +127,16 @@ struct OnScreenDeckView: View {
                 .padding(.vertical, 2)
             }
             .scrollIndicators(.hidden)
+            // Pages past the edge fade out rather than being cut mid-word,
+            // and the last one can scroll clear of the fade.
+            .contentMargins(.trailing, 28, for: .scrollContent)
+            .mask {
+                HStack(spacing: 0) {
+                    Color.black
+                    LinearGradient(colors: [.black, .clear], startPoint: .leading, endPoint: .trailing)
+                        .frame(width: 28)
+                }
+            }
         }
     }
 

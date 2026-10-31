@@ -126,7 +126,7 @@ struct SlateBookView: View {
                 Button {
                     store.run(.newSlate(nil))
                 } label: {
-                    Label("New Slate", systemImage: "film").frame(maxWidth: .infinity)
+                    FittingLabel("New Slate", systemImage: "film")
                 }
                 .buttonStyle(.glassProminent)
                 .tint(.green)
@@ -139,13 +139,13 @@ struct SlateBookView: View {
                 Button {
                     store.run(.take)
                 } label: {
-                    Label("Take +", systemImage: "plus.circle").frame(maxWidth: .infinity)
+                    FittingLabel("Take +", systemImage: "plus.circle")
                 }
                 .buttonStyle(.glassProminent)
                 Button {
                     store.run(.letter)
                 } label: {
-                    Label("Letter", systemImage: "character").frame(maxWidth: .infinity)
+                    FittingLabel("Letter", systemImage: "character")
                 }
                 .buttonStyle(.glass)
             }
@@ -381,5 +381,33 @@ private struct MatchView: View {
         case .failure(let error):
             problem = SlateStore.message(error)
         }
+    }
+}
+
+/// A button label that never breaks a word (0.43.1): icon beside the title
+/// when there's room, icon above it when there isn't (iPhone Duo folded,
+/// with its tab bar down the side), shrinking a little as a last resort.
+struct FittingLabel: View {
+    let title: String
+    let systemImage: String
+
+    init(_ title: String, systemImage: String) {
+        self.title = title
+        self.systemImage = systemImage
+    }
+
+    var body: some View {
+        ViewThatFits(in: .horizontal) {
+            Label(title, systemImage: systemImage)
+                .lineLimit(1)
+                .fixedSize()
+            VStack(spacing: 4) {
+                Image(systemName: systemImage)
+                Text(title)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+            }
+        }
+        .frame(maxWidth: .infinity)
     }
 }

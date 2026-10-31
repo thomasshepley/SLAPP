@@ -7,6 +7,12 @@ the GitHub Actions run that built it. The top entry is shown in the app
 so add an entry - and bump `MARKETING_VERSION` in `project.yml` to match -
 with every change that goes to `main`.
 
+## 0.43.1 - 2026-10-31 - Tap to GO, tidier text when folded
+
+- **Apple Watch: tap GO to fire.** No more holding it. Double tap (finger pinch) still works.
+- **Fixed: Slate Book buttons broke words letter by letter** on the folded iPhone Duo, where the tab bar runs down the side. New Slate, Take + and Letter now put the icon above the word when they're narrow.
+- **Deck tab:** the page row fades out at the edge instead of cutting a page name in half, and the connection light at the top right is a plain dot again, not a big glass button.
+
 ## 0.43.0 - 2026-10-31 - Made for iPhone Duo
 
 - **Fixed: black bars on iPhone Duo.** Opened up, the Duo ran TitanDeck in a phone-sized window with black bars and a rotate button, because the app was still built with Xcode 26. It's now built with Xcode 27.1, so it fills the inner screen.
