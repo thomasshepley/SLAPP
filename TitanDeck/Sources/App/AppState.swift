@@ -271,8 +271,21 @@ final class AppState: ObservableObject {
         }
         deck.onSelectionChanged = { [weak self] fixtures in
             guard let self else { return }
-            // A new selection's CCT isn't known until Titan says or one is applied.
-            if Set(fixtures) != self.kelvinFixtures { self.deck.setCurrentKelvin(nil) }
+            // A new selection's CCT: what the deck set on these fixtures, else
+            // unknown until Titan says (a lit colour palette) or one is applied.
+            if Set(fixtures) != self.kelvinFixtures {
+                let known = self.programmer.kelvin(for: fixtures)
+                self.kelvinFixtures = known == nil ? [] : Set(fixtures)
+                self.deck.setCurrentKelvin(known)
+            }
+            if !fixtures.isEmpty {
+                Task { [weak self] in
+                    // Once Titan has the selection, ask which colour palette it shows lit.
+                    try? await Task.sleep(nanoseconds: 400_000_000)
+                    guard let self, self.deck.selectedFixtures == fixtures else { return }
+                    await self.refreshCurrentKelvin()
+                }
+            }
             self.intensity.setFixture(fixtures.first)
             self.showTypedLevel()
             // Typed on the desk: the deck's WebAPI user selects the same fixtures,
@@ -365,6 +378,9 @@ final class AppState: ObservableObject {
     /// row (the sACN reading takes a moment to catch up) and for when there's
     /// no live reading at all.
     private var typedLevel: (level: Double, at: Date, fixtures: [Int])?
+    /// Levels and CCTs the deck has set in its WebAPI programmer, per
+    /// fixture (0.44.1), so they show again when a fixture is reselected.
+    private var programmer = DeckProgrammer()
 
     /// The selected fixtures' level now: what was just typed, else the live
     /// reading (sACN, with the patch from Titan over CITP or a report), else
@@ -373,7 +389,7 @@ final class AppState: ObservableObject {
         let typed: (level: Double, at: Date, fixtures: [Int])? =
             typedLevel.flatMap { Set($0.fixtures) == Set(deck.selectedFixtures) ? $0 : nil }
         if let typed, Date().timeIntervalSince(typed.at) < 2 { return typed.level }
-        return deck.liveLevel ?? typed?.level
+        return deck.liveLevel ?? typed?.level ?? programmer.level(for: deck.selectedFixtures)
     }
 
     private func rememberTyped(_ level: Double, fixtures: [Int]? = nil) {
@@ -385,6 +401,7 @@ final class AppState: ObservableObject {
     /// there's no live reading.
     private func showTypedLevel() {
         deck.typedLevel = typedLevel.flatMap { Set($0.fixtures) == Set(deck.selectedFixtures) ? $0.level : nil }
+            ?? programmer.level(for: deck.selectedFixtures)
     }
 
     func fire(_ action: TitanAction, fromKey keyIndex: Int? = nil) {
@@ -392,6 +409,12 @@ final class AppState: ObservableObject {
         let keypadLine = keypad.press(action)
         intensity.deckWillSend(action)
         if runKeypad(action, typing: typing, keypadLine: keypadLine, keyIndex: keyIndex) { return }
+        if case .dimmerFlash(let down, let seconds) = action, !deck.selectedFixtures.isEmpty,
+           let levels = programmedFlashLevels(down: down) {
+            levelThroughWebAPI(action, from: levels.from, to: levels.to, seconds: seconds,
+                               keypadLine: keypadLine, keyIndex: keyIndex)
+            return
+        }
         if keypadTypesOnDesk, action == .keypadEnter, let typing, let level = DeskKeys.typedLevel(typing) {
             // "101 @ 50" is about 101 (the deck selects it after this key); "@ 50" the selection now.
             rememberTyped(level / 100, fixtures: DeskKeys.typedFixtures(typing) ?? deck.selectedFixtures)
@@ -453,14 +476,19 @@ final class AppState: ObservableObject {
         }
         // A nudge through the WebAPI: without a live reading, the level the
         // deck shows follows it (the level before plus the nudge).
+        // The programmer then holds the level before plus the nudge (0.44.1:
+        // remembered for the fixtures, so it shows when they're reselected).
         let nudgedFrom: Double? = {
-            guard case .adjustIntensity = action, deck.liveLevel == nil else { return nil }
+            guard case .adjustIntensity = action else { return nil }
             return currentLevel
         }()
+        let fixtures = deck.selectedFixtures
         Task {
             let result = await client.perform(action)
             if result.ok, case .adjustIntensity(let percent) = action, let nudgedFrom {
-                rememberTyped(DeskKeys.nudged(nudgedFrom * 100, by: percent) / 100)
+                let level = DeskKeys.nudged(nudgedFrom * 100, by: percent) / 100
+                programmer.setLevel(level, for: fixtures)
+                if deck.liveLevel == nil { rememberTyped(level, fixtures: fixtures) }
             }
             finish(result, keypadLine: keypadLine, keyIndex: keyIndex)
         }
@@ -566,7 +594,11 @@ final class AppState: ObservableObject {
                 }
                 if let level {
                     let set = await client.perform(Self.dimmerLevel(level))
-                    if !set.ok { problems.append("level \(Int(level))%: " + (set.error ?? "Titan didn't take it")) }
+                    if set.ok {
+                        programmer.setLevel(level / 100, for: fixtures ?? deck.selectedFixtures)
+                    } else {
+                        problems.append("level \(Int(level))%: " + (set.error ?? "Titan didn't take it"))
+                    }
                 }
                 done(problems.isEmpty, problems.isEmpty ? nil : problems.joined(separator: "; "), "\"\(typing)\" through the WebAPI")
             }
@@ -577,16 +609,92 @@ final class AppState: ObservableObject {
                 done(true, nil, nil)
                 return true
             }
+            // 0.44.1: the whole programmer straight away. (It used to check
+            // Titan's command line first and only start a new command when it
+            // wasn't empty, so CLEAR often cleared nothing.)
+            forgetProgrammer()
             Task {
+                let cleared = await client.clearProgrammer()
                 let selection = await client.clearSelection()
-                let programmer = await client.perform(.keypadClear)
-                let ok = selection.ok && programmer.ok
-                done(ok, ok ? nil : (selection.error ?? programmer.error), "cleared the selection and programmer")
+                let left = await client.selectedFixtureIds() ?? []
+                var problems: [String] = []
+                if !cleared.ok { problems.append("programmer: " + (cleared.error ?? "Titan didn't take it")) }
+                if !selection.ok || !left.isEmpty {
+                    problems.append("selection: " + (selection.error ?? "\(left.count) still selected"))
+                }
+                done(problems.isEmpty, problems.isEmpty ? nil : problems.joined(separator: "; "),
+                     "cleared the programmer and selection")
             }
             return true
         default:
             return false
         }
+    }
+
+    /// Hold for 0% on a level the deck set itself (0.44.1): Titan's FlashOut
+    /// doesn't move a level in the programmer, so it goes to 0 with
+    /// SetDimmerLevel and back to that level the same way. Nil when the deck
+    /// didn't set this selection's level (Titan's FlashOut / ClearFlash then,
+    /// which put a cue's level back exactly), or there's nothing to put back.
+    private func programmedFlashLevels(down: Bool) -> (from: Double, to: Double)? {
+        if down {
+            guard let level = programmer.level(for: deck.selectedFixtures) else { return nil }
+            flashRestore = level
+            return (rampLevel ?? level, 0)
+        }
+        guard let level = flashRestore else { return nil }
+        flashRestore = nil
+        return (rampLevel ?? 0, level)
+    }
+
+    /// The selection's level from one level to another through the WebAPI,
+    /// in steps over `seconds` (SetDimmerLevel has no fade time), or at once.
+    /// Letting go mid-fade stops it and goes back from where it got to. Only
+    /// the first step reports on the key, so one press is one result.
+    private func levelThroughWebAPI(_ action: TitanAction, from: Double, to: Double, seconds: Double?,
+                                    keypadLine: UUID?, keyIndex: Int?) {
+        flashRamp?.cancel()
+        let client = deskLink.commandClient ?? titan
+        let steps = (seconds ?? 0) > 0
+            ? DeskKeys.rampSteps(from: from * 100, to: to * 100, seconds: seconds ?? 0)
+            : [DeskKeys.RampStep(at: 0, percent: (to * 100).rounded())]
+        rememberTyped(to)
+        flashRamp = Task { [weak self] in
+            let start = Date()
+            for (index, step) in steps.enumerated() {
+                let wait = step.at - Date().timeIntervalSince(start)
+                if wait > 0 { try? await Task.sleep(nanoseconds: UInt64(wait * 1_000_000_000)) }
+                guard !Task.isCancelled, let self else { return }
+                self.rampLevel = step.percent / 100
+                let result = await client.perform(Self.dimmerLevel(step.percent))
+                if index == 0 {
+                    self.finish(TitanResult(action: action, ok: result.ok, statusCode: result.statusCode,
+                                            milliseconds: result.milliseconds, error: result.error, date: result.date,
+                                            detail: "\(Int(step.percent))% through the WebAPI"),
+                                keypadLine: keypadLine, keyIndex: keyIndex)
+                }
+            }
+            guard !Task.isCancelled, let self else { return }
+            self.rampLevel = nil
+            self.flashRamp = nil
+        }
+        if steps.isEmpty {
+            finish(TitanResult(action: action, ok: true, statusCode: nil, milliseconds: 0, error: nil, date: Date()),
+                   keypadLine: keypadLine, keyIndex: keyIndex)
+        }
+    }
+
+    /// CLEAR empties the programmer: what the deck set in it goes too.
+    private func forgetProgrammer() {
+        flashRamp?.cancel()
+        flashRamp = nil
+        rampLevel = nil
+        flashRestore = nil
+        programmer.clear()
+        typedLevel = nil
+        kelvinFixtures = []
+        deck.setCurrentKelvin(nil)
+        showTypedLevel()
     }
 
     /// The selection's intensity to a level in percent (no fade).
@@ -706,6 +814,7 @@ final class AppState: ObservableObject {
     private func finish(_ result: TitanResult, keypadLine: UUID?, keyIndex: Int?) {
         if result.ok, case .colourTemperature(let kelvin) = result.action {
             kelvinFixtures = Set(deck.selectedFixtures)
+            programmer.setKelvin(kelvin, for: deck.selectedFixtures)
             deck.setCurrentKelvin(kelvin)
         }
         if let keypadLine { keypad.markAnswered(keypadLine, ok: result.ok) }
@@ -1319,6 +1428,7 @@ final class AppState: ObservableObject {
             return (false, "FX group \(number) not selected: Titan selected nothing for it")
         }
         let set = await client.perform(Self.dimmerLevel(level * 100))
+        if set.ok { programmer.setLevel(level, for: fixtures) }
         deck.selectTyped(fixtures)
         rememberTyped(level, fixtures: fixtures)
         let what = fixtures.isEmpty ? "FX group \(number)" : "FX group \(number) (\(fixtures.count) fixtures)"

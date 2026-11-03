@@ -7,6 +7,12 @@ the GitHub Actions run that built it. The top entry is shown in the app
 so add an entry - and bump `MARKETING_VERSION` in `project.yml` to match -
 with every change that goes to `main`.
 
+## 0.44.1 - 2026-11-03 - CLEAR, Hold for 0% and the level on reselect
+
+- **Fixed: CLEAR didn't clear.** It only cleared the programmer when Titan's command line looked empty, and otherwise just started a new command, so levels stayed put. It now clears the deck's programmer and selection every time, and checks nothing's left selected.
+- **Fixed: Hold for 0% did nothing once you'd set a level.** Titan's own flash doesn't move a level that's in the programmer, so for a level the deck set (keypad "@", +/-, FX), Hold for 0% now takes it to 0 and back to that level itself, with your fade times. On a level from a cue it still uses Titan's flash, which puts the cue's level back exactly.
+- **The level and CCT come back when you reselect a fixture.** Titan can't tell the deck a fixture's level or colour, so the deck now remembers what it set on each fixture (levels from the keypad, +/- and FX, CCT palettes) and shows them again when you select it. A live level from sACN still wins, and Titan's lit colour palette is checked as soon as a fixture's selected. CLEAR forgets them along with the programmer. A level that only comes from a cue still needs live levels (sACN through TitanDeck Host) to show.
+
 ## 0.44.0 - 2026-11-03 - The deck floating over the remote
 
 - **New: the deck over the Remote screen.** For when the Stream Deck and its holder aren't to hand: tap the new deck button at the top left of the Remote screen (next to the arrow) and the deck's keys float over the Titan PC's desktop in a Liquid Glass panel. Tap it again, or the panel's X, to hide it.
