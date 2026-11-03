@@ -140,7 +140,12 @@ them together (e.g. `deck.onAction` -> `titan.perform`). Keep it that way.
 - **Minimum OS is iOS/iPadOS 26.** Use iOS 26 APIs directly, without `#available` checks.
 - **Liquid Glass:** standard SwiftUI components get it automatically. Use
   `.glassEffect()` / `.buttonStyle(.glass)` for floating controls (connection
-  pill, reconnect overlay). Never put glass over the RDP framebuffer.
+  pill, reconnect overlay). Don't put glass over the RDP framebuffer, with
+  one exception the user asked for: the floating deck (0.44,
+  `Remote/FloatingDeck.swift`, shown from the Remote bar's deck button),
+  a Liquid Glass panel of the deck's keys over the desktop. Its size and
+  place are `FloatingDeckLayout` (pure, tested); its keys are `DeckKeyGrid`,
+  shared with the Deck tab.
 - **Layout by size class, never by device idiom or orientation.** iPhone Duo's
   inner display is regular x regular and ignores supported orientations. Avoid
   `UIScreen.main`. Use the environment, trait collection or

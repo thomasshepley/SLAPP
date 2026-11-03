@@ -7,6 +7,12 @@ the GitHub Actions run that built it. The top entry is shown in the app
 so add an entry - and bump `MARKETING_VERSION` in `project.yml` to match -
 with every change that goes to `main`.
 
+## 0.44.0 - 2026-11-03 - The deck floating over the remote
+
+- **New: the deck over the Remote screen.** For when the Stream Deck and its holder aren't to hand: tap the new deck button at the top left of the Remote screen (next to the arrow) and the deck's keys float over the Titan PC's desktop in a Liquid Glass panel. Tap it again, or the panel's X, to hide it.
+- **Move it** by dragging its top strip, **resize it** by dragging its bottom-right corner (the keys keep the deck's own layout, so it grows in proportion), and pick a page from the menu in the strip. It stays wholly on screen, and remembers where it was and how big.
+- The keys are the same as the Deck tab's: down on touch, up on release, with the same lights.
+
 ## 0.43.3 - 2026-11-03 - Why the desk link isn't linked
 
 - **Settings > Desk now says exactly what's missing** when the deck isn't following the desk's selection: this phone or iPad isn't paired with TitanDeck Host, the Host didn't answer (and why), Follow selection via CITP is off in the Host, or it's on but Titan hasn't connected to it (with anything the Host reports).
