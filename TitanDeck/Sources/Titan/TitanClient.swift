@@ -170,6 +170,15 @@ actor TitanClient {
                       detail: "cleared the selection")
     }
 
+    /// Clears this WebAPI user's whole programmer (0.44.1, the deck's CLEAR):
+    /// no look at the command line first, as the deck types nothing there.
+    func clearProgrammer() async -> TitanResult {
+        let start = Date()
+        let result = await get(TitanEndpoints.clearProgrammerURL(host: host, port: port))
+        return finish(.keypadClear, start, ok: result.ok, status: result.status, error: result.error,
+                      detail: "cleared the programmer")
+    }
+
     /// Clear: like the console - clears what's typed first, then the programmer.
     private func runClear() async -> TitanResult {
         let start = Date()

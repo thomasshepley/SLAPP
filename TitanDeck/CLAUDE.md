@@ -223,6 +223,13 @@ support posts):
   to API calls; what the deck selects ("102 Enter") does. Test on the console.
 - `userNumber` in handle JSON may be an object (`userNumbers` / `hashCode`);
   `TitanHandlesParser` reads those shapes too.
+- **`DeckProgrammer` (0.44.1):** what the deck set in its WebAPI programmer per
+  fixture (levels from keypad "@", +/-, FX SELECT; CCT palettes), shown again
+  on reselect (after a live sACN level); CLEAR (`forgetProgrammer`) empties it.
+  CLEAR is `TitanClient.clearProgrammer` (ClearAll) + `clearSelection`, never
+  the old command-line check. Hold for 0% on a level the deck set goes through
+  `SetDimmerLevel` (`levelThroughWebAPI`, steps over the fade): Titan's
+  FlashOut doesn't move a programmer level. Otherwise FlashOut / ClearFlash.
 - There's no documented way to read a fixture's current intensity from the
   WebAPI. `IntensityReader` reads it from Titan's sACN through TitanDeck Host
   and learns each fixture's intensity channels from what moves when the deck
