@@ -7,6 +7,10 @@ the GitHub Actions run that built it. The top entry is shown in the app
 so add an entry - and bump `MARKETING_VERSION` in `project.yml` to match -
 with every change that goes to `main`.
 
+## 0.43.3 - 2026-11-03 - Why the desk link isn't linked
+
+- **Settings > Desk now says exactly what's missing** when the deck isn't following the desk's selection: this phone or iPad isn't paired with TitanDeck Host, the Host didn't answer (and why), Follow selection via CITP is off in the Host, or it's on but Titan hasn't connected to it (with anything the Host reports).
+
 ## 0.43.2 - 2026-11-03 - Clearer desk link and user messages
 
 - **Desk link on a phone:** when the phone isn't paired with TitanDeck Host, Settings > Desk now says so, instead of telling you to turn on CITP in the Host. The desk's selection over CITP only reaches devices paired with the Host, and each phone or iPad pairs on its own (Settings > TitanDeck Host).

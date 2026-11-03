@@ -42,11 +42,11 @@ final class DeskLink: ObservableObject {
     var onSelection: (([Int]) -> Void)?
     /// Called when the link comes up or goes down.
     var onLinkChange: ((Bool) -> Void)?
-    /// The Host's CITP selection (Host 0.9+), or nil without a paired Host.
-    var citpSelection: (@MainActor () async -> HostCitpSelection?)?
-    /// Whether this device is paired with TitanDeck Host (0.43.2), so "not
-    /// linked" can say when pairing is what's missing.
-    var hostIsPaired: (@MainActor () -> Bool)?
+    /// The Host's CITP selection (Host 0.9+): its answer, or why there's
+    /// none (0.43.3). nil when this device isn't paired with a Host.
+    var citpSelection: (@MainActor () async -> Result<HostCitpSelection, Error>?)?
+    /// Why the last look at the Host's CITP didn't give a link, for "not linked".
+    private var citpNote: String?
 
     static let defaultPort = 4434
     /// About three times a second: quick enough to feel live, light on Titan's UI.
@@ -122,18 +122,27 @@ final class DeskLink: ObservableObject {
 
     private func tick(_ client: TitanClient) async {
         // Titan 19: the Host hears the selection over CITP.
-        if let citpSelection, let citp = await citpSelection(), citp.enabled {
-            if citp.linked {
-                failures = 0
-                let was = isLinked
-                state = .linkedViaCitp(citp.peer)
-                if !was { onLinkChange?(true) }
-                guard citp.fixtures != selection else { return }
-                selection = citp.fixtures
-                // The deck's own user selects them too, so its keys act on them.
-                await api.selectFixtures(userNumbers: citp.fixtures)
-                onSelection?(citp.fixtures)
-                return
+        if let citpSelection {
+            switch await citpSelection() {
+            case .success(let citp)?:
+                if citp.enabled && citp.linked {
+                    citpNote = nil
+                    failures = 0
+                    let was = isLinked
+                    state = .linkedViaCitp(citp.peer)
+                    if !was { onLinkChange?(true) }
+                    guard citp.fixtures != selection else { return }
+                    selection = citp.fixtures
+                    // The deck's own user selects them too, so its keys act on them.
+                    await api.selectFixtures(userNumbers: citp.fixtures)
+                    onSelection?(citp.fixtures)
+                    return
+                }
+                citpNote = Self.citpNote(citp)
+            case .failure(let error)?:
+                citpNote = "TitanDeck Host didn't answer (\(error.localizedDescription))."
+            case nil:
+                citpNote = "This device isn't paired with TitanDeck Host, which hears the desk's selection over CITP. Pair it in Settings > TitanDeck Host - each phone or iPad pairs on its own."
             }
         }
         guard let ids = await client.selectedFixtureIds() else {
@@ -162,13 +171,23 @@ final class DeskLink: ObservableObject {
         onSelection?(fixtures)
     }
 
-    /// Each phone or iPad pairs with the Host on its own: the desk's
-    /// selection over CITP only reaches a paired one.
+    /// Why there's no link, as exactly as the Host lets us say (0.43.3):
+    /// not paired, the Host not answering, its CITP switched off, or Titan
+    /// not connected to it.
     private var notLinkedReason: String {
-        if hostIsPaired?() == false {
-            return "Not linked: this device isn't paired with TitanDeck Host, which hears the desk's selection over CITP (Titan 19). Pair it in Settings > TitanDeck Host - each phone or iPad pairs on its own."
+        guard let citpNote else {
+            return "Not linked. Titan 19: turn on Follow selection via CITP in TitanDeck Host (0.9). Titan 14-18: Desk selection for TitanDeck in TitanDeck Host, then restart Titan."
         }
-        return "Not linked. Titan 19: turn on Follow selection via CITP in TitanDeck Host (0.9). Titan 14-18: Desk selection for TitanDeck in TitanDeck Host, then restart Titan."
+        return "Not linked. " + citpNote
+    }
+
+    /// What the Host's CITP answer says is missing. Pure, so it's tested.
+    nonisolated static func citpNote(_ citp: HostCitpSelection) -> String {
+        guard citp.enabled else {
+            return "Follow selection via CITP is off in TitanDeck Host: switch it on in the Host window on the Titan PC."
+        }
+        let problem = citp.problem.map { " The Host says: \($0)" } ?? ""
+        return "Follow selection via CITP is on in TitanDeck Host, but Titan isn't connected to it. Titan connects to CITP visualisers by itself once it's running with a show loaded: restart Titan if it doesn't." + problem
     }
 
     private func setLinked(_ linked: Bool, reason: String?) {

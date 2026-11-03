@@ -174,4 +174,13 @@ final class DeskSelectionFlowTests: XCTestCase {
         XCTAssertEqual(page.keys.first { $0.action == .flashSelection }?.label, DeckFlow.flashLabel(level: nil),
                        "the selection page's flash key is the one that gets the level")
     }
+
+    func testNotLinkedSaysWhatsMissingOnTheHost() {
+        let off = HostCitpSelection(enabled: false, linked: false, peer: nil, fixtures: [], problem: nil)
+        XCTAssertTrue(DeskLink.citpNote(off).contains("off in TitanDeck Host"))
+        let waiting = HostCitpSelection(enabled: true, linked: false, peer: nil, fixtures: [], problem: "port 4435 in use")
+        let note = DeskLink.citpNote(waiting)
+        XCTAssertTrue(note.contains("Titan isn't connected"))
+        XCTAssertTrue(note.hasSuffix("The Host says: port 4435 in use"))
+    }
 }
