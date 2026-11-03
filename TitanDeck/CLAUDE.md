@@ -123,7 +123,10 @@ them together (e.g. `deck.onAction` -> `titan.perform`). Keep it that way.
   WebAPI. If the deck's selection still doesn't show on the desk, Titan keeps
   a programmer per connection, not per user, and sharing the user can't help.
 - The desk link's CITP selection comes through TitanDeck Host, so only a
-  paired device gets it; each phone or iPad pairs on its own.
+  paired device gets it; each phone or iPad pairs on its own. Since 0.43.3
+  `DeskLink.citpSelection` returns a `Result` (nil when not paired) and
+  "not linked" says which of not paired / no answer / CITP off / Titan not
+  connected it is (`DeskLink.citpNote`).
 
 ## Platform and design decisions
 

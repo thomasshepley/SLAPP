@@ -250,9 +250,12 @@ final class AppState: ObservableObject {
         deck.heldColorHex = heldKeyColour
         deskLink.citpSelection = { [weak self] in
             guard let client = self?.host.client else { return nil }
-            return try? await client.citpSelection()
+            do {
+                return .success(try await client.citpSelection())
+            } catch {
+                return .failure(error)
+            }
         }
-        deskLink.hostIsPaired = { [weak self] in self?.host.client != nil }
         deskLink.onSelection = { [weak self] fixtures in
             self?.deck.setDeskSelection(fixtures)
         }
