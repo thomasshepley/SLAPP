@@ -49,7 +49,7 @@ struct SharedUserSection: View {
         } header: {
             Text("Share the desk's user (experimental)")
         } footer: {
-            Text("Titan keeps a programmer for each user, and the deck's WebAPI is a user of its own, so what the deck selects doesn't show on the desk. Pick the user the desk is on (Disk > Users on the desk shows it, usually Operator) and turn this on: the deck's WebAPI becomes that user, which may put its selection and levels in the desk's programmer. Titan doesn't document it, so try it with nothing important live. Turn it off to give the WebAPI its own user back.")
+            Text("Titan keeps a programmer for each user. Pick the user the desk is on (Disk > Users on the desk shows it, usually Operator) and turn this on: the deck's WebAPI becomes that user, which may put its selection and levels in the desk's programmer. If Titan already says the WebAPI is the desk's user and the deck's selection still doesn't show on the desk, Titan keeps a programmer per connection as well, and this can't help: leave it off. Titan doesn't document any of it, so try it with nothing important live.")
         }
         .task {
             if appState.titanUsers.isEmpty { await appState.loadTitanUsers() }

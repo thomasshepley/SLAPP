@@ -44,6 +44,9 @@ final class DeskLink: ObservableObject {
     var onLinkChange: ((Bool) -> Void)?
     /// The Host's CITP selection (Host 0.9+), or nil without a paired Host.
     var citpSelection: (@MainActor () async -> HostCitpSelection?)?
+    /// Whether this device is paired with TitanDeck Host (0.43.2), so "not
+    /// linked" can say when pairing is what's missing.
+    var hostIsPaired: (@MainActor () -> Bool)?
 
     static let defaultPort = 4434
     /// About three times a second: quick enough to feel live, light on Titan's UI.
@@ -137,7 +140,7 @@ final class DeskLink: ObservableObject {
             failures += 1
             // A blip doesn't drop the link; three misses in a row does.
             if failures >= 3 {
-                setLinked(false, reason: "Not linked. Titan 19: turn on Follow selection via CITP in TitanDeck Host (0.9). Titan 14-18: Desk selection for TitanDeck in TitanDeck Host, then restart Titan.")
+                setLinked(false, reason: notLinkedReason)
                 if !selection.isEmpty {
                     selection = []
                     onSelection?([])
@@ -157,6 +160,15 @@ final class DeskLink: ObservableObject {
         guard fixtures != selection else { return }
         selection = fixtures
         onSelection?(fixtures)
+    }
+
+    /// Each phone or iPad pairs with the Host on its own: the desk's
+    /// selection over CITP only reaches a paired one.
+    private var notLinkedReason: String {
+        if hostIsPaired?() == false {
+            return "Not linked: this device isn't paired with TitanDeck Host, which hears the desk's selection over CITP (Titan 19). Pair it in Settings > TitanDeck Host - each phone or iPad pairs on its own."
+        }
+        return "Not linked. Titan 19: turn on Follow selection via CITP in TitanDeck Host (0.9). Titan 14-18: Desk selection for TitanDeck in TitanDeck Host, then restart Titan."
     }
 
     private func setLinked(_ linked: Bool, reason: String?) {
