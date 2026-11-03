@@ -114,6 +114,17 @@ them together (e.g. `deck.onAction` -> `titan.perform`). Keep it that way.
 | M18 H2 | TitanDeck pairs with the Host (Bonjour + 6-digit code, token in the Keychain), PC health + iPad-allowed fixes, rdpwrap.ini from the iPad, files both ways (Host first, shared folder fallback) | Built - needs testing on the PC |
 | M18 H3 | RDP picture presets (Best / Balanced / Weak signal): iPad visual effects (FreeRDP connection type) + PC image quality / graphics mode / 30-60 fps via Host 0.2; Send RDP Wrapper | Built - needs testing on the PC. Signal dashboard and link test next |
 
+## Titan 19 users (found on the desk, 0.43.2)
+
+- `/titan/handles/Users` and `/titan/handles/User` answer 500 "Request for an
+  unknown group". `Users/GetUserListMenuItems` answers 500 (a .NET JSON
+  object cycle, depth 64). There's no user list over the WebAPI.
+- `Users/CurrentUserId` answers 0 and `CurrentUserName` "Operator" for the
+  WebAPI. If the deck's selection still doesn't show on the desk, Titan keeps
+  a programmer per connection, not per user, and sharing the user can't help.
+- The desk link's CITP selection comes through TitanDeck Host, so only a
+  paired device gets it; each phone or iPad pairs on its own.
+
 ## Platform and design decisions
 
 - **Universal app (iPhone + iPad).** Tabs: Remote, Deck (on-screen deck),

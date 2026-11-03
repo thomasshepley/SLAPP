@@ -7,6 +7,11 @@ the GitHub Actions run that built it. The top entry is shown in the app
 so add an entry - and bump `MARKETING_VERSION` in `project.yml` to match -
 with every change that goes to `main`.
 
+## 0.43.2 - 2026-11-03 - Clearer desk link and user messages
+
+- **Desk link on a phone:** when the phone isn't paired with TitanDeck Host, Settings > Desk now says so, instead of telling you to turn on CITP in the Host. The desk's selection over CITP only reaches devices paired with the Host, and each phone or iPad pairs on its own (Settings > TitanDeck Host).
+- **Share the desk's user:** Titan 19 doesn't list its users to the WebAPI at all, so the section now just says which user Titan reports the deck's WebAPI is (on your desk: user 0, Operator), without a page of Titan errors.
+
 ## 0.43.1 - 2026-10-31 - Tap to GO, tidier text when folded
 
 - **Apple Watch: tap GO to fire.** No more holding it. Double tap (finger pinch) still works.

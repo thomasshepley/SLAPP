@@ -252,6 +252,7 @@ final class AppState: ObservableObject {
             guard let client = self?.host.client else { return nil }
             return try? await client.citpSelection()
         }
+        deskLink.hostIsPaired = { [weak self] in self?.host.client != nil }
         deskLink.onSelection = { [weak self] fixtures in
             self?.deck.setDeskSelection(fixtures)
         }
@@ -494,9 +495,13 @@ final class AppState: ObservableObject {
             ownWebAPIUser = id
             UserDefaults.standard.set(id, forKey: "titan.ownWebAPIUser")
         }
+        // Titan 19 lists no users to the WebAPI (no Users handles, and the
+        // menu list fails inside Titan), so say plainly what it does say.
+        let whoAmI = current.id.map { id in "user \(id)" + (current.name.map { " (\($0))" } ?? "") } ?? current.name ?? "unknown"
         sharedUserStatus = users.isEmpty
-            ? "Titan didn't list its users" + (answer.map { ": " + String($0.prefix(160)) } ?? " (no answer)")
-            : "The deck's WebAPI is user \(current.name ?? "?")"
+            ? "Titan doesn't list its users to the WebAPI. It says the deck's WebAPI is \(whoAmI)."
+              + (answer.map { "\n\nWhat Titan said: " + String($0.prefix(160)) } ?? "")
+            : "The deck's WebAPI is \(whoAmI)"
     }
 
     private func applySharedUser() async {
