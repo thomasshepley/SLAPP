@@ -12,6 +12,9 @@ struct RemoteView: View {
     /// The top bar's controls (keyboard, Menu, connection) folded away behind
     /// one button, so the selection gets the width.
     @AppStorage("remote.controlsFolded") private var controlsFolded = true
+    /// The deck floating over the desktop (0.44), for when there's no
+    /// Stream Deck to hand. Shown or hidden from the bar, always one tap away.
+    @AppStorage("remote.floatingDeck.shown") private var floatingDeckShown = false
 
     var body: some View {
         GeometryReader { geometry in
@@ -37,6 +40,18 @@ struct RemoteView: View {
                 }
             }
             .ignoresSafeArea()
+            // The floating deck (0.44), inside the safe area like the bar, and
+            // under it. Only the panel takes touches: the rest is the desktop's.
+            .overlay {
+                GeometryReader { proxy in
+                    if floatingDeckShown {
+                        FloatingDeck(deck: appState.deck, container: proxy.size) {
+                            withAnimation(.snappy) { floatingDeckShown = false }
+                        }
+                        .transition(.scale(scale: 0.85).combined(with: .opacity))
+                    }
+                }
+            }
             // The bar keeps to the safe area (unlike the desktop), so it stays
             // clear of iPadOS's window controls in the top-left corner.
             .overlay(alignment: .top) {
@@ -46,6 +61,7 @@ struct RemoteView: View {
                     // They're never squeezed: the selection gets what's left.
                     HStack(spacing: 10) {
                         foldButton
+                        deckButton
                         if !controlsFolded {
                             ConnectionPill(heartbeat: appState.heartbeat, session: session,
                                            network: appState.network, localNetwork: appState.localNetwork,
@@ -155,6 +171,23 @@ struct RemoteView: View {
         .buttonStyle(.plain)
         .glassEffect(.regular.interactive(), in: .capsule)
         .accessibilityLabel(controlsFolded ? "Show the menu and connection" : "Hide the menu and connection")
+    }
+
+    /// Shows and hides the floating deck. Never folded away with the other
+    /// controls, so the deck is always one tap from the desktop.
+    private var deckButton: some View {
+        Button {
+            withAnimation(.snappy) { floatingDeckShown.toggle() }
+        } label: {
+            Image(systemName: "square.grid.3x3.fill")
+                .font(.caption.weight(.semibold))
+                .frame(width: 18, height: 18)
+                .padding(8)
+        }
+        .buttonStyle(.plain)
+        .glassEffect(floatingDeckShown ? .regular.tint(.accentColor).interactive() : .regular.interactive(), in: .circle)
+        .accessibilityLabel(floatingDeckShown ? "Hide the deck" : "Show the deck")
+        .accessibilityHint("The deck's keys, floating over the desktop")
     }
 
     /// Shows and hides the iPad's on-screen keyboard; it types on the PC.

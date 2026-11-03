@@ -14,8 +14,6 @@ import SwiftUI
 struct OnScreenDeckView: View {
     @EnvironmentObject private var appState: AppState
     @ObservedObject var deck: DeckSessionController
-    @State private var pressedKey: Int?
-    @State private var pressCount = 0
     /// Titan's command line, shown while the deck is on screen.
     @State private var commandLine: String?
 
@@ -44,7 +42,6 @@ struct OnScreenDeckView: View {
                 // A status light, not a button: no glass bubble round it.
                 .sharedBackgroundVisibility(.hidden)
             }
-            .sensoryFeedback(.impact(weight: .medium), trigger: pressCount)
             .task {
                 // Poll the command line twice a second while this tab is open.
                 while !Task.isCancelled {
@@ -178,13 +175,7 @@ struct OnScreenDeckView: View {
     private func keys(width: Double, height: Double, alignment: Alignment) -> some View {
         let grid = OnScreenDeckLayout.grid(keyCount: deck.profile.keyCount, deckColumns: deck.profile.gridColumns,
                                            width: width, height: height)
-        let columns = Array(repeating: GridItem(.fixed(CGFloat(grid.side)), spacing: CGFloat(OnScreenDeckLayout.spacing)),
-                            count: grid.columns)
-        let content = LazyVGrid(columns: columns, spacing: CGFloat(OnScreenDeckLayout.spacing)) {
-            ForEach(0..<deck.profile.keyCount, id: \.self) { index in
-                key(index, side: grid.side)
-            }
-        }
+        let content = DeckKeyGrid(deck: deck, columns: grid.columns, side: grid.side)
         if grid.scrolls {
             ScrollView {
                 content.frame(maxWidth: .infinity)
@@ -193,47 +184,6 @@ struct OnScreenDeckView: View {
         } else {
             content.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: alignment)
         }
-    }
-
-    private func key(_ index: Int, side: Double) -> some View {
-        let key = deck.displayedKey(at: index)
-        return Image(uiImage: DeckRenderer.image(for: key, size: CGSize(width: 144, height: 144),
-                                                 overlay: deck.overlays[index] ?? .none,
-                                                 isActive: deck.isActive(key), isLatched: deck.isLatched(key),
-                                                 heldHex: deck.heldColorHex))
-            .resizable()
-            .aspectRatio(1, contentMode: .fit)
-            .frame(width: CGFloat(side), height: CGFloat(side))
-            .clipShape(RoundedRectangle(cornerRadius: min(12, CGFloat(side) * 0.12), style: .continuous))
-            .scaleEffect(pressedKey == index ? 0.94 : 1)
-            .animation(.snappy(duration: 0.12), value: pressedKey)
-            .opacity(key == nil ? 0.25 : 1)
-            .gesture(pressGesture(index: index, enabled: key?.action != nil))
-            .accessibilityElement()
-            .accessibilityLabel(key.map { $0.label.replacingOccurrences(of: "\n", with: " ") } ?? "Empty key")
-            .accessibilityAddTraits(.isButton)
-            .accessibilityAction { press(index) }
-    }
-
-    /// Down on touch, up on release - so a Go key behaves like the hardware.
-    private func pressGesture(index: Int, enabled: Bool) -> some Gesture {
-        DragGesture(minimumDistance: 0)
-            .onChanged { _ in
-                guard enabled, pressedKey != index else { return }
-                pressedKey = index
-                pressCount += 1
-                deck.pressOnScreenKey(index, pressed: true)
-            }
-            .onEnded { _ in
-                guard pressedKey == index else { return }
-                pressedKey = nil
-                deck.pressOnScreenKey(index, pressed: false)
-            }
-    }
-
-    private func press(_ index: Int) {
-        deck.pressOnScreenKey(index, pressed: true)
-        deck.pressOnScreenKey(index, pressed: false)
     }
 }
 
