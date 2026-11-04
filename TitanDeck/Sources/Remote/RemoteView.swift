@@ -21,6 +21,7 @@ struct RemoteView: View {
             ZStack {
                 Color.black
                 RDPView(session: session, commandKey: appState.rdpSettings.commandKey,
+                        multitouch: appState.rdpSettings.multitouch,
                         softKeyboardShown: $softKeyboardShown) { appState.mode = .settings }
                     .opacity(session.state == .connected ? 1 : 0.35)
                 if session.reconnectAttempt > 0 {

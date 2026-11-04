@@ -50,7 +50,19 @@ typedef struct TitanRDPOptions {
     /// 2 broadband low (plain: no themes, font smoothing or window contents
     /// while dragging). 0 means LAN.
     uint32_t connection_type;
+    /// Nonzero: open RDP's touch channel (RDPEI), so the PC can take real
+    /// multi-touch (titan_rdp_touch). 0: mouse input only.
+    uint32_t multitouch;
 } TitanRDPOptions;
+
+/// A finger's phase, for titan_rdp_touch (the same values as FreeRDP's
+/// FreeRDPTouchEventType).
+typedef enum {
+    TITAN_RDP_TOUCH_DOWN = 0x01,
+    TITAN_RDP_TOUCH_UP = 0x02,
+    TITAN_RDP_TOUCH_MOTION = 0x04,
+    TITAN_RDP_TOUCH_CANCEL = 0x08
+} TitanRDPTouch;
 
 /// Creates a connection object. Nothing happens until titan_rdp_connect.
 TitanRDP *titan_rdp_new(TitanRDPCallbacks callbacks);
@@ -86,6 +98,13 @@ void titan_rdp_mouse_button(TitanRDP *rdp, TitanRDPButton button, int down, uint
 void titan_rdp_mouse_wheel(TitanRDP *rdp, int32_t delta, uint16_t x, uint16_t y);
 /// RDP scancode (set 1). Extended keys have 0x100 added, as in FreeRDP.
 void titan_rdp_key(TitanRDP *rdp, uint32_t scancode, int down);
+/// 1 when the PC has opened the touch channel, so titan_rdp_touch reaches
+/// Windows as real touch. 0 before that (the Windows sign-in screen, a PC
+/// that doesn't take touch over RDP, or multitouch off): use the mouse.
+int titan_rdp_touch_ready(TitanRDP *rdp);
+/// One finger down, moving, up or cancelled. `id` is the app's own number for
+/// the finger, from 1 (0 isn't allowed), the same for its whole touch.
+void titan_rdp_touch(TitanRDP *rdp, TitanRDPTouch phase, int32_t id, uint16_t x, uint16_t y);
 /// One UTF-16 code unit as a Unicode keyboard event: types the character
 /// whatever the PC's keyboard layout (characters outside the BMP are two
 /// units, each pressed and released).
