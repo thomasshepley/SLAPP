@@ -25,7 +25,9 @@
 typedef enum {
     TITAN_EVENT_MOUSE,
     TITAN_EVENT_KEY,
-    TITAN_EVENT_UNICODE
+    TITAN_EVENT_UNICODE,
+    /// A finger: flags is TitanRDPTouch, scancode the finger's id.
+    TITAN_EVENT_TOUCH
 } TitanEventKind;
 
 typedef struct {
@@ -100,6 +102,18 @@ static void titan_enqueue(TitanRDP *rdp, TitanEvent event) {
         }
     }
 
+    // The same for a finger moving: only its latest place matters.
+    if (rdp->queue_count > 0 && event.kind == TITAN_EVENT_TOUCH && event.flags == TITAN_RDP_TOUCH_MOTION) {
+        TitanEvent *last =
+            &rdp->queue[(rdp->queue_head + rdp->queue_count - 1) % TITAN_QUEUE_CAPACITY];
+        if (last->kind == TITAN_EVENT_TOUCH && last->flags == TITAN_RDP_TOUCH_MOTION &&
+            last->scancode == event.scancode) {
+            *last = event;
+            pthread_mutex_unlock(&rdp->queue_lock);
+            return;
+        }
+    }
+
     if (rdp->queue_count < TITAN_QUEUE_CAPACITY) {
         rdp->queue[(rdp->queue_head + rdp->queue_count) % TITAN_QUEUE_CAPACITY] = event;
         rdp->queue_count++;
@@ -134,6 +148,12 @@ static void titan_drain_queue(TitanRDP *rdp, rdpInput *input) {
         case TITAN_EVENT_UNICODE:
             (void)freerdp_input_send_unicode_keyboard_event(input, event->down ? 0 : KBD_FLAGS_RELEASE,
                                                             (UINT16)event->scancode);
+            break;
+        case TITAN_EVENT_TOUCH:
+            // FreeRDP sends it over RDPEI as a Windows touch contact (and
+            // keeps track of up to ten at once).
+            (void)freerdp_client_handle_touch((rdpClientContext *)input->context, event->flags,
+                                              (INT32)event->scancode, 0, event->x, event->y);
             break;
         }
     }
@@ -492,6 +512,10 @@ int titan_rdp_connect(TitanRDP *rdp, const char *host, uint16_t port, const char
         freerdp_settings_set_bool(settings, FreeRDP_NSCodec, TRUE) &&
         // Reconnects are handled by the app (with backoff), not by FreeRDP.
         freerdp_settings_set_bool(settings, FreeRDP_AutoReconnectionEnabled, FALSE) &&
+        // Real multi-touch (RDPEI) when asked: freerdp_client_load_addins opens
+        // the channel, and the PC takes it if it can (Windows 8 and later).
+        freerdp_settings_set_bool(settings, FreeRDP_MultiTouchInput,
+                                  options && options->multitouch ? TRUE : FALSE) &&
         freerdp_set_connection_type(settings, connection_type);
     if (!ok) {
         freerdp_client_context_free(context);
@@ -592,5 +616,26 @@ void titan_rdp_key(TitanRDP *rdp, uint32_t scancode, int down) {
 
 void titan_rdp_unicode(TitanRDP *rdp, uint16_t code, int down) {
     TitanEvent event = { .kind = TITAN_EVENT_UNICODE, .scancode = code, .down = down };
+    titan_enqueue(rdp, event);
+}
+
+int titan_rdp_touch_ready(TitanRDP *rdp) {
+    if (!rdp || !rdp->connected)
+        return 0;
+    int ready = 0;
+    pthread_mutex_lock(&rdp->context_lock);
+#if defined(CHANNEL_RDPEI_CLIENT)
+    if (rdp->context)
+        ready = ((rdpClientContext *)rdp->context)->rdpei != NULL;
+#endif
+    pthread_mutex_unlock(&rdp->context_lock);
+    return ready;
+}
+
+void titan_rdp_touch(TitanRDP *rdp, TitanRDPTouch phase, int32_t id, uint16_t x, uint16_t y) {
+    if (id <= 0)
+        return;
+    TitanEvent event = { .kind = TITAN_EVENT_TOUCH, .flags = (uint16_t)phase, .x = x, .y = y,
+                         .scancode = (uint32_t)id };
     titan_enqueue(rdp, event);
 }

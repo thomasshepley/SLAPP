@@ -7,6 +7,12 @@ the GitHub Actions run that built it. The top entry is shown in the app
 so add an entry - and bump `MARKETING_VERSION` in `project.yml` to match -
 with every change that goes to `main`.
 
+## 0.44.2 - 2026-11-04 - Real multi-touch on the remote desktop
+
+- **Multi-touch on the Titan PC's screen.** Touches used to go as a mouse, so a second finger cancelled the first (a fader let go the moment another finger landed). Now, when the PC takes touch over RDP (Windows 8 and later do), every finger goes as a real Windows touch, up to ten at once: move two faders together, press while holding, and Titan treats the iPad like its own touchscreen. Taps land straight away too, with no wait to see if a second finger is coming.
+- Where the PC doesn't take touch (the Windows sign-in screen, or a PC without it), it's the mouse as before: two-finger tap for a right click, two-finger drag to scroll.
+- Settings > Remote desktop > Multi-touch turns it off (it takes effect from the next connect). The three-finger long press still opens Settings.
+
 ## 0.44.1 - 2026-11-03 - CLEAR, Hold for 0% and the level on reselect
 
 - **Fixed: CLEAR didn't clear.** It only cleared the programmer when Titan's command line looked empty, and otherwise just started a new command, so levels stayed put. It now clears the deck's programmer and selection every time, and checks nothing's left selected.

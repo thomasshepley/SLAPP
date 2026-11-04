@@ -128,6 +128,18 @@ them together (e.g. `deck.onAction` -> `titan.perform`). Keep it that way.
   "not linked" says which of not paired / no answer / CITP off / Titan not
   connected it is (`DeskLink.citpNote`).
 
+## RDP touch (0.44.2)
+
+- `RDPSettings.multitouch` (on by default) sets `TitanRDPOptions.multitouch`,
+  which turns on `FreeRDP_MultiTouchInput`: `freerdp_client_load_addins` opens
+  RDPEI (built into FreeRDPKit; no FreeRDP rebuild was needed).
+- `titan_rdp_touch` queues fingers, and the connection thread sends them with
+  `freerdp_client_handle_touch` (ids from 1; FreeRDP treats 0 as a free slot).
+  `titan_rdp_touch_ready` is whether `rdpClientContext.rdpei` is up.
+- `RDPCanvasView` picks the mode as the first finger lands: real touch while
+  the channel is up, else the old mouse mapping (two-finger tap / pan are
+  refused in touch mode). Fingers are lifted on resign-active.
+
 ## Platform and design decisions
 
 - **Universal app (iPhone + iPad).** Tabs: Remote, Deck (on-screen deck),

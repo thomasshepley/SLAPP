@@ -4,15 +4,22 @@ import UIKit
 
 /// Full-screen remote desktop canvas.
 ///
-/// Touch mapping: one finger = left button (press, drag, release - so Titan's
-/// faders and buttons behave like a touchscreen), two-finger tap = right click,
-/// two-finger drag = scroll wheel, Pencil hover = move the pointer,
-/// three-finger long press = open Settings. A hardware keyboard (Magic
+/// Touch (0.44.2): while the PC has RDP's touch channel open (Windows takes
+/// touch over RDP), every finger goes as a real Windows touch, several at
+/// once, so Titan's faders and buttons work as on a touchscreen and fingers
+/// don't cancel each other; Windows does its own touch gestures. Otherwise
+/// (the Windows sign-in screen, a PC without it, or Multi-touch off in
+/// Settings) it's the mouse: one finger = left button (press, drag,
+/// release), two-finger tap = right click, two-finger drag = scroll wheel.
+/// Either way Pencil hover moves the pointer and a three-finger long press
+/// opens Settings. A hardware keyboard (Magic
 /// Keyboard) types on the PC while the remote desktop is showing, and so does
 /// the iPad's on-screen keyboard while `softKeyboardShown` is on.
 struct RDPView: UIViewRepresentable {
     @ObservedObject var session: RDPSession
     var commandKey: RDPKeyboard.CommandKey = .control
+    /// Real multi-touch when the PC takes it (Settings > Remote desktop).
+    var multitouch = true
     @Binding var softKeyboardShown: Bool
     var onOpenSettings: () -> Void
 
@@ -20,6 +27,7 @@ struct RDPView: UIViewRepresentable {
         let view = RDPCanvasView()
         view.session = session
         view.commandKey = commandKey
+        view.multitouch = multitouch
         view.onOpenSettings = onOpenSettings
         view.onSoftKeyboardHidden = { [binding = $softKeyboardShown] in
             // Hidden with the keyboard's own key: put the button back.
@@ -32,6 +40,7 @@ struct RDPView: UIViewRepresentable {
     func updateUIView(_ view: RDPCanvasView, context: Context) {
         view.desktopSize = session.desktopSize
         view.commandKey = commandKey
+        view.multitouch = multitouch
         view.onOpenSettings = onOpenSettings
         view.setSoftKeyboard(shown: softKeyboardShown)
     }
@@ -44,6 +53,7 @@ struct RDPView: UIViewRepresentable {
 
 final class RDPCanvasView: UIView {
     weak var session: RDPSession?
+    var multitouch = true
     var onOpenSettings: (() -> Void)?
     var desktopSize: CGSize = .zero
     var commandKey: RDPKeyboard.CommandKey = .control
@@ -62,6 +72,16 @@ final class RDPCanvasView: UIView {
     private static let pressDelay: TimeInterval = 0.08
     /// Movement that commits a pending press straight away (points).
     private static let moveSlop: CGFloat = 6
+
+    /// The fingers going as real touch: the id each has on the PC (1-10,
+    /// RDP's limit) and where it last was, so letting go off the desktop
+    /// still lifts it where it left.
+    private var fingers: [ObjectIdentifier: (id: Int32, x: UInt16, y: UInt16)] = [:]
+    /// The touches on screen now go as real touch (decided as the first
+    /// finger lands, for the whole lot until every finger is up).
+    private var touchMode = false
+    private var twoFingerTap: UITapGestureRecognizer?
+    private var twoFingerPan: UIPanGestureRecognizer?
 
     private var trackedTouch: UITouch?
     private var touchStart: CGPoint = .zero
@@ -84,11 +104,13 @@ final class RDPCanvasView: UIView {
         let twoFingerTap = UITapGestureRecognizer(target: self, action: #selector(handleTwoFingerTap(_:)))
         twoFingerTap.numberOfTouchesRequired = 2
         addGestureRecognizer(twoFingerTap)
+        self.twoFingerTap = twoFingerTap
 
         let twoFingerPan = UIPanGestureRecognizer(target: self, action: #selector(handleTwoFingerPan(_:)))
         twoFingerPan.minimumNumberOfTouches = 2
         twoFingerPan.maximumNumberOfTouches = 2
         addGestureRecognizer(twoFingerPan)
+        self.twoFingerPan = twoFingerPan
 
         let settingsPress = UILongPressGestureRecognizer(target: self, action: #selector(handleSettingsPress(_:)))
         settingsPress.numberOfTouchesRequired = 3
@@ -200,6 +222,7 @@ final class RDPCanvasView: UIView {
 
     /// Lets go of every key still down on the PC.
     func releaseAllKeys() {
+        liftAllFingers()
         stopRepeat()
         for scancode in heldKeys.releaseAll() {
             session?.key(scancode: scancode, down: false)
@@ -208,6 +231,7 @@ final class RDPCanvasView: UIView {
 
     @objc private func appWillResignActive() {
         releaseAllKeys()
+        liftAllFingers()
     }
 
     /// The last key pressed repeats while held, like a PC keyboard.
@@ -235,6 +259,14 @@ final class RDPCanvasView: UIView {
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
         if !isFirstResponder, !typingView.isFirstResponder { becomeFirstResponder() }   // back from a menu or sheet
         let active = event?.allTouches?.filter { $0.phase != .ended && $0.phase != .cancelled } ?? touches
+        // The first finger down decides: real touch if the PC takes it now.
+        if active.count == touches.count, fingers.isEmpty, trackedTouch == nil {
+            touchMode = multitouch && session?.touchReady == true
+        }
+        if touchMode {
+            touches.forEach(fingerDown)
+            return
+        }
         guard active.count == 1, let touch = touches.first, trackedTouch == nil else {
             // A second finger arrived: this is a gesture, not a click.
             abandonSingleTouch()
@@ -248,6 +280,10 @@ final class RDPCanvasView: UIView {
     }
 
     override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
+        if touchMode {
+            touches.forEach(fingerMoved)
+            return
+        }
         guard let touch = trackedTouch, touches.contains(touch) else { return }
         let point = touch.location(in: self)
         if !buttonDown {
@@ -260,6 +296,10 @@ final class RDPCanvasView: UIView {
     }
 
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
+        if touchMode {
+            for touch in touches { fingerUp(touch, phase: .up) }
+            return
+        }
         guard let touch = trackedTouch, touches.contains(touch) else { return }
         if !buttonDown {
             commitPress()   // a quick tap: press and release
@@ -271,6 +311,10 @@ final class RDPCanvasView: UIView {
     }
 
     override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
+        if touchMode {
+            for touch in touches { fingerUp(touch, phase: .cancelled) }
+            return
+        }
         guard let touch = trackedTouch, touches.contains(touch) else { return }
         abandonSingleTouch()
     }
@@ -298,6 +342,48 @@ final class RDPCanvasView: UIView {
         pressTimer = nil
         trackedTouch = nil
         buttonDown = false
+    }
+
+    // MARK: - Real touch (0.44.2)
+
+    private func fingerDown(_ touch: UITouch) {
+        let key = ObjectIdentifier(touch)
+        guard fingers[key] == nil, let p = desktopPoint(touch.location(in: self)),
+              let id = (1 ... Int32(Self.maxFingers)).first(where: { id in !fingers.values.contains { $0.id == id } })
+        else { return }   // off the desktop, or more fingers than RDP takes
+        fingers[key] = (id: id, x: p.x, y: p.y)
+        session?.touch(.down, id: id, x: p.x, y: p.y)
+    }
+
+    private func fingerMoved(_ touch: UITouch) {
+        let key = ObjectIdentifier(touch)
+        guard let finger = fingers[key], let p = desktopPoint(touch.location(in: self)),
+              p.x != finger.x || p.y != finger.y else { return }
+        fingers[key] = (id: finger.id, x: p.x, y: p.y)
+        session?.touch(.moved, id: finger.id, x: p.x, y: p.y)
+    }
+
+    private func fingerUp(_ touch: UITouch, phase: RDPSession.TouchPhase) {
+        guard let finger = fingers.removeValue(forKey: ObjectIdentifier(touch)) else { return }
+        let p = desktopPoint(touch.location(in: self)) ?? (x: finger.x, y: finger.y)
+        session?.touch(phase, id: finger.id, x: p.x, y: p.y)
+    }
+
+    /// Nothing may stay touching the PC once TitanDeck isn't in front.
+    private func liftAllFingers() {
+        for finger in fingers.values {
+            session?.touch(.cancelled, id: finger.id, x: finger.x, y: finger.y)
+        }
+        fingers.removeAll()
+    }
+
+    /// RDP's touch channel takes up to ten contacts.
+    private static let maxFingers = 10
+
+    /// In real touch, two fingers are Windows' own: no right click or scroll wheel.
+    override func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+        if touchMode, gestureRecognizer === twoFingerTap || gestureRecognizer === twoFingerPan { return false }
+        return super.gestureRecognizerShouldBegin(gestureRecognizer)
     }
 
     // MARK: - Gestures

@@ -47,6 +47,8 @@ final class RDPSession: ObservableObject {
         var viewSize: CGSize
         /// Which Windows visual effects to ask for (RDPQuality.Visuals).
         var connectionType: UInt32
+        /// Open RDP's touch channel, for real multi-touch (0.44.2).
+        var multitouch: Bool
     }
 
     private let policy = ReconnectPolicy()
@@ -92,19 +94,19 @@ final class RDPSession: ObservableObject {
     // MARK: - Connection
 
     func connect(host: String, port: UInt16, username: String, domain: String, password: String, viewSize: CGSize,
-                 connectionType: UInt32 = RDPQuality.Visuals.full.connectionType) {
+                 connectionType: UInt32 = RDPQuality.Visuals.full.connectionType, multitouch: Bool = true) {
         cancelReconnect()
         userDisconnected = false
         hasBeenConnected = false
         start(Request(host: host, port: port, username: username, domain: domain, password: password, viewSize: viewSize,
-                      connectionType: connectionType))
+                      connectionType: connectionType, multitouch: multitouch))
     }
 
     private func start(_ request: Request) {
         lastRequest = request
         let host = request.host, port = request.port, username = request.username
         let domain = request.domain, password = request.password, viewSize = request.viewSize
-        var options = TitanRDPOptions(connection_type: request.connectionType)
+        var options = TitanRDPOptions(connection_type: request.connectionType, multitouch: request.multitouch ? 1 : 0)
         guard let handle else {
             state = .failed("Remote desktop couldn't start")
             return
@@ -179,6 +181,28 @@ final class RDPSession: ObservableObject {
         case .middle: raw = TITAN_RDP_BUTTON_MIDDLE
         }
         titan_rdp_mouse_button(handle, raw, down ? 1 : 0, x, y)
+    }
+
+    enum TouchPhase {
+        case down, moved, up, cancelled
+    }
+
+    /// True once the PC has opened RDP's touch channel: fingers then go as
+    /// real Windows touch (multi-touch) rather than a mouse.
+    var touchReady: Bool {
+        titan_rdp_touch_ready(handle) != 0
+    }
+
+    /// One finger, by the app's own id for it (1 and up).
+    func touch(_ phase: TouchPhase, id: Int32, x: UInt16, y: UInt16) {
+        let raw: TitanRDPTouch
+        switch phase {
+        case .down: raw = TITAN_RDP_TOUCH_DOWN
+        case .moved: raw = TITAN_RDP_TOUCH_MOTION
+        case .up: raw = TITAN_RDP_TOUCH_UP
+        case .cancelled: raw = TITAN_RDP_TOUCH_CANCEL
+        }
+        titan_rdp_touch(handle, raw, id, x, y)
     }
 
     /// Positive notches scroll up.

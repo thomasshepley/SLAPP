@@ -101,6 +101,18 @@ final class RemoteModelTests: XCTestCase {
         XCTAssertFalse(RDPSettings().connectOnLaunch)
     }
 
+    func testMultitouchIsOnByDefaultAndKept() {
+        XCTAssertTrue(RDPSettings().multitouch)
+        let defaults = freshDefaults()
+        let old = #"{"host":"titan-pc","port":3389,"username":"Show","domain":""}"#
+        defaults.set(Data(old.utf8), forKey: RDPSettings.defaultsKey)
+        XCTAssertTrue(RDPSettings.load(from: defaults).multitouch, "settings from before 0.44.2 get it on")
+        var settings = RDPSettings()
+        settings.multitouch = false
+        settings.save(to: defaults)
+        XCTAssertFalse(RDPSettings.load(from: defaults).multitouch)
+    }
+
     func testOlderSettingsKeepTheLoginButTurnConnectOnLaunchOff() throws {
         let defaults = freshDefaults()
         let old = #"{"host":"192.168.0.147","port":3389,"username":"Show","domain":"","autoConnect":true}"#

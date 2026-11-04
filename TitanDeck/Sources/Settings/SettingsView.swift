@@ -425,6 +425,14 @@ private struct RemoteDesktopSection: View {
             Picker("Keyboard's Command key", selection: $appState.rdpSettings.commandKey) {
                 ForEach(RDPKeyboard.CommandKey.allCases, id: \.self) { Text($0.title).tag($0) }
             }
+            Toggle(isOn: $appState.rdpSettings.multitouch) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Multi-touch")
+                    Text("Fingers go to the PC as real Windows touch, several at once, when it takes touch over RDP (from the next connect). Off: one finger is the mouse.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
             NavigationLink {
                 RDPQualityView(host: appState.host)
             } label: {
@@ -463,7 +471,7 @@ private struct RemoteDesktopSection: View {
         } header: {
             Text("Remote desktop")
         } footer: {
-            Text("The PC needs RDP enabled (RDP Wrapper on Windows Home) and TCP 3389 allowed through its firewall. Three-finger long press on the desktop opens Settings. A Magic Keyboard types on the PC while the remote desktop is showing; iPadOS keeps a few shortcuts for itself (Cmd-Tab, Cmd-Space, Globe keys).")
+            Text("The PC needs RDP enabled (RDP Wrapper on Windows Home) and TCP 3389 allowed through its firewall. With Multi-touch, fingers are real Windows touch while the PC takes it (the mouse on the sign-in screen); otherwise one finger is the mouse, a two-finger tap a right click and a two-finger drag scrolls. Three-finger long press on the desktop opens Settings. A Magic Keyboard types on the PC while the remote desktop is showing; iPadOS keeps a few shortcuts for itself (Cmd-Tab, Cmd-Space, Globe keys).")
         }
         .onAppear { password = appState.remotePassword }
         .onDisappear { appState.remotePassword = password }
