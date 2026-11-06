@@ -52,6 +52,8 @@ struct RemoteView: View {
                         .transition(.scale(scale: 0.85).combined(with: .opacity))
                     }
                 }
+                // Its top strip stays out of the system's top edge too.
+                .padding(.top, max(0, Self.topClear(geometry) - 12))
             }
             // The bar keeps to the safe area (unlike the desktop), so it stays
             // clear of iPadOS's window controls in the top-left corner.
@@ -83,7 +85,10 @@ struct RemoteView: View {
                         .layoutPriority(1)
                     Spacer(minLength: 0)
                 }
-                .padding(.top, 12)
+                // Clear of the screen's top edge even when the tab bar hides
+                // (0.44.3): iPadOS 26 keeps the top strip for its own swipe-down
+                // menu bar, and took the bar's taps there once RDP connected.
+                .padding(.top, Self.topClear(geometry))
                 .padding(.horizontal, 16)
             }
             .onAppear {
@@ -99,6 +104,9 @@ struct RemoteView: View {
         }
         .toolbar(session.state == .connected ? .hidden : .visible, for: .tabBar)
         .persistentSystemOverlays(.hidden)
+        // Touches at the top edge are the app's first (the bar, the deck);
+        // the system's swipe-down needs a second swipe while the desktop's up.
+        .defersSystemGestures(on: .top)
         .statusBarHidden(true)
     }
 
@@ -172,6 +180,13 @@ struct RemoteView: View {
         .buttonStyle(.plain)
         .glassEffect(.regular.interactive(), in: .capsule)
         .accessibilityLabel(controlsFolded ? "Show the menu and connection" : "Hide the menu and connection")
+    }
+
+    /// How far the bar sits below the safe area's top: at least
+    /// `topClearance` from the screen's edge, never less than 12.
+    private static let topClearance: CGFloat = 32
+    private static func topClear(_ geometry: GeometryProxy) -> CGFloat {
+        max(12, topClearance - geometry.safeAreaInsets.top)
     }
 
     /// Shows and hides the floating deck. Never folded away with the other

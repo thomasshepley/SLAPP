@@ -7,6 +7,10 @@ the GitHub Actions run that built it. The top entry is shown in the app
 so add an entry - and bump `MARKETING_VERSION` in `project.yml` to match -
 with every change that goes to `main`.
 
+## 0.44.3 - 2026-11-06 - Keyboard and deck buttons with the desktop up
+
+- **Fixed: the keyboard and deck buttons didn't open while the remote desktop was connected.** Connecting hides the tab bar, which moved the Remote screen's bar up into the strip along the top of the screen that iPadOS 26 keeps for its own swipe-down menu bar, so iPadOS took the taps. The bar now always sits clear of the top edge, and while the desktop's up, touches along the top go to TitanDeck first (iPadOS's swipe-down needs a second swipe). The floating deck keeps out of that strip too.
+
 ## 0.44.2 - 2026-11-04 - Real multi-touch on the remote desktop
 
 - **Multi-touch on the Titan PC's screen.** Touches used to go as a mouse, so a second finger cancelled the first (a fader let go the moment another finger landed). Now, when the PC takes touch over RDP (Windows 8 and later do), every finger goes as a real Windows touch, up to ten at once: move two faders together, press while holding, and Titan treats the iPad like its own touchscreen. Taps land straight away too, with no wait to see if a second finger is coming.
