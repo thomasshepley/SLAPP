@@ -128,6 +128,15 @@ them together (e.g. `deck.onAction` -> `titan.perform`). Keep it that way.
   "not linked" says which of not paired / no answer / CITP off / Titan not
   connected it is (`DeskLink.citpNote`).
 
+## Remote bar and the top edge (0.44.3)
+
+- Connecting hides the tab bar, so the safe area's top shrinks and the Remote
+  bar moved into the screen's top strip, which iPadOS 26 keeps for its
+  swipe-down menu bar: the deck and keyboard buttons stopped answering.
+  `RemoteView.topClear` keeps the bar (and the floating deck's space) at least
+  `topClearance` (32 pt) below the screen's edge, and the view defers system
+  gestures on the top edge. Don't move bar controls back up to the edge.
+
 ## RDP touch (0.44.2)
 
 - `RDPSettings.multitouch` (on by default) sets `TitanRDPOptions.multitouch`,
