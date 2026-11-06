@@ -136,6 +136,17 @@ them together (e.g. `deck.onAction` -> `titan.perform`). Keep it that way.
   `RemoteView.topClear` keeps the bar (and the floating deck's space) at least
   `topClearance` (32 pt) below the screen's edge, and the view defers system
   gestures on the top edge. Don't move bar controls back up to the edge.
+- That wasn't the cause (0.44.4): the buttons still didn't answer. Now
+  `RDPTouchExclusions` holds the bar's controls, the selection strip and the
+  floating deck (window coordinates, from `onGeometryChange`), and
+  `RDPCanvasView.hitTest` returns nil there so the desktop can't take their
+  taps. Keep any new Remote overlay control in it.
+- **Desktop size and zoom (0.44.4):** `RDPDesktopSize` (Automatic: iPad-sized,
+  834 pt short side, on screens under 700 pt short side) feeds
+  `DesktopMapper.sessionSize(for:choice:)`. Zoom is `RDPZoom` (pure, tested) on
+  the canvas's `imageLayer` (never transform the view itself: SwiftUI sets its
+  frame); touches map back with `RDPZoom.unzoomed`. While zooming, fingers
+  go as the mouse and two fingers pinch / move the picture.
 
 ## RDP touch (0.44.2)
 

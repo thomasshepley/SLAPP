@@ -7,6 +7,12 @@ the GitHub Actions run that built it. The top entry is shown in the app
 so add an entry - and bump `MARKETING_VERSION` in `project.yml` to match -
 with every change that goes to `main`.
 
+## 0.44.4 - 2026-11-06 - Remote bar taps, iPad-sized desktop, zoom
+
+- **Fixed (second go): the keyboard and deck buttons still didn't open with the remote desktop connected.** Moving the bar down (0.44.3) wasn't it. Now the desktop itself steps aside wherever the bar's controls, the selection strip and the floating deck are, so their taps can't go to the PC instead.
+- **New: Desktop size (Settings > Remote desktop).** On a phone or iPhone Duo the desktop used to match the small screen, which left Titan cramped and unusable. Automatic (the default) now asks the PC for an iPad-sized desktop on phone-sized screens (834 pt on its short side, the same shape as the screen), so Titan lays out as on the iPad; everything's smaller, so tap carefully or zoom. Choose This screen for the old behaviour, or iPad size everywhere. Takes effect from the next connect.
+- **New: Zoom.** The magnifier in the Remote bar (while connected): pinch to zoom the desktop in, drag with two fingers to move around, and one finger still clicks. Tap it again to go back to the whole desktop.
+
 ## 0.44.3 - 2026-11-06 - Keyboard and deck buttons with the desktop up
 
 - **Fixed: the keyboard and deck buttons didn't open while the remote desktop was connected.** Connecting hides the tab bar, which moved the Remote screen's bar up into the strip along the top of the screen that iPadOS 26 keeps for its own swipe-down menu bar, so iPadOS took the taps. The bar now always sits clear of the top edge, and while the desktop's up, touches along the top go to TitanDeck first (iPadOS's swipe-down needs a second swipe). The floating deck keeps out of that strip too.

@@ -19,6 +19,8 @@ struct RDPSettings: Codable, Hashable {
     /// Fingers as real Windows touch, several at once (0.44.2), when the PC
     /// takes it; the mouse otherwise. On by default.
     var multitouch = true
+    /// How big a desktop to ask the PC for (0.44.4): iPad-sized on a phone by default.
+    var desktopSize = RDPDesktopSize.automatic
 
     /// The address to actually use, falling back to the Titan host.
     func effectiveHost(titanHost: String) -> String {
@@ -42,7 +44,7 @@ struct RDPSettings: Codable, Hashable {
     // `autoConnect` key (on by default back then) is deliberately ignored, which
     // turns connect-on-launch off once.
     private enum CodingKeys: String, CodingKey {
-        case host, port, username, domain, connectOnLaunch, quality, commandKey, multitouch
+        case host, port, username, domain, connectOnLaunch, quality, commandKey, multitouch, desktopSize
     }
 
     init(from decoder: Decoder) throws {
@@ -55,6 +57,7 @@ struct RDPSettings: Codable, Hashable {
         quality = (try? container.decodeIfPresent(RDPQuality.self, forKey: .quality)) ?? RDPQuality.preset(.best)
         commandKey = (try? container.decodeIfPresent(RDPKeyboard.CommandKey.self, forKey: .commandKey)) ?? .control
         multitouch = try container.decodeIfPresent(Bool.self, forKey: .multitouch) ?? true
+        desktopSize = (try? container.decodeIfPresent(RDPDesktopSize.self, forKey: .desktopSize)) ?? .automatic
     }
 
     static let defaultsKey = "rdpSettings"

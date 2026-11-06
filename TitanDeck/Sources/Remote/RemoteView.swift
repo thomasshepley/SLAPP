@@ -15,13 +15,18 @@ struct RemoteView: View {
     /// The deck floating over the desktop (0.44), for when there's no
     /// Stream Deck to hand. Shown or hidden from the bar, always one tap away.
     @AppStorage("remote.floatingDeck.shown") private var floatingDeckShown = false
+    /// Pinch to zoom the desktop, two fingers to move it (0.44.4).
+    @State private var zoomMode = false
+    /// Where the bar's controls and the floating deck are, so the desktop
+    /// never takes their taps (0.44.4).
+    @State private var exclusions = RDPTouchExclusions()
 
     var body: some View {
         GeometryReader { geometry in
             ZStack {
                 Color.black
                 RDPView(session: session, commandKey: appState.rdpSettings.commandKey,
-                        multitouch: appState.rdpSettings.multitouch,
+                        multitouch: appState.rdpSettings.multitouch, zoomMode: zoomMode, exclusions: exclusions,
                         softKeyboardShown: $softKeyboardShown) { appState.mode = .settings }
                     .opacity(session.state == .connected ? 1 : 0.35)
                 if session.reconnectAttempt > 0 {
@@ -46,7 +51,7 @@ struct RemoteView: View {
             .overlay {
                 GeometryReader { proxy in
                     if floatingDeckShown {
-                        FloatingDeck(deck: appState.deck, container: proxy.size) {
+                        FloatingDeck(deck: appState.deck, container: proxy.size, exclusions: exclusions) {
                             withAnimation(.snappy) { floatingDeckShown = false }
                         }
                         .transition(.scale(scale: 0.85).combined(with: .opacity))
@@ -65,6 +70,9 @@ struct RemoteView: View {
                     HStack(spacing: 10) {
                         foldButton
                         deckButton
+                        if session.state == .connected {
+                            zoomButton
+                        }
                         if !controlsFolded {
                             ConnectionPill(heartbeat: appState.heartbeat, session: session,
                                            network: appState.network, localNetwork: appState.localNetwork,
@@ -80,8 +88,10 @@ struct RemoteView: View {
                             .allowsHitTesting(false)
                     }
                     .fixedSize()
+                    .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { exclusions.set("bar", $0) }
                     .layoutPriority(2)
                     SelectionStrip(deck: appState.deck)
+                        .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { exclusions.set("selection", $0) }
                         .layoutPriority(1)
                     Spacer(minLength: 0)
                 }
@@ -99,7 +109,10 @@ struct RemoteView: View {
                 appState.remoteViewSize = newSize
             }
             .onChange(of: session.state) { _, state in
-                if state != .connected { softKeyboardShown = false }
+                if state != .connected {
+                    softKeyboardShown = false
+                    zoomMode = false
+                }
             }
         }
         .toolbar(session.state == .connected ? .hidden : .visible, for: .tabBar)
@@ -180,6 +193,24 @@ struct RemoteView: View {
         .buttonStyle(.plain)
         .glassEffect(.regular.interactive(), in: .capsule)
         .accessibilityLabel(controlsFolded ? "Show the menu and connection" : "Hide the menu and connection")
+    }
+
+    /// Zoom on and off (0.44.4): on, pinch zooms the desktop and two fingers
+    /// move it (one finger clicks as the mouse); off, it's back to fit.
+    private var zoomButton: some View {
+        Button {
+            withAnimation(.snappy) { zoomMode.toggle() }
+        } label: {
+            Image(systemName: zoomMode ? "minus.magnifyingglass" : "plus.magnifyingglass")
+                .font(.caption.weight(.semibold))
+                .frame(width: 18, height: 18)
+                .padding(8)
+                .contentTransition(.symbolEffect(.replace))
+        }
+        .buttonStyle(.plain)
+        .glassEffect(zoomMode ? .regular.tint(.accentColor).interactive() : .regular.interactive(), in: .circle)
+        .accessibilityLabel(zoomMode ? "Stop zooming" : "Zoom")
+        .accessibilityHint("Pinch to zoom the desktop, drag with two fingers to move it")
     }
 
     /// How far the bar sits below the safe area's top: at least

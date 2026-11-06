@@ -425,6 +425,16 @@ private struct RemoteDesktopSection: View {
             Picker("Keyboard's Command key", selection: $appState.rdpSettings.commandKey) {
                 ForEach(RDPKeyboard.CommandKey.allCases, id: \.self) { Text($0.title).tag($0) }
             }
+            Picker(selection: $appState.rdpSettings.desktopSize) {
+                ForEach(RDPDesktopSize.allCases, id: \.self) { Text($0.title).tag($0) }
+            } label: {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Desktop size")
+                    Text("iPad size gives Titan room on a phone or iPhone Duo: everything's smaller, so tap carefully or use Zoom. Automatic does that on phone-sized screens only. From the next connect.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
             Toggle(isOn: $appState.rdpSettings.multitouch) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Multi-touch")
