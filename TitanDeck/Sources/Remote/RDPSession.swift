@@ -49,6 +49,8 @@ final class RDPSession: ObservableObject {
         var connectionType: UInt32
         /// Open RDP's touch channel, for real multi-touch (0.44.2).
         var multitouch: Bool
+        /// How big a desktop to ask for (0.44.4).
+        var desktopSize: RDPDesktopSize
     }
 
     private let policy = ReconnectPolicy()
@@ -94,12 +96,13 @@ final class RDPSession: ObservableObject {
     // MARK: - Connection
 
     func connect(host: String, port: UInt16, username: String, domain: String, password: String, viewSize: CGSize,
-                 connectionType: UInt32 = RDPQuality.Visuals.full.connectionType, multitouch: Bool = true) {
+                 connectionType: UInt32 = RDPQuality.Visuals.full.connectionType, multitouch: Bool = true,
+                 desktopSize: RDPDesktopSize = .automatic) {
         cancelReconnect()
         userDisconnected = false
         hasBeenConnected = false
         start(Request(host: host, port: port, username: username, domain: domain, password: password, viewSize: viewSize,
-                      connectionType: connectionType, multitouch: multitouch))
+                      connectionType: connectionType, multitouch: multitouch, desktopSize: desktopSize))
     }
 
     private func start(_ request: Request) {
@@ -115,7 +118,7 @@ final class RDPSession: ObservableObject {
         case .connecting, .connected: return
         case .idle, .failed: break
         }
-        let size = DesktopMapper.sessionSize(for: viewSize)
+        let size = DesktopMapper.sessionSize(for: viewSize, choice: request.desktopSize)
         certificateRejected = false
         self.host = host
         let result = host.withCString { h in

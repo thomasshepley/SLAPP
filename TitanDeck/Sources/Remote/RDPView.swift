@@ -12,7 +12,8 @@ import UIKit
 /// Settings) it's the mouse: one finger = left button (press, drag,
 /// release), two-finger tap = right click, two-finger drag = scroll wheel.
 /// Either way Pencil hover moves the pointer and a three-finger long press
-/// opens Settings. A hardware keyboard (Magic
+/// opens Settings. Zoom (0.44.4, the Remote bar's magnifier): pinch to zoom
+/// in, two fingers to move around, one finger clicks as the mouse. A hardware keyboard (Magic
 /// Keyboard) types on the PC while the remote desktop is showing, and so does
 /// the iPad's on-screen keyboard while `softKeyboardShown` is on.
 struct RDPView: UIViewRepresentable {
@@ -20,6 +21,11 @@ struct RDPView: UIViewRepresentable {
     var commandKey: RDPKeyboard.CommandKey = .control
     /// Real multi-touch when the PC takes it (Settings > Remote desktop).
     var multitouch = true
+    /// Pinch and two-finger drag zoom and move the picture (0.44.4).
+    var zoomMode = false
+    /// Where the Remote bar's controls and the floating deck are: touches
+    /// there are theirs, never the desktop's (0.44.4).
+    var exclusions: RDPTouchExclusions?
     @Binding var softKeyboardShown: Bool
     var onOpenSettings: () -> Void
 
@@ -28,6 +34,7 @@ struct RDPView: UIViewRepresentable {
         view.session = session
         view.commandKey = commandKey
         view.multitouch = multitouch
+        view.exclusions = exclusions
         view.onOpenSettings = onOpenSettings
         view.onSoftKeyboardHidden = { [binding = $softKeyboardShown] in
             // Hidden with the keyboard's own key: put the button back.
@@ -41,6 +48,8 @@ struct RDPView: UIViewRepresentable {
         view.desktopSize = session.desktopSize
         view.commandKey = commandKey
         view.multitouch = multitouch
+        view.exclusions = exclusions
+        view.zoomMode = zoomMode
         view.onOpenSettings = onOpenSettings
         view.setSoftKeyboard(shown: softKeyboardShown)
     }
@@ -51,9 +60,24 @@ struct RDPView: UIViewRepresentable {
     }
 }
 
-final class RDPCanvasView: UIView {
+final class RDPCanvasView: UIView, UIGestureRecognizerDelegate {
     weak var session: RDPSession?
     var multitouch = true
+    var exclusions: RDPTouchExclusions?
+    var zoomMode = false {
+        didSet {
+            guard zoomMode != oldValue else { return }
+            pinch?.isEnabled = zoomMode
+            if !zoomMode {
+                zoom = RDPZoom()
+                applyZoom(animated: true)
+            }
+        }
+    }
+    /// The picture, in its own layer so it can be zoomed without moving the view.
+    private let imageLayer = CALayer()
+    private var zoom = RDPZoom()
+    private var pinch: UIPinchGestureRecognizer?
     var onOpenSettings: (() -> Void)?
     var desktopSize: CGSize = .zero
     var commandKey: RDPKeyboard.CommandKey = .control
@@ -97,9 +121,11 @@ final class RDPCanvasView: UIView {
         super.init(frame: frame)
         backgroundColor = .black
         isMultipleTouchEnabled = true
-        layer.contentsGravity = .resizeAspect
-        layer.magnificationFilter = .linear
-        layer.minificationFilter = .trilinear
+        clipsToBounds = true
+        imageLayer.contentsGravity = .resizeAspect
+        imageLayer.magnificationFilter = .linear
+        imageLayer.minificationFilter = .trilinear
+        layer.addSublayer(imageLayer)
 
         let twoFingerTap = UITapGestureRecognizer(target: self, action: #selector(handleTwoFingerTap(_:)))
         twoFingerTap.numberOfTouchesRequired = 2
@@ -109,8 +135,15 @@ final class RDPCanvasView: UIView {
         let twoFingerPan = UIPanGestureRecognizer(target: self, action: #selector(handleTwoFingerPan(_:)))
         twoFingerPan.minimumNumberOfTouches = 2
         twoFingerPan.maximumNumberOfTouches = 2
+        twoFingerPan.delegate = self
         addGestureRecognizer(twoFingerPan)
         self.twoFingerPan = twoFingerPan
+
+        let pinch = UIPinchGestureRecognizer(target: self, action: #selector(handlePinch(_:)))
+        pinch.delegate = self
+        pinch.isEnabled = false
+        addGestureRecognizer(pinch)
+        self.pinch = pinch
 
         let settingsPress = UILongPressGestureRecognizer(target: self, action: #selector(handleSettingsPress(_:)))
         settingsPress.numberOfTouchesRequired = 3
@@ -131,16 +164,40 @@ final class RDPCanvasView: UIView {
     func show(_ image: CGImage) {
         CATransaction.begin()
         CATransaction.setDisableActions(true)
-        layer.contents = image
+        imageLayer.contents = image
         CATransaction.commit()
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        zoom = zoom.clamped(viewSize: bounds.size)
+        applyZoom(animated: false)
+    }
+
+    private func applyZoom(animated: Bool) {
+        CATransaction.begin()
+        CATransaction.setDisableActions(!animated)
+        imageLayer.bounds = CGRect(origin: .zero, size: bounds.size)
+        imageLayer.position = CGPoint(x: bounds.midX, y: bounds.midY)
+        imageLayer.setAffineTransform(CGAffineTransform(translationX: zoom.offset.x, y: zoom.offset.y)
+            .scaledBy(x: zoom.scale, y: zoom.scale))
+        CATransaction.commit()
+    }
+
+    /// Touches on the Remote bar's controls or the floating deck aren't the
+    /// desktop's: hit testing passes them on to those, above.
+    override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
+        if let exclusions, exclusions.contains(convert(point, to: nil)) { return nil }
+        return super.hitTest(point, with: event)
     }
 
     private var mapper: DesktopMapper {
         DesktopMapper(viewSize: bounds.size, desktopSize: desktopSize)
     }
 
+    /// The desktop pixel under a point in the view, through any zoom.
     private func desktopPoint(_ point: CGPoint) -> (x: UInt16, y: UInt16)? {
-        mapper.desktopPoint(for: point)
+        mapper.desktopPoint(for: zoom.unzoomed(point, viewSize: bounds.size))
     }
 
     // MARK: - Hardware keyboard
@@ -261,7 +318,8 @@ final class RDPCanvasView: UIView {
         let active = event?.allTouches?.filter { $0.phase != .ended && $0.phase != .cancelled } ?? touches
         // The first finger down decides: real touch if the PC takes it now.
         if active.count == touches.count, fingers.isEmpty, trackedTouch == nil {
-            touchMode = multitouch && session?.touchReady == true
+            // Zooming, two fingers are the zoom's: fingers go as the mouse.
+            touchMode = !zoomMode && multitouch && session?.touchReady == true
         }
         if touchMode {
             touches.forEach(fingerDown)
@@ -396,6 +454,14 @@ final class RDPCanvasView: UIView {
     }
 
     @objc private func handleTwoFingerPan(_ recognizer: UIPanGestureRecognizer) {
+        if zoomMode {
+            // Zooming: two fingers move the picture around.
+            let delta = recognizer.translation(in: self)
+            recognizer.setTranslation(.zero, in: self)
+            zoom = zoom.panned(by: delta, viewSize: bounds.size)
+            applyZoom(animated: false)
+            return
+        }
         let translation = recognizer.translation(in: self).y
         switch recognizer.state {
         case .began:
@@ -410,6 +476,21 @@ final class RDPCanvasView: UIView {
         default:
             scroll.reset()
         }
+    }
+
+    @objc private func handlePinch(_ recognizer: UIPinchGestureRecognizer) {
+        guard zoomMode, recognizer.state == .changed || recognizer.state == .ended else { return }
+        let location = recognizer.location(in: self)
+        let focus = CGPoint(x: location.x - bounds.midX, y: location.y - bounds.midY)
+        zoom = zoom.pinched(by: recognizer.scale, around: focus, viewSize: bounds.size)
+        recognizer.scale = 1
+        applyZoom(animated: false)
+    }
+
+    /// Zooming, pinch and two-finger drag work together.
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer,
+                           shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool {
+        (gestureRecognizer === pinch && other === twoFingerPan) || (gestureRecognizer === twoFingerPan && other === pinch)
     }
 
     @objc private func handleSettingsPress(_ recognizer: UILongPressGestureRecognizer) {

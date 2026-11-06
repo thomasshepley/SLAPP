@@ -1131,7 +1131,8 @@ final class AppState: ObservableObject {
                     password: remotePassword,
                     viewSize: remoteViewSize,
                     connectionType: rdpSettings.quality.visuals.connectionType,
-                    multitouch: rdpSettings.multitouch)
+                    multitouch: rdpSettings.multitouch,
+                    desktopSize: rdpSettings.desktopSize)
     }
 
     /// Changes the picture quality: saves it, sets the PC half through

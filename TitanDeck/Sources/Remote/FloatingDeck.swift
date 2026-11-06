@@ -10,6 +10,8 @@ struct FloatingDeck: View {
     @ObservedObject var deck: DeckSessionController
     /// The space it floats in (the Remote screen inside its safe area).
     let container: CGSize
+    /// Told where the panel is, so the desktop leaves its touches alone.
+    var exclusions: RDPTouchExclusions?
     let onHide: () -> Void
 
     @AppStorage("remote.floatingDeck.width") private var widthFraction = FloatingDeckLayout.defaultWidthFraction
@@ -35,6 +37,11 @@ struct FloatingDeck: View {
         .frame(width: CGFloat(layout.width), height: CGFloat(layout.height), alignment: .top)
         .glassEffect(.regular, in: .rect(cornerRadius: 22))
         .overlay(alignment: .bottomTrailing) { resizeHandle }
+        .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { frame in
+            // Room for the resize handle, which sits over the corner.
+            exclusions?.set("deck", frame.insetBy(dx: -16, dy: -16))
+        }
+        .onDisappear { exclusions?.set("deck", nil) }
         .position(x: CGFloat(layout.centreX), y: CGFloat(layout.centreY))
     }
 
