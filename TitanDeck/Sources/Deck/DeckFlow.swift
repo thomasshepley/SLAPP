@@ -78,6 +78,8 @@ enum DeckFlow {
         private(set) var selected: [Int] = []
         /// The first fixture selected.
         var selection: Int? { selected.first }
+        /// Something's on the line.
+        var isTyping: Bool { !text.isEmpty }
         /// "1 THRU 10" covers at most this many fixtures.
         static let maxThru = 10_000
 
@@ -85,7 +87,8 @@ enum DeckFlow {
             case none
             /// A plain number then Enter ("102 Enter"): fixtures selected.
             case selected
-            /// Clear with nothing typed: Titan cleared the programmer.
+            /// Clear with nothing typed: nothing's selected any more (and,
+            /// if nothing was, Titan cleared the programmer).
             case clearedProgrammer
         }
 
@@ -99,7 +102,8 @@ enum DeckFlow {
             case .keypadThro:
                 text += ">"
             case .keypadClear:
-                // Like Titan: the first Clear empties the line, the next the programmer.
+                // Like Titan: the first Clear empties the line, the next the
+                // selection (and one more, with nothing selected, the programmer).
                 guard text.isEmpty else { text = ""; return .none }
                 selected = []
                 return .clearedProgrammer
@@ -417,13 +421,29 @@ enum DeckFlow {
         return hasSelection ? .quickKeys(returnTo: keypad) : .groups(returnTo: keypad)
     }
 
+    /// What a press of Clear clears, like the desk's own: what's being
+    /// typed first, then the selection, and only with nothing typed and
+    /// nothing selected the programmers (0.45.1; 0.45.0 cleared selection and
+    /// programmers in one press, which threw away levels just set when all
+    /// that was wanted was a new selection).
+    enum ClearStep: Equatable {
+        case line, selection, programmers
+    }
+
+    static func clearStep(typing: Bool, hasSelection: Bool) -> ClearStep {
+        typing ? .line : hasSelection ? .selection : .programmers
+    }
+
     static let nothingSelected = "Nothing Selected"
     static let thruLabel = "THRU"
 
-    /// On the keypad, Clear becomes THRU while nothing is selected (to type
-    /// "1 THRU 10 Enter", as on the desk) and comes back once something is.
-    static func keypadKey(_ key: KeyDefinition?, onKeypad: Bool, hasSelection: Bool) -> KeyDefinition? {
-        guard onKeypad, !hasSelection, var shown = key, shown.action == .keypadClear else { return key }
+    /// On the keypad, Clear becomes THRU once a number's being typed with
+    /// nothing selected (to type "1 THRU 10 Enter", as on the desk). With
+    /// nothing typed it stays Clear (0.45.1), so a second Clear, after the
+    /// one that cleared the selection, can clear the programmers; and it's
+    /// Clear whenever something is selected.
+    static func keypadKey(_ key: KeyDefinition?, onKeypad: Bool, hasSelection: Bool, typing: Bool) -> KeyDefinition? {
+        guard onKeypad, !hasSelection, typing, var shown = key, shown.action == .keypadClear else { return key }
         shown.label = thruLabel
         shown.action = .keypadThro
         shown.colorHex = DeckProfile.pageColor

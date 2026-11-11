@@ -265,10 +265,24 @@ support posts):
   the deck's selection (`deck.restoreSelection`) and shows in
   `KeypadReadoutStore.problem` (`KeypadProblemChip`). `deskDisagrees` checks
   a typed selection against CITP, red only once CITP has confirmed one.
-  Never retype through RDP after a Host error. CLEAR: CITP clear of the
-  desk's selection, then `clearProgrammer(everyUser: true)`. Quick Keys type
+  Never retype through RDP after a Host error. Quick Keys type
   "@ level Enter" (`deskLevelKeys`, `rampOnDesk`). Don't go back to sending
-  single keys. Groups, FX and CCT stay on the WebAPI.
+  single keys. FX and CCT stay on the WebAPI.
+- **CLEAR is three steps (0.45.1, the user asked: "selection first"),
+  `DeckFlow.clearStep`:** a typed line, then the selection (CITP clear of the
+  desk's, or `clearSelection(everyUser:)`; levels stay), and only with
+  nothing typed and nothing selected the programmers
+  (`clearProgrammer(everyUser: true)` typing on the desk, the WebAPI user's
+  otherwise). Never selection and programmers in one press again (0.45.0 did).
+  So the second Clear has a key, the keypad's Clear is THRU only once a
+  number's being typed with nothing selected (`keypadKey(typing:)`).
+- **Groups page typed on the desk (0.45.1):** `selectGroup` recalls the group
+  on the WebAPI to learn its fixtures (Host `groupFixtures` if Titan doesn't
+  number them), then, when `keypadTypesOnDesk` and there's no Titan 14-18
+  desk link, types `DeskKeys.selecting` on the desk with `typeLine`
+  (pieces of `maxDeskKeys`, Exit if a later piece fails), restores the
+  selection on failure and checks it with `deskDisagrees`. Recalled on the
+  WebAPI user alone, the desk never had the group.
 - **RDP touch suspend (0.45):** `titan_channel_connected` sets RDPEI's
   `SuspendTouch` / `ResumeTouch`; suspended, `titan_rdp_touch_ready` is 0 and
   the canvas uses the mouse.
@@ -280,9 +294,8 @@ support posts):
   selection when it changes.
 - **`DeckProgrammer` (0.44.1):** what the deck set in its WebAPI programmer per
   fixture (levels from keypad "@", +/-, FX SELECT; CCT palettes), shown again
-  on reselect (after a live sACN level); CLEAR (`forgetProgrammer`) empties it.
-  CLEAR is `TitanClient.clearProgrammer` (ClearAll) + `clearSelection`, never
-  the old command-line check. Hold for 0% on a level the deck set goes through
+  on reselect (after a live sACN level); the CLEAR that clears the programmer
+  (`forgetProgrammer`) empties it. Never the old command-line check. Hold for 0% on a level the deck set goes through
   `SetDimmerLevel` (`levelThroughWebAPI`, steps over the fade): Titan's
   FlashOut doesn't move a programmer level. Otherwise FlashOut / ClearFlash.
 - There's no documented way to read a fixture's current intensity from the
@@ -335,7 +348,8 @@ support posts):
   (number keys, number-pad * = @, / = Thro, Enter, Esc = Exit),
   typed by the Host window (`POST /api/v1/desk/keys`) or over RDP, so they reach
   the desk's own command line. On the default keypad, Clear shows as THRU
-  (`.keypadThro`, `DeckFlow.keypadKey`) while nothing is selected;
+  (`.keypadThro`, `DeckFlow.keypadKey`) while a number's being typed with
+  nothing selected;
   `KeypadBuffer` turns "1>10 Enter" into a selection of 1-10. **Never Alt or
   any modifier from the app:** Alt+C for Clear left the desk's own Clear and
   wheels dead (0.24), and Titan 19 ignored Alt+C (Host 0.14) and RIG's

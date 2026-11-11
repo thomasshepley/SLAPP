@@ -69,7 +69,16 @@ final class DeckSessionController: ObservableObject {
     /// the held look rather than the plain key.
     private var heldKeys: Set<Int> = []
     /// What's been typed on the deck's keypad, to spot "102 Enter".
-    private var keypad = DeckFlow.KeypadBuffer()
+    private var keypad = DeckFlow.KeypadBuffer() {
+        didSet {
+            // The keypad's Clear is THRU while a number's being typed with
+            // nothing selected: redrawn as the line starts and ends.
+            guard keypad.isTyping != oldValue.isTyping else { return }
+            objectWillChange.send()   // the on-screen deck
+            guard let page = currentPage else { return }
+            for key in page.keys where key.action == .keypadClear { draw(logicalIndex: key.index) }
+        }
+    }
     /// What's selected in Titan, as far as the deck knows: from the desk
     /// itself while the desk link is up, else what the deck's keypad left
     /// selected ("102 Enter", "102 @ 50 Enter"), empty after a Clear. Shown
@@ -229,10 +238,11 @@ final class DeckSessionController: ObservableObject {
     }
 
     /// A key on the current page as it acts: the keypad's Clear is THRU
-    /// while nothing is selected.
+    /// while a number's being typed with nothing selected.
     private func key(at index: Int) -> KeyDefinition? {
         let onKeypad = flowOverlay == nil && currentPageIndex == DeckFlow.keypadPageIndex(in: profile)
-        return DeckFlow.keypadKey(currentPage?.key(at: index), onKeypad: onKeypad, hasSelection: !selectedFixtures.isEmpty)
+        return DeckFlow.keypadKey(currentPage?.key(at: index), onKeypad: onKeypad, hasSelection: !selectedFixtures.isEmpty,
+                                  typing: keypad.isTyping)
     }
 
     /// A key as drawn: the Menu key says where it goes or the page it's on,
@@ -329,7 +339,7 @@ final class DeckSessionController: ObservableObject {
         stripOffset = 0
         onSelectionChanged?(current)
         // The keypad's Menu key and the Quick Keys selection strip show it;
-        // the keypad's Clear is THRU while nothing is selected.
+        // the keypad's Clear can only be THRU while nothing is selected.
         if let page = currentPage {
             for key in page.keys where key.action == .mainMenu || key.action == .keypadClear || Self.isStrip(key.action) {
                 draw(logicalIndex: key.index)
