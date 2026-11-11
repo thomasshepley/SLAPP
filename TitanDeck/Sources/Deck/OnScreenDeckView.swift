@@ -54,7 +54,7 @@ struct OnScreenDeckView: View {
                     VStack(alignment: .leading, spacing: 16) {
                         commandLineBar
                         KeypadProblemChip(store: appState.keypad)
-                        SelectionCard(deck: deck)
+                        SelectionCard(deck: deck, intensity: appState.intensity)
                         pageList
                     }
                 }
@@ -172,6 +172,7 @@ struct OnScreenDeckView: View {
 /// on-screen deck's selection side (0.43). A tap on the fixtures lists them all.
 struct SelectionCard: View {
     @ObservedObject var deck: DeckSessionController
+    @ObservedObject var intensity: IntensityReader
     @State private var showingAll = false
 
     var body: some View {
@@ -207,6 +208,18 @@ struct SelectionCard: View {
                 reading("CCT", value: deck.currentKelvin.map { "\($0)K" } ?? "-",
                         symbol: "thermometer.sun.fill",
                         tint: deck.currentKelvin.map { Color(kelvin: Double($0)) } ?? .primary)
+            }
+            // No live reading (0.45.2): say so, and why, so a level the deck
+            // only remembers isn't taken for the fixture's level now.
+            if !fixtures.isEmpty, deck.liveLevel == nil, let why = intensity.whyNotLive {
+                Label {
+                    Text((deck.typedLevel == nil ? "No live level. " : "Not live: that's the level the deck last set. ") + why)
+                } icon: {
+                    Image(systemName: "exclamationmark.triangle")
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
             }
         }
         .padding(16)

@@ -418,6 +418,8 @@ final class AppState: ObservableObject {
         let typing = keypad.readout.current?.text
         let keypadLine = keypad.press(action)
         intensity.deckWillSend(action)
+        // A flash or fade moves the level on purpose: nothing to check it against.
+        if case .dimmerFlash = action { intensity.cancelFollowCheck() }
         keypad.problem = nil
         // Decided once per press: typed on the desk, or through the WebAPI.
         let keypadTypesOnDesk = self.keypadTypesOnDesk
@@ -497,6 +499,7 @@ final class AppState: ObservableObject {
                 let level = DeskKeys.nudged(nudgedFrom * 100, by: percent) / 100
                 programmer.setLevel(level, for: fixtures)
                 if deck.liveLevel == nil { rememberTyped(level, fixtures: fixtures) }
+                intensity.deckSet(level: level)
             }
             finish(result, keypadLine: keypadLine, keyIndex: keyIndex)
         }
@@ -616,6 +619,7 @@ final class AppState: ObservableObject {
                     // "101 @ 50" is about 101; "@ 50" the selection as it was.
                     programmer.setLevel(level / 100, for: fixtures ?? before)
                     rememberTyped(level / 100, fixtures: fixtures ?? before)
+                    intensity.deckSet(level: level / 100)
                 }
                 var result = typed
                 if let fixtures, let problem = await deskDisagrees(with: fixtures) {
@@ -738,6 +742,7 @@ final class AppState: ObservableObject {
                     let set = await client.perform(Self.dimmerLevel(level))
                     if set.ok {
                         programmer.setLevel(level / 100, for: fixtures ?? deck.selectedFixtures)
+                        intensity.deckSet(level: level / 100)
                     } else {
                         problems.append("level \(Int(level))%: " + (set.error ?? "Titan didn't take it"))
                     }
@@ -986,6 +991,8 @@ final class AppState: ObservableObject {
         if !result.ok, keyIndex != nil || keypadLine != nil {
             keypad.problem = result.error ?? "\(result.action.summary) didn't work"
         }
+        // A level that didn't go out isn't one the live reading should follow.
+        if !result.ok { intensity.cancelFollowCheck() }
         recentResults.insert(result, at: 0)
         if recentResults.count > Self.maxResults {
             recentResults.removeLast(recentResults.count - Self.maxResults)
@@ -1094,6 +1101,9 @@ final class AppState: ObservableObject {
             let target = DeskKeys.nudged(level * 100, by: percent)
             programmer.setLevel(target / 100, for: deck.selectedFixtures)
             rememberTyped(target / 100)
+            // The live reading should be there in a moment; if it isn't, it
+            // isn't followed for the next nudge (a failed key cancels this).
+            intensity.deckSet(level: target / 100)
             return DeskKeys.level(target)
         case .dimmerFlash(let down, _):
             if down {
