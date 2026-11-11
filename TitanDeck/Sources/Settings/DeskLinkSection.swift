@@ -9,8 +9,24 @@ struct DeskLinkSection: View {
     @ObservedObject var intensity: IntensityReader
     @ObservedObject var host: HostStore
     @AppStorage(SettingsKeys.showMode) private var showMode = false
+    @EnvironmentObject private var appState: AppState
 
     var body: some View {
+        Section {
+            Toggle(isOn: $appState.keypadOnDesk) {
+                Label("Keypad types on the desk", systemImage: "keyboard")
+            }
+            LabeledContent("Now") {
+                Text(typingStatus)
+                    .foregroundStyle(appState.keypadTypesOnDesk ? .green : .secondary)
+                    .multilineTextAlignment(.trailing)
+            }
+        } header: {
+            Text("Keypad and Quick Keys")
+        } footer: {
+            Text("On: the deck's keypad and Quick Keys (intensity, Hold for 0%) are typed on the Titan PC, so they're on the desk's own command line and in its programmer, and show on the desk. The deck sends a whole line when you press Enter, and TitanDeck Host (0.19 or later) answers once it has really typed it, or says why not: its window must be open on the PC, and Titan the window in front. Needs this device paired with TitanDeck Host (or the remote desktop connected). Off, or with no way to type: they go through Titan's WebAPI, into the deck's own programmer, which doesn't show on the desk. Groups, FX and the colour keys always use the WebAPI.")
+        }
+
         Section {
             Toggle(isOn: $desk.isEnabled) {
                 Label("Follow the desk's selection", systemImage: "scope")
@@ -31,7 +47,7 @@ struct DeskLinkSection: View {
         } header: {
             Text(showMode ? "Desk link" : "Desk link (experimental)")
         } footer: {
-            Text("The deck's keypad, Quick Keys, Groups and FX all go through Titan's WebAPI (since 0.41): nothing is typed on the desk. On Titan 19 the WebAPI is a user of its own, so what the deck selects and sets is in its own programmer (it outputs like any other) and doesn't show in the desk's.\n\nSelect fixtures in Layouts or on the desk and the deck brings up its intensity keys, with Currently Selected on the Remote screen. While it's linked, the deck's keys act on the desk's own programmer. Set up once on the Titan PC: TitanDeck Host > Desk selection for TitanDeck > Turn on, then restart Titan. Uses Titan's experimental UI WebAPI (Titan port 4433, passed on by the Host on 4434). If it stops answering, the deck goes back to its own WebAPI user by itself.")
+            Text("Select fixtures in Layouts or on the desk and the deck brings up its intensity keys, with Currently Selected on the Remote screen. While it's linked, the deck's keys act on the desk's own programmer. Set up once on the Titan PC: TitanDeck Host > Desk selection for TitanDeck > Turn on, then restart Titan. Uses Titan's experimental UI WebAPI (Titan port 4433, passed on by the Host on 4434). If it stops answering, the deck goes back to its own WebAPI user by itself.")
         }
 
         Section {
@@ -68,6 +84,13 @@ struct DeskLinkSection: View {
         } footer: {
             Text("Reads the selected fixture's level from the sACN Titan sends, through TitanDeck Host\(host.isPaired ? "" : " (pair with the Host first)"). The first time you nudge or flash a fixture from the deck, TitanDeck learns which channels are its intensity, then the flash key shows its level. With Titan's patch report, the Host already knows them, so the level shows straight away (a nudge still corrects it). \(showMode ? "" : "Find addresses with Patch asks Titan's patch editor for the fixture's address first, on the deck's own WebAPI user only, never your desk's Patch window.")")
         }
+    }
+
+    private var typingStatus: String {
+        if !appState.keypadOnDesk { return "Through Titan's WebAPI" }
+        if host.isPaired { return "Typed on the desk by TitanDeck Host" }
+        if appState.rdp.state == .connected { return "Typed on the desk through the remote desktop (not confirmed)" }
+        return "Through Titan's WebAPI: pair with TitanDeck Host to type on the desk"
     }
 
     private var statusText: String {

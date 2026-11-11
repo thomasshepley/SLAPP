@@ -271,8 +271,9 @@ final class DeckSessionController: ObservableObject {
     func setDeskSelection(_ fixtures: [Int]) {
         guard deskLinked else { return }
         // The newest selection wins (0.44.5): the desk's replaces whatever
-        // the deck's keypad had, as the keypad's replaces the desk's.
-        keypad.select(fixtures)
+        // the deck's keypad had, as the keypad's replaces the desk's. A line
+        // being typed on the deck stays.
+        keypad.follow(fixtures)
         refreshSelection()
         switch follower.update(fixtures) {
         case .show:
@@ -290,6 +291,14 @@ final class DeckSessionController: ObservableObject {
     func selectTyped(_ fixtures: [Int]) {
         keypad.select(fixtures)
         refreshSelection()
+    }
+
+    /// A typed line didn't reach the desk (0.45): back to the selection
+    /// there was before it, and off Quick Keys if that's nothing.
+    func restoreSelection(_ fixtures: [Int]) {
+        keypad.select(fixtures)
+        refreshSelection()
+        if fixtures.isEmpty, case .selection(let home)? = flowOverlay { showPage(home) }
     }
 
     /// The level the deck last typed for the selection (0...1), shown on the

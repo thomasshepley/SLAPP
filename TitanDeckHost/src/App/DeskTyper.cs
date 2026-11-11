@@ -7,10 +7,13 @@ using TitanDeckHost.Core.Titan;
 namespace TitanDeckHost.App;
 
 /// <summary>
-/// Types the deck's keypad on this PC for Titan, which captures the keyboard
-/// while it runs, so the keys land on the desk's own command line. Runs in the
-/// window app because the service can't type on the desktop: it waits on the
-/// service for keys and sends them with SendInput as real scan codes. Only
+/// Types the deck's keypad on this PC for Titan, so the keys land on the
+/// desk's own command line. Runs in the window app because the service can't
+/// type on the desktop: it waits on the service for lines, types each one
+/// whole with SendInput as real scan codes, and tells the service what
+/// happened (Host 0.19), so the deck hears "typed" only when it was. A line
+/// isn't typed at all unless Titan is the window in front (the keys would go
+/// to whatever was), and it stops at the first key Windows refuses. Only
 /// <see cref="DeskKeys"/> keys are ever typed.
 /// </summary>
 internal static class DeskTyper
@@ -27,8 +30,12 @@ internal static class DeskTyper
         {
             try
             {
-                var keys = await http.GetFromJsonAsync<string[]>("desk/keys/wait", stop) ?? [];
-                await Task.Run(() => { foreach (var key in keys) Type(key); }, stop);   // off the window's thread
+                var jobs = await http.GetFromJsonAsync<DeskTypeJob[]>("desk/jobs/wait", stop) ?? [];
+                foreach (var job in jobs)
+                {
+                    var problem = await Task.Run(() => TypeLine(job.Keys), stop);   // off the window's thread
+                    await http.PostAsJsonAsync("desk/jobs/done", new DeskJobDoneRequest(job.Id, problem is null, problem), stop);
+                }
             }
             catch (OperationCanceledException) when (stop.IsCancellationRequested)
             {
@@ -43,19 +50,60 @@ internal static class DeskTyper
         }
     }
 
+    /// <summary>Types a whole line; null when every key went in, else why it stopped.</summary>
+    private static string? TypeLine(IReadOnlyList<string> keys)
+    {
+        if (ForegroundProblem() is { } elsewhere) return elsewhere;
+        for (var i = 0; i < keys.Count; i++)
+        {
+            if (Type(keys[i])) continue;
+            return i == 0
+                ? "Windows didn't let TitanDeck Host type on Titan. If Titan runs as administrator, TitanDeck Host must too."
+                : $"Windows stopped the typing after {i} of {keys.Count} keys, so the line is only part typed on the desk.";
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Why the keys wouldn't reach Titan: null when the window in front is
+    /// Titan's (or can't be told, as before 0.19). Typed keys go to whichever
+    /// window is in front.
+    /// </summary>
+    private static string? ForegroundProblem()
+    {
+        try
+        {
+            var window = GetForegroundWindow();
+            if (window == IntPtr.Zero) return null;
+            GetWindowThreadProcessId(window, out var id);
+            if (id == 0) return null;
+            using var process = System.Diagnostics.Process.GetProcessById((int)id);
+            var name = process.ProcessName;
+            return DeskKeys.IsTitanProcess(name)
+                ? null
+                : $"Titan isn't the window in front on the PC ({name} is), so nothing was typed. Tap Titan's screen once, then press the key again.";
+        }
+        catch (Exception)
+        {
+            return null;   // the process went, or Windows wouldn't say: type as before
+        }
+    }
+
     /// One key, as a hand would press it: down, held, up, then a gap, and a
     /// longer one after Enter so Titan has taken the line before the next key.
     /// 0.10-0.16 held keys 20 ms with a 15 ms gap, and in a fast run (a faded
     /// flash's "@ 64 Enter @ 48 Enter...") Titan missed the odd "@" or Enter,
     /// which turned a level into a fixture number. No modifiers are ever held
-    /// (see <see cref="DeskKeys"/>).
-    private static void Type(string name)
+    /// (see <see cref="DeskKeys"/>). False when Windows refused the press.
+    private static bool Type(string name)
     {
-        if (!DeskKeys.All.TryGetValue(name, out var key)) return;
-        Send(Scan(key.Scancode, key.Extended, up: false));
+        if (!DeskKeys.All.TryGetValue(name, out var key)) return false;
+        var down = Send(Scan(key.Scancode, key.Extended, up: false));
         Thread.Sleep(HoldMs);
+        // The key always comes back up, even if Windows refused the press.
         Send(Scan(key.Scancode, key.Extended, up: true));
         Thread.Sleep(name == "enter" ? AfterEnterMs : GapMs);
+        return down;
     }
 
     private const int HoldMs = 35;
@@ -73,7 +121,8 @@ internal static class DeskTyper
         foreach (var (scan, extended) in modifiers) Send(Scan(scan, extended, up: true));
     }
 
-    private static void Send(Input input) => SendInput(1, [input], Marshal.SizeOf<Input>());
+    /// <summary>False when Windows didn't take it (it blocks typing into a window with more rights).</summary>
+    private static bool Send(Input input) => SendInput(1, [input], Marshal.SizeOf<Input>()) == 1;
 
     private static Input Scan(ushort scancode, bool extended, bool up) => new()
     {
@@ -95,6 +144,12 @@ internal static class DeskTyper
 
     [DllImport("user32.dll", SetLastError = true)]
     private static extern uint SendInput(uint count, Input[] inputs, int size);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetForegroundWindow();
+
+    [DllImport("user32.dll")]
+    private static extern uint GetWindowThreadProcessId(IntPtr window, out uint processId);
 
     [StructLayout(LayoutKind.Sequential)]
     private struct Input

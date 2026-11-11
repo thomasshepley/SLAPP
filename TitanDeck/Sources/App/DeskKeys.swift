@@ -26,6 +26,32 @@ enum DeskKeys {
         }
     }
 
+    /// A whole keypad line as the Host's key names, Enter included (0.45):
+    /// "101@50" is 1 0 1 @ 5 0 enter, "1 THRU 10" is 1 thro 1 0 enter. The
+    /// deck builds the line itself and only this goes to the desk, in one
+    /// go, so a line is typed whole or not at all. Nil for a line that's
+    /// empty or has anything else in it.
+    static func line(_ text: String) -> [String]? {
+        var keys: [String] = []
+        for character in text.replacingOccurrences(of: " THRU ", with: ">") {
+            switch character {
+            case "0" ... "9": keys.append(String(character))
+            case "@": keys.append("@")
+            case ">": keys.append("thro")
+            case " ": continue
+            default: return nil
+            }
+        }
+        return keys.isEmpty ? nil : keys + ["enter"]
+    }
+
+    /// How long TitanDeck Host is given to type and confirm this many keys
+    /// (Host 0.19 answers once its window has typed them): the Host's own
+    /// patience (`DeskTypeQueue.Patience`) and a little for the network.
+    static func patience(keys: Int) -> Double {
+        2 + 0.09 * Double(keys) + 2 + 1.5
+    }
+
     /// The keys with every level command ("@ 64 Enter" on its own) dropped
     /// when another comes straight after it, so only the newest level is
     /// typed: fewer keys in a row for Titan to miss (a missed "@" or Enter

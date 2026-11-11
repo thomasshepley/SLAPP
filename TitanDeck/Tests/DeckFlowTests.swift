@@ -25,6 +25,19 @@ final class DeckFlowTests: XCTestCase {
         XCTAssertEqual(keypad.selected, [101, 102, 110], "\"@ 5 Enter\" keeps the group")
     }
 
+    func testTheDesksSelectionLeavesALineBeingTyped() {
+        var keypad = DeckFlow.KeypadBuffer()
+        _ = keypad.apply(.keypadDigit(1))
+        _ = keypad.apply(.keypadDigit(0))
+        // "101 Enter" before, coming back over CITP while the next line is typed.
+        keypad.follow([101])
+        XCTAssertEqual(keypad.selected, [101])
+        XCTAssertEqual(keypad.text, "10", "the line being typed isn't wiped")
+        _ = keypad.apply(.keypadDigit(2))
+        XCTAssertEqual(keypad.apply(.keypadEnter), .selected)
+        XCTAssertEqual(keypad.selected, [102])
+    }
+
     func testTheSelectionFollowsTitan() {
         var keypad = DeckFlow.KeypadBuffer()
         func type(_ actions: TitanAction...) -> DeckFlow.KeypadBuffer.Event {

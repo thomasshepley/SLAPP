@@ -98,9 +98,10 @@ void titan_rdp_mouse_button(TitanRDP *rdp, TitanRDPButton button, int down, uint
 void titan_rdp_mouse_wheel(TitanRDP *rdp, int32_t delta, uint16_t x, uint16_t y);
 /// RDP scancode (set 1). Extended keys have 0x100 added, as in FreeRDP.
 void titan_rdp_key(TitanRDP *rdp, uint32_t scancode, int down);
-/// 1 when the PC has opened the touch channel, so titan_rdp_touch reaches
-/// Windows as real touch. 0 before that (the Windows sign-in screen, a PC
-/// that doesn't take touch over RDP, or multitouch off): use the mouse.
+/// 1 when the PC has opened the touch channel and isn't asking for touch to
+/// wait (RDPEI suspend, 0.45), so titan_rdp_touch reaches Windows as real
+/// touch. 0 otherwise (the Windows sign-in screen, a session still settling,
+/// a PC that doesn't take touch over RDP, or multitouch off): use the mouse.
 int titan_rdp_touch_ready(TitanRDP *rdp);
 /// One finger down, moving, up or cancelled. `id` is the app's own number for
 /// the finger, from 1 (0 isn't allowed), the same for its whole touch.

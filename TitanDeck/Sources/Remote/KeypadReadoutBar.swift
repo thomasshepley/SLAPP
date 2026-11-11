@@ -8,6 +8,20 @@ final class KeypadReadoutStore: ObservableObject {
     @Published private(set) var readout = KeypadReadout()
     /// A line just sent with Enter, still shown green on the left before it moves.
     @Published private(set) var flashingID: UUID?
+    /// Why the last deck key didn't work, until the next press or a few
+    /// seconds have gone (0.45).
+    @Published var problem: String? {
+        didSet {
+            problemTimeout?.cancel()
+            guard let problem else { return }
+            problemTimeout = Task { [weak self] in
+                try? await Task.sleep(for: .seconds(8))
+                guard !Task.isCancelled, self?.problem == problem else { return }
+                withAnimation(.snappy) { self?.problem = nil }
+            }
+        }
+    }
+    private var problemTimeout: Task<Void, Never>?
     private var moveTask: Task<Void, Never>?
 
     static let flashDuration: Duration = .milliseconds(350)
@@ -148,5 +162,28 @@ private struct CommandText: View {
             .foregroundStyle(colour)
             .lineLimit(1)
             .fixedSize()
+    }
+}
+
+/// Why the last deck key didn't work (0.45), in red where the deck is:
+/// on the Deck tab and over the remote desktop. Display only; it goes at the
+/// next key press, or by itself after a few seconds.
+struct KeypadProblemChip: View {
+    @ObservedObject var store: KeypadReadoutStore
+
+    var body: some View {
+        if let problem = store.problem {
+            Label(problem, systemImage: "exclamationmark.triangle.fill")
+                .font(.callout.weight(.semibold))
+                .foregroundStyle(.white)
+                .lineLimit(3)
+                .multilineTextAlignment(.leading)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 9)
+                .frame(maxWidth: 640, alignment: .leading)
+                .glassEffect(.regular.tint(.red), in: .rect(cornerRadius: 16))
+                .transition(.opacity.combined(with: .scale(scale: 0.96)))
+                .accessibilityLabel("Deck key problem: \(problem)")
+        }
     }
 }

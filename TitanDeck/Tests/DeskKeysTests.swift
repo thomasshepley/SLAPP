@@ -13,6 +13,20 @@ final class DeskKeysTests: XCTestCase {
         XCTAssertNil(DeskKeys.names(for: .playbackGo(userNumber: 1)))
     }
 
+    func testAWholeLineIsTypedInOneGo() {
+        XCTAssertEqual(DeskKeys.line("101@50"), ["1", "0", "1", "@", "5", "0", "enter"])
+        XCTAssertEqual(DeskKeys.line("1 THRU 10"), ["1", "thro", "1", "0", "enter"])
+        XCTAssertEqual(DeskKeys.line("@@"), ["@", "@", "enter"])
+        XCTAssertNil(DeskKeys.line(""), "nothing to type")
+        XCTAssertNil(DeskKeys.line("10a"), "only keypad keys are ever typed")
+        // Every key of a line is one the Host and the remote desktop know.
+        for key in DeskKeys.line("1 THRU 9@05") ?? [] {
+            XCTAssertNotNil(DeskKeys.table[key], key)
+        }
+        // The Host is given long enough to type and confirm it.
+        XCTAssertEqual(DeskKeys.patience(keys: 10), 6.4, accuracy: 0.001)
+    }
+
     func testTitansKeyboardShortcutsOverTheRemoteDesktop() {
         XCTAssertEqual(DeskKeys.strokes(for: "@"), [.key(0x37, down: true), .key(0x37, down: false)], "number pad *")
         XCTAssertTrue(DeskKeys.strokes(for: "clear").isEmpty, "no Alt shortcuts")

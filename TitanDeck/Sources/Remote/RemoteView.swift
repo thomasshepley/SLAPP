@@ -60,6 +60,13 @@ struct RemoteView: View {
                 // Its top strip stays out of the system's top edge too.
                 .padding(.top, max(0, Self.topClear(geometry) - 12))
             }
+            // Why a deck key didn't work (0.45), along the bottom. Display only.
+            .overlay(alignment: .bottom) {
+                KeypadProblemChip(store: appState.keypad)
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 14)
+                    .allowsHitTesting(false)
+            }
             // The bar keeps to the safe area (unlike the desktop), so it stays
             // clear of iPadOS's window controls in the top-left corner.
             .overlay(alignment: .top) {

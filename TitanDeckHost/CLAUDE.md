@@ -201,6 +201,13 @@ TitanDeckHost/
   `CitpService.MaxLinks` (8) are kept; the selection comes from the link that
   heard one last (`CitpSession.SelectionAt`). Only the first link logs fully;
   keep the log rate-limited (Titan reconnects many times a second).
+- **Desk keys, confirmed (Host 0.19):** `Core/Titan/DeskTypeQueue` (tested)
+  holds each `POST /api/v1/desk/keys` request as one job; the answer waits for
+  the window app (`DeskTyper`) to type it whole and report on
+  `/local/desk/jobs/done` (it long-polls `/local/desk/jobs/wait`). Refused:
+  over 2 s old when picked up, never picked up, Titan not the foreground
+  window (`DeskKeys.IsTitanProcess`), or `SendInput` returning 0 (UIPI). Keep
+  it all-or-nothing and never answer "typed" before the window says so.
 - **No Fake Titan.** It was removed in Host 0.11.0 (and `fake_titan.py` with
   it) now testing is on a real Titan: don't bring it back. The installer only
   deletes its old firewall rule.

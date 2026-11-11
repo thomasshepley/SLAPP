@@ -64,6 +64,9 @@ struct TitanRDP {
     int thread_joinable;
     volatile int stop_requested;
     volatile int connected;
+    /// The PC has told us to stop sending touch for now (RDPEI suspend): it
+    /// does at the sign-in and lock screens, and while a session settles.
+    volatile int touch_suspended;
 };
 
 // MARK: - Helpers
@@ -264,6 +267,40 @@ static DWORD titan_verify_changed_certificate(freerdp *instance, const char *hos
     return titan_check_certificate(instance, host, port, new_fingerprint, flags, 1);
 }
 
+// RDPEI (0.45): the PC suspends and resumes touch (MS-RDPEI: the client must
+// stop sending frames meanwhile). FreeRDP only passes that on, so without
+// these the fingers kept going as touch into nothing and the desktop seemed
+// dead for a while after connecting. Suspended, titan_rdp_touch_ready is 0
+// and the app uses the mouse.
+#if defined(CHANNEL_RDPEI_CLIENT)
+static UINT titan_touch_suspended(RdpeiClientContext *rdpei) {
+    TitanRDP *rdp = rdpei ? (TitanRDP *)rdpei->custom : NULL;
+    if (rdp)
+        rdp->touch_suspended = 1;
+    return CHANNEL_RC_OK;
+}
+
+static UINT titan_touch_resumed(RdpeiClientContext *rdpei) {
+    TitanRDP *rdp = rdpei ? (TitanRDP *)rdpei->custom : NULL;
+    if (rdp)
+        rdp->touch_suspended = 0;
+    return CHANNEL_RC_OK;
+}
+
+static void titan_channel_connected(void *context, const ChannelConnectedEventArgs *e) {
+    if (!context || !e || !e->name || strcmp(e->name, RDPEI_DVC_CHANNEL_NAME) != 0 || !e->pInterface)
+        return;
+    RdpeiClientContext *rdpei = (RdpeiClientContext *)e->pInterface;
+    TitanRDP *rdp = titan_owner((rdpContext *)context);
+    if (!rdp)
+        return;
+    rdp->touch_suspended = 0;
+    rdpei->custom = rdp;
+    rdpei->SuspendTouch = titan_touch_suspended;
+    rdpei->ResumeTouch = titan_touch_resumed;
+}
+#endif
+
 static BOOL titan_pre_connect(freerdp *instance) {
     rdpContext *context = instance->context;
     if (PubSub_SubscribeChannelConnected(context->pubSub,
@@ -272,6 +309,11 @@ static BOOL titan_pre_connect(freerdp *instance) {
     if (PubSub_SubscribeChannelDisconnected(context->pubSub,
                                             freerdp_client_OnChannelDisconnectedEventHandler) < 0)
         return FALSE;
+#if defined(CHANNEL_RDPEI_CLIENT)
+    // After FreeRDP's own handler, to hear the PC suspend and resume touch.
+    if (PubSub_SubscribeChannelConnected(context->pubSub, titan_channel_connected) < 0)
+        return FALSE;
+#endif
     // Channels are loaded by titan_load_channels, which FreeRDP calls after this.
     return TRUE;
 }
@@ -326,6 +368,9 @@ static void titan_post_disconnect(freerdp *instance) {
                                        freerdp_client_OnChannelConnectedEventHandler);
     PubSub_UnsubscribeChannelDisconnected(context->pubSub,
                                           freerdp_client_OnChannelDisconnectedEventHandler);
+#if defined(CHANNEL_RDPEI_CLIENT)
+    PubSub_UnsubscribeChannelConnected(context->pubSub, titan_channel_connected);
+#endif
 
     if (rdp)
         pthread_mutex_lock(&rdp->context_lock);
@@ -524,6 +569,7 @@ int titan_rdp_connect(TitanRDP *rdp, const char *host, uint16_t port, const char
 
     rdp->stop_requested = 0;
     rdp->connected = 0;
+    rdp->touch_suspended = 0;
     titan_clear_queue(rdp);
     ResetEvent(rdp->wake_event);
 
@@ -626,7 +672,7 @@ int titan_rdp_touch_ready(TitanRDP *rdp) {
     pthread_mutex_lock(&rdp->context_lock);
 #if defined(CHANNEL_RDPEI_CLIENT)
     if (rdp->context)
-        ready = ((rdpClientContext *)rdp->context)->rdpei != NULL;
+        ready = ((rdpClientContext *)rdp->context)->rdpei != NULL && !rdp->touch_suspended;
 #endif
     pthread_mutex_unlock(&rdp->context_lock);
     return ready;

@@ -16,4 +16,7 @@ enum SettingsKeys {
     /// The deck's keypad types on the Titan PC (through the Host or the
     /// remote desktop), so it's on the desk's own command line. On by default.
     static let keypadTypesOnDesk = "deck.keypadTypesOnDesk"
+    /// The same switch since 0.45, when typing came back (a new key, so it's
+    /// on whatever the old one was left at).
+    static let keypadOnDesk = "deck.keypadOnDesk.v2"
 }
