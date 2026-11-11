@@ -255,6 +255,12 @@ support posts):
   to API calls; what the deck selects ("102 Enter") does. Test on the console.
 - `userNumber` in handle JSON may be an object (`userNumbers` / `hashCode`);
   `TitanHandlesParser` reads those shapes too.
+- **One selection, newest wins (0.44.5):** `DeckSessionController.selectedFixtures`
+  is always `keypad.selected`; a change of the desk's selection (desk link)
+  goes in with `keypad.select`. The deck's CLEAR, when `deskLink.state` is
+  `.linkedViaCitp`, also calls the Host's `clear-selection` (CITP, clear
+  only), so the desk and deck don't drift apart: the Host only reports a
+  selection when it changes.
 - **`DeckProgrammer` (0.44.1):** what the deck set in its WebAPI programmer per
   fixture (levels from keypad "@", +/-, FX SELECT; CCT palettes), shown again
   on reselect (after a live sACN level); CLEAR (`forgetProgrammer`) empties it.

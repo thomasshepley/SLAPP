@@ -618,6 +618,15 @@ final class AppState: ObservableObject {
                 let selection = await client.clearSelection()
                 let left = await client.selectedFixtureIds() ?? []
                 var problems: [String] = []
+                // Following the desk over CITP, the desk's selection goes too
+                // (0.44.5, as before 0.41): else the desk keeps it, and
+                // selecting the same fixtures there again isn't a change, so
+                // it never came back to the deck. The Host tells Titan nothing
+                // is selected; it can only clear, never select.
+                if case .linkedViaCitp = deskLink.state, let hostClient = host.client,
+                   let byHost = await hostAction(action, { try await hostClient.clearSelection() }), !byHost.ok {
+                    problems.append("the desk's selection: " + (byHost.error ?? "TitanDeck Host couldn't clear it"))
+                }
                 if !cleared.ok { problems.append("programmer: " + (cleared.error ?? "Titan didn't take it")) }
                 if !selection.ok || !left.isEmpty {
                     problems.append("selection: " + (selection.error ?? "\(left.count) still selected"))
