@@ -21,11 +21,10 @@ internal static class DeskTyper
     public static async Task Run(CancellationToken stop)
     {
         ReleaseModifiers();
-        using var http = new HttpClient
-        {
-            BaseAddress = new Uri($"http://127.0.0.1:{Protocol.LocalPort}/local/"),
-            Timeout = TimeSpan.FromSeconds(30),
-        };
+        // Never by way of Windows' proxy settings (see LocalHttp): a proxy
+        // search holding this up for a few seconds is a keypad line refused
+        // as too old.
+        using var http = Core.Net.LocalHttp.Client(TimeSpan.FromSeconds(30), HostClient.Local);
         while (!stop.IsCancellationRequested)
         {
             try

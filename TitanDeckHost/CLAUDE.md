@@ -43,6 +43,18 @@ TitanDeckHost/
   The service must stop fast: `HostOptions.ShutdownTimeout` 5 s, and long-polls (`/local/desk/keys/wait`)
   end on `ApplicationStopping`. With the service down, the window's Start the service button runs
   `net start TitanDeckHost` elevated (UAC), as Update runs the installer: the one admin step the window asks for.
+- **The window says what's actually wrong with the service (0.19.1), never just "isn't running".** Reported three
+  times with Windows showing the service running, cause never pinned down. `MainViewModel.Refresh` now asks
+  `/local/ping` (no work behind it), then `/local/status`, then Windows (`ServiceController`), and
+  `ServiceHealth.Diagnose` (Core, tested) words it: stopped (Start the service), running but not answering
+  (Restart the service, with the reason in brackets), starting, not installed, or answering but the checklist
+  didn't come back (the rest of the window still works). Don't collapse these back into one message.
+- **Calls that stay on this PC use `LocalHttp` (0.19.1)**: `UseProxy = false`, 3 s connect. The window to the
+  service, and the service to Titan on 127.0.0.1. A plain `HttpClient` asks Windows to auto-detect a proxy,
+  again every 2 minutes, which can stall a call for seconds on a show network with no DNS (a keypad line is
+  refused after 2 s). Only GitHub calls (`HostUpdater`, RDP Wrapper download) keep Windows' proxy settings.
+- **The status is one reading at a time** (`SharedAnswer`, kept 2 s, `Forget()` after a fix or a mode change), and
+  the window never starts a refresh on top of one still running.
 - **Anything that needs admin happens in the service**, never the window app.
 - **The iPad's API is paired.** Only `/api/v1/hello` and `/api/v1/pair` work
   without a token; match them exactly. Fixes that weaken the PC (Defender

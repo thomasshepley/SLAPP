@@ -13,8 +13,9 @@ namespace TitanDeckHost.Service;
 public sealed class DeskLink(TitanLog titanLog, ILogger<DeskLink> log)
 {
     private static readonly TimeSpan ConfigCacheFor = TimeSpan.FromSeconds(30);
-    private static readonly HttpClient Titan = new() { Timeout = TimeSpan.FromSeconds(3) };
-    private static readonly HttpClient Probe = new() { Timeout = TimeSpan.FromMilliseconds(800) };
+    // Titan is on this PC: never by way of Windows' proxy settings (see LocalHttp).
+    private static readonly HttpClient Titan = Core.Net.LocalHttp.Client(TimeSpan.FromSeconds(3));
+    private static readonly HttpClient Probe = Core.Net.LocalHttp.Client(TimeSpan.FromMilliseconds(800));
 
     private readonly object gate = new();
     private (DateTimeOffset At, IReadOnlyList<(string Path, TitanUiConfig.State State)> Files,

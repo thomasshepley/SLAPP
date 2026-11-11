@@ -35,6 +35,12 @@ var paths = new HostPaths();
 builder.Services.AddSingleton(paths);
 builder.Services.AddSingleton(new PairingStore(paths.PairingFile));
 builder.Services.AddSingleton<WindowsProbe>();
+// The status (firewall rules, running programs, registry) is slow to read on
+// a busy PC: one reading at a time, shared by everyone asking, kept 2 s.
+builder.Services.AddSingleton(services => new SharedAnswer<StatusResponse>(
+    () => Status(services.GetRequiredService<WindowsProbe>(), services.GetRequiredService<DeskLink>(), paths,
+        services.GetRequiredService<HostModeStore>(), services.GetRequiredService<ILogger<WindowsProbe>>()),
+    TimeSpan.FromSeconds(2)));
 builder.Services.AddSingleton<TitanLog>();
 builder.Services.AddSingleton<DeskLink>();
 builder.Services.AddSingleton<HostModeStore>();
@@ -90,13 +96,15 @@ network.MapPost("/pair", (PairRequest request) =>
         : Results.Json(new { error = result.Error }, statusCode: StatusCodes.Status403Forbidden);
 });
 
-network.MapGet("/status", (WindowsProbe probe, DeskLink desk, HostModeStore mode) => Status(probe, desk, paths, mode));
+network.MapGet("/status", (SharedAnswer<StatusResponse> status) => status.Get());
 
-network.MapPost("/fix", async (FixRequest request, Fixer fixer) =>
+network.MapPost("/fix", async (FixRequest request, Fixer fixer, SharedAnswer<StatusResponse> status) =>
 {
     if (!Enum.TryParse<FixAction>(request.Action, out var action) || !Fixer.AllowedFromIPad.Contains(action))
         return Results.Json(new FixResponse(false, "That fix has to be done on the PC."), statusCode: StatusCodes.Status403Forbidden);
-    return Results.Ok(await fixer.Apply(action));
+    var result = await fixer.Apply(action);
+    status.Forget();   // the checklist has changed
+    return Results.Ok(result);
 });
 
 network.MapPost("/rdpwrap/ini", async (HttpRequest request, WindowsProbe probe) =>
@@ -295,7 +303,11 @@ var local = app.MapGroup("/local").AddEndpointFilter(async (context, next) =>
     return await next(context);
 });
 
-local.MapGet("/status", (WindowsProbe probe, DeskLink desk, HostModeStore mode) => Status(probe, desk, paths, mode));
+// Answers at once, with no work behind it: how the window tells "the service
+// is there" from "its checklist is slow" (Host 0.19.1).
+local.MapGet("/ping", () => new PingResponse("TitanDeckHost", HostInfo.Version));
+
+local.MapGet("/status", (SharedAnswer<StatusResponse> status) => status.Get());
 
 // Test or Show. Show hides the test tools (asking Titan for a patch report).
 local.MapGet("/mode", (HostModeStore mode) => new ModeDto(mode.Mode));
@@ -303,10 +315,11 @@ local.MapGet("/mode", (HostModeStore mode) => new ModeDto(mode.Mode));
 // The network adapter TitanDeck uses (announced on, and shown as the address to type).
 local.MapGet("/network", (NetworkChoice network) => network.Status());
 local.MapPost("/network", (NetworkChoiceRequest request, NetworkChoice network) => network.Choose(request.Id));
-local.MapPost("/mode", (ModeDto request, HostModeStore mode) =>
+local.MapPost("/mode", (ModeDto request, HostModeStore mode, SharedAnswer<StatusResponse> status) =>
 {
     if (request.Mode is not ("test" or "show")) return Results.BadRequest(new { error = "Mode is test or show." });
     mode.Set(request.Mode == "show");
+    status.Forget();   // the status says which mode
     return Results.Ok(new ModeDto(mode.Mode));
 });
 
@@ -338,10 +351,13 @@ local.MapPost("/pairing/code", () =>
 
 local.MapDelete("/pairing/devices/{id}", (string id) => pairing.Revoke(id) ? Results.Ok() : Results.NotFound());
 
-local.MapPost("/fix", async (FixRequest request, Fixer fixer) =>
-    Enum.TryParse<FixAction>(request.Action, out var action)
-        ? Results.Ok(await fixer.Apply(action))
-        : Results.BadRequest(new FixResponse(false, "Unknown fix.")));
+local.MapPost("/fix", async (FixRequest request, Fixer fixer, SharedAnswer<StatusResponse> status) =>
+{
+    if (!Enum.TryParse<FixAction>(request.Action, out var action)) return Results.BadRequest(new FixResponse(false, "Unknown fix."));
+    var result = await fixer.Apply(action);
+    status.Forget();   // the checklist has changed
+    return Results.Ok(result);
+});
 
 local.MapGet("/rdp/quality", () => QualityResult(RdpQualitySettings.Read));
 
@@ -408,8 +424,9 @@ static IResult FxShowMode() => Results.Json(
     new { error = "FX is Test mode only for now: switch TitanDeck Host to Test mode to use it." },
     statusCode: StatusCodes.Status409Conflict);
 
-static StatusResponse Status(WindowsProbe probe, DeskLink desk, HostPaths paths, HostModeStore mode)
+static StatusResponse Status(WindowsProbe probe, DeskLink desk, HostPaths paths, HostModeStore mode, ILogger log)
 {
+    var watch = System.Diagnostics.Stopwatch.StartNew();
     var facts = probe.Gather();
     var checks = RdpDiagnosis.Run(facts);
     // Desk link is extra: it doesn't count towards remote desktop's overall state.
@@ -423,6 +440,13 @@ static StatusResponse Status(WindowsProbe probe, DeskLink desk, HostPaths paths,
     {
         deskCheck = webApiCheck = null;   // like every probe fact: one that can't be read doesn't sink the rest
     }
+    int waiting;
+    try { waiting = Outbox(paths).Count; }
+    catch (Exception error) when (error is IOException or UnauthorizedAccessException) { waiting = 0; }   // the folder's gone: not worth losing the status over
+    // Worth knowing about (Event Viewer), but not every 2 s.
+    if (watch.Elapsed > TimeSpan.FromSeconds(5) && SlowStatus.ShouldLog())
+        log.LogWarning("Checking this PC took {Seconds:0.0} s (firewall rules, running programs, Titan's settings). " +
+                       "The Host window and TitanDeck wait that long for the checklist.", watch.Elapsed.TotalSeconds);
     return new StatusResponse(
         RdpDiagnosis.Overall(checks).ToString().ToLowerInvariant(),
         checks.Append(webApiCheck).Append(deskCheck).OfType<Check>().Select(CheckDto.From).ToList(),
@@ -430,7 +454,7 @@ static StatusResponse Status(WindowsProbe probe, DeskLink desk, HostPaths paths,
         facts.WindowsVersion,
         facts.TermsrvVersion,
         facts.TitanRunning,
-        Outbox(paths).Count,
+        waiting,
         HostInfo.Version,
         mode.Mode);
 }
@@ -464,3 +488,17 @@ static List<FileEntry> Outbox(HostPaths paths) =>
 static PairingInfo PairingInfo(PairingStore pairing) =>
     new(pairing.CurrentCode, pairing.CodeExpires,
         pairing.Devices.Select(d => new DeviceDto(d.Id, d.Name, d.PairedAt, d.LastSeen)).ToList());
+
+/// <summary>A slow status is logged at most once an hour.</summary>
+static class SlowStatus
+{
+    private static long _last;
+
+    public static bool ShouldLog()
+    {
+        var now = Environment.TickCount64;
+        var last = Interlocked.Read(ref _last);
+        if (last != 0 && now - last < 3_600_000) return false;
+        return Interlocked.CompareExchange(ref _last, now, last) == last;
+    }
+}

@@ -16,7 +16,7 @@ public sealed class PatchReader(TitanLog log, HostModeStore mode, ILogger<PatchR
 {
     private static readonly string[] ReportTypes = ["*.csv", "*.xml", "*.htm", "*.html"];
     private static readonly TimeSpan Rescan = TimeSpan.FromSeconds(15);
-    private static readonly HttpClient Titan = new() { Timeout = TimeSpan.FromSeconds(10) };
+    private static readonly HttpClient Titan = Core.Net.LocalHttp.Client(TimeSpan.FromSeconds(10));
 
     private readonly object gate = new();
     private readonly PersonalityLibrary library = new(PersonalityFolders());
