@@ -2,6 +2,7 @@ using System.Net.Http;
 using System.Net.Http.Json;
 using System.Text.Json;
 using TitanDeckHost.Core.Api;
+using TitanDeckHost.Core.Net;
 
 namespace TitanDeckHost.App;
 
@@ -11,13 +12,47 @@ public sealed record Folders(string ToPC, string ToIPad, string Data);
 public sealed class HostClient
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
-    private readonly HttpClient _http = new()
-    {
-        BaseAddress = new Uri($"http://127.0.0.1:{Protocol.LocalPort}/local/"),
-        Timeout = TimeSpan.FromSeconds(30),
-    };
+    public static readonly Uri Local = new($"http://127.0.0.1:{Protocol.LocalPort}/local/");
 
-    public Task<StatusResponse?> Status() => Get<StatusResponse>("status");
+    // Never by way of Windows' proxy settings: the service is on this PC (see LocalHttp).
+    private readonly HttpClient _http = LocalHttp.Client(TimeSpan.FromSeconds(30), Local);
+
+    /// <summary>
+    /// Is the service there? Null when it answered, else why not in a few
+    /// words. Nothing is worked out behind it, so a slow answer here is the
+    /// link or the service itself, never the checklist.
+    /// </summary>
+    public async Task<string?> Ping()
+    {
+        try
+        {
+            using var patience = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            using var response = await _http.GetAsync("ping", patience.Token);
+            // A service older than 0.19.1 has no ping, but it's there: its checklist says the rest.
+            if (response.StatusCode == System.Net.HttpStatusCode.NotFound) return null;
+            if (!response.IsSuccessStatusCode) return $"it answered {(int)response.StatusCode}";
+            var ping = await response.Content.ReadFromJsonAsync<PingResponse>(Json, patience.Token);
+            return ping?.Service == "TitanDeckHost" ? null : "something else answered there, not TitanDeck Host's service";
+        }
+        catch (Exception error)
+        {
+            return ServiceHealth.Describe(error);
+        }
+    }
+
+    /// <summary>The checklist, or why it didn't come back.</summary>
+    public async Task<(StatusResponse? Status, string? Problem)> Status()
+    {
+        try
+        {
+            using var patience = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+            return (await _http.GetFromJsonAsync<StatusResponse>("status", Json, patience.Token), null);
+        }
+        catch (Exception error)
+        {
+            return (null, ServiceHealth.Describe(error));
+        }
+    }
     public Task<PairingInfo?> Pairing() => Get<PairingInfo>("pairing");
     public Task<Folders?> Folders() => Get<Folders>("folders");
 

@@ -6,6 +6,12 @@ until it's show-ready (1.0): MINOR for features, PATCH for fixes. Keep
 (ChangelogTests checks). Each version is published as a GitHub release
 `host-v<version>` with the installer attached.
 
+## 0.19.1 - 2026-11-11 - Says what's really wrong with the service
+
+- **Fixed: the Host window said "the service isn't running" while Windows showed it running.** The window never asked Windows: it asked the service for its whole checklist and called anything short of a good answer "not running" - a slow answer, an error, a call that never arrived. Now it checks three things (does the service answer at all, did its checklist come back, what does Windows say) and the top of the window says which it is: stopped (with Start the service), running but not answering this window (with a new **Restart the service** button and the reason in brackets), still starting, not installed, or answering fine with only the checklist late - in which case pairing, files and the keypad carry on working.
+- **The window and the service no longer go near Windows' proxy settings to talk to each other, or to Titan.** They're all on the same PC, but Windows was still asked to "automatically detect" a proxy, again every two minutes, and on a show network with no internet that search can hold a call up for seconds. That's long enough for the window to give up on the service, and for a keypad line to be refused as too old, so this should steady the deck's keypad and the Host's Titan calls too.
+- **A slow PC can't snowball.** The checklist reads the firewall's rules, the running programs and the registry. The window asked for it every 3 seconds whether or not the last one had come back, and each ask read everything again side by side. Now it's read once at a time and shared, and the window waits for one answer before asking again. If a reading takes over 5 seconds, Event Viewer says so.
+
 ## 0.19.0 - 2026-11-11 - Says whether the keypad was really typed
 
 - **For TitanDeck 0.45, whose keypad types on the desk again.** The Host used to answer "typed" as soon as keys were queued, so a line that never reached Titan still looked fine on the deck. Now the answer waits until the Host window has typed the whole line, and says exactly why if it couldn't.

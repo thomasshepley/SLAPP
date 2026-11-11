@@ -18,6 +18,9 @@ public static class Protocol
     public const string ServiceType = "_titandeck-host._tcp";
 }
 
+/// <summary>The service's answer to the window's "are you there?" (Host 0.19.1).</summary>
+public sealed record PingResponse(string Service, string Version);
+
 public sealed record HelloResponse(string Name, string MachineName, string HostVersion, int ApiVersion, bool Paired);
 
 public sealed record PairRequest(string Code, string DeviceName);

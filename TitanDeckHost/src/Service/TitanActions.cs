@@ -16,7 +16,7 @@ namespace TitanDeckHost.Service;
 public sealed partial class TitanActions(TitanLog titanLog, CitpService citp)
 {
     private const string Who = "Host - Titan actions";
-    private static readonly HttpClient Titan = new() { Timeout = TimeSpan.FromSeconds(3) };
+    private static readonly HttpClient Titan = Core.Net.LocalHttp.Client(TimeSpan.FromSeconds(3));
     private readonly SemaphoreSlim one = new(1, 1);
 
     public async Task<TitanActionDto> CueFade(CueFadeRequest request, CancellationToken token)

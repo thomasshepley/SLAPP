@@ -19,6 +19,10 @@
     <Resource Include="Assets\TitanDeckHost.ico" />
   </ItemGroup>
   <ItemGroup>
+    <!-- Asks Windows whether the service is running (the window can't just assume from no answer). -->
+    <PackageReference Include="System.ServiceProcess.ServiceController" Version="8.0.1" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="../Core/TitanDeckHost.Core.csproj" />
   </ItemGroup>
   <ItemGroup>

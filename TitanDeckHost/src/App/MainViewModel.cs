@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.IO;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -73,35 +74,70 @@ public sealed partial class MainViewModel : INotifyPropertyChanged
     public string? Code { get => _code; set { Set(ref _code, value); OnPropertyChanged(nameof(HasCode)); } }
     public bool HasCode => Code is not null;
 
-    private bool _serviceDown;
-    /// <summary>The window can't reach the service: offer to start it.</summary>
-    public bool ServiceDown { get => _serviceDown; set => Set(ref _serviceDown, value); }
+    private string? _serviceButton;
+    private bool _restartService;
+    private bool _reachable = true;
+    /// <summary>"Start the service" or "Restart the service" when the window can't reach it, else null.</summary>
+    public string? ServiceButton { get => _serviceButton; set { Set(ref _serviceButton, value); OnPropertyChanged(nameof(HasServiceButton)); } }
+    public bool HasServiceButton => ServiceButton is not null;
 
-    private ICommand? _startServiceCommand;
-    /// <summary>Starts the service (Windows asks for permission: the window runs as the signed-in user).</summary>
-    public ICommand StartServiceCommand => _startServiceCommand ??= new RelayCommand(async () =>
+    private ICommand? _serviceCommand;
+    /// <summary>Starts the service, or stops and starts it (Windows asks for permission: the window runs as the signed-in user).</summary>
+    public ICommand ServiceCommand => _serviceCommand ??= new RelayCommand(async () =>
     {
+        var restart = _restartService;
         try
         {
-            using var start = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(
-                Environment.ExpandEnvironmentVariables(@"%SystemRoot%\System32\net.exe"), "start TitanDeckHost")
-            {
-                UseShellExecute = true,
-                Verb = "runas",
-                WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden,
-            });
-            Message = "Starting the TitanDeck Host service...";
+            var system = Environment.ExpandEnvironmentVariables(@"%SystemRoot%\System32");
+            var info = restart
+                ? new System.Diagnostics.ProcessStartInfo(Path.Combine(system, "cmd.exe"), "/c \"net stop TitanDeckHost & net start TitanDeckHost\"")
+                : new System.Diagnostics.ProcessStartInfo(Path.Combine(system, "net.exe"), "start TitanDeckHost");
+            info.UseShellExecute = true;
+            info.Verb = "runas";
+            info.WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden;
+            using var start = System.Diagnostics.Process.Start(info);
+            Message = restart ? "Restarting the TitanDeck Host service..." : "Starting the TitanDeck Host service...";
             if (start is not null) await start.WaitForExitAsync();
             await Refresh();
-            Message = ServiceDown
-                ? "The service didn't start. Windows' Event Viewer (Windows Logs > Application, source \"TitanDeck Host\") says why."
-                : "The TitanDeck Host service is running.";
+            Message = _reachable
+                ? "The TitanDeck Host service is running."
+                : "That didn't cure it. What's at the top of this window says what Windows and the service each say; " +
+                  "Windows' Event Viewer (Windows Logs > Application, source \"TitanDeck Host\") has the service's side.";
         }
         catch (System.ComponentModel.Win32Exception)
         {
-            Message = "Starting the service needs Windows' permission. Press Start the service again and choose Yes.";
+            Message = "That needs Windows' permission. Press the button again and choose Yes.";
         }
     });
+
+    /// <summary>What Windows says about the service. Reading it needs no permission.</summary>
+    private static WindowsServiceState ServiceState()
+    {
+        try
+        {
+            using var service = new System.ServiceProcess.ServiceController("TitanDeckHost");
+            return service.Status switch
+            {
+                System.ServiceProcess.ServiceControllerStatus.Running => WindowsServiceState.Running,
+                System.ServiceProcess.ServiceControllerStatus.Stopped => WindowsServiceState.Stopped,
+                System.ServiceProcess.ServiceControllerStatus.Paused => WindowsServiceState.Stopped,
+                System.ServiceProcess.ServiceControllerStatus.StartPending => WindowsServiceState.Starting,
+                System.ServiceProcess.ServiceControllerStatus.ContinuePending => WindowsServiceState.Starting,
+                System.ServiceProcess.ServiceControllerStatus.StopPending => WindowsServiceState.Stopping,
+                System.ServiceProcess.ServiceControllerStatus.PausePending => WindowsServiceState.Stopping,
+                _ => WindowsServiceState.Unknown,
+            };
+        }
+        catch (InvalidOperationException error) when (error.InnerException is System.ComponentModel.Win32Exception { NativeErrorCode: 1060 })
+        {
+            return WindowsServiceState.NotInstalled;   // "the specified service does not exist"
+        }
+        catch (Exception)
+        {
+            return WindowsServiceState.Unknown;
+        }
+    }
+
     public string CodeHint { get => _codeHint; set => Set(ref _codeHint, value); }
     public string Message { get => _message; set => Set(ref _message, value); }
     public bool Busy { get => _busy; set => Set(ref _busy, value); }
@@ -113,20 +149,48 @@ public sealed partial class MainViewModel : INotifyPropertyChanged
         var n => $"{n} files waiting for the iPad.",
     };
 
+    /// <summary>
+    /// Three things, so the top of the window says what's actually wrong (Host
+    /// 0.19.1): does the service answer at all (a ping with no work behind
+    /// it), did its checklist come back, and what does Windows say about the
+    /// service. Before, anything short of a good checklist read "the service
+    /// isn't running", even with Windows showing it running.
+    /// </summary>
     public async Task Refresh()
     {
-        var status = await _client.Status();
-        if (status is null)
+        var pingProblem = await _client.Ping();
+        StatusResponse? status = null;
+        string? statusProblem = null;
+        if (pingProblem is null) (status, statusProblem) = await _client.Status();
+        var windows = pingProblem is null ? WindowsServiceState.Running : await Task.Run(ServiceState);
+        var trouble = ServiceHealth.Diagnose(windows, pingProblem, statusProblem);
+        ServiceButton = trouble?.Button;
+        _restartService = trouble?.Restart ?? false;
+        _reachable = trouble?.Reachable ?? true;
+        if (trouble is not null)
         {
-            Headline = "The TitanDeck Host service isn't running";
-            Subtitle = "Press Start the service (Windows asks for permission), or start \"TitanDeck Host\" in Services.";
-            HeadlineColour = BrushFor("problem");
-            ServiceDown = true;
-            Checks.Clear();
-            return;
+            Headline = trouble.Headline;
+            Subtitle = trouble.Detail;
+            HeadlineColour = BrushFor(trouble.Severe ? "problem" : "warning");
+            if (!trouble.Reachable)
+            {
+                Checks.Clear();
+                return;
+            }
         }
-        ServiceDown = false;
+        // The service answers: the rest of the window works even if the checklist didn't come back.
+        if (status is not null) ShowStatus(status);
+        Apply(await _client.Pairing());
+        ShowQuality(await _client.Quality());
+        await RefreshUpdate();
+        ShowPatch(await _client.Patch());
+        ShowMode(await _client.Mode());
+        ShowNetwork(await _client.Network());
+        ShowCitp(await _client.Citp());
+    }
 
+    private void ShowStatus(StatusResponse status)
+    {
         Headline = status.Overall switch
         {
             "ok" => "Ready for TitanDeck",
@@ -146,13 +210,6 @@ public sealed partial class MainViewModel : INotifyPropertyChanged
                 FixCommand = new RelayCommand(async () => await RunFix(check)),
             });
         }
-        Apply(await _client.Pairing());
-        ShowQuality(await _client.Quality());
-        await RefreshUpdate();
-        ShowPatch(await _client.Patch());
-        ShowMode(await _client.Mode());
-        ShowNetwork(await _client.Network());
-        ShowCitp(await _client.Citp());
     }
 
     private async Task SetQuality(string preset)

@@ -13,6 +13,7 @@ public partial class MainWindow : Window
     private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromSeconds(3) };
     /// <summary>The Titan log, CITP and a download's progress: every second.</summary>
     private readonly DispatcherTimer _live = new() { Interval = TimeSpan.FromSeconds(1) };
+    private bool _refreshing;
     private bool _refreshingLive;
     private bool _scrollQueued;
     private readonly Action _closed;
@@ -23,7 +24,16 @@ public partial class MainWindow : Window
         _closed = closed;
         _model = new MainViewModel(client);
         DataContext = _model;
-        _timer.Tick += async (_, _) => { if (!_model.Busy) await _model.Refresh(); };
+        _timer.Tick += async (_, _) =>
+        {
+            // One at a time: a refresh that takes longer than 3 s (a slow
+            // checklist, a service that isn't answering) used to have the
+            // next started on top of it, and the next, each asking again.
+            if (_model.Busy || _refreshing) return;
+            _refreshing = true;
+            try { await _model.Refresh(); }
+            finally { _refreshing = false; }
+        };
         _live.Tick += async (_, _) =>
         {
             if (_refreshingLive) return;
@@ -46,9 +56,15 @@ public partial class MainWindow : Window
         };
         Loaded += async (_, _) =>
         {
-            await _model.Refresh();
-            _timer.Start();
-            _live.Start();
+            _refreshing = true;
+            try { await _model.Refresh(); }
+            finally
+            {
+                // Whatever the first look made of it, keep looking.
+                _refreshing = false;
+                _timer.Start();
+                _live.Start();
+            }
         };
     }
 
