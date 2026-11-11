@@ -255,6 +255,23 @@ support posts):
   to API calls; what the deck selects ("102 Enter") does. Test on the console.
 - `userNumber` in handle JSON may be an object (`userNumbers` / `hashCode`);
   `TitanHandlesParser` reads those shapes too.
+- **Keypad typed on the desk (0.45, the user asked for it back):**
+  `AppState.keypadOnDesk` (Settings > Desk, on by default) and
+  `keypadTypesOnDesk` (on, and a Host is paired or RDP is connected).
+  `runKeypadOnDesk`: digits / @ / THRU only build the deck's line
+  (`KeypadReadout`); Enter sends `DeskKeys.line` whole in one Host request
+  (`typeLine`, a `DeskPress` with `answer`), never key by key. Host 0.19
+  answers when its window has typed it, or why not; a failed line restores
+  the deck's selection (`deck.restoreSelection`) and shows in
+  `KeypadReadoutStore.problem` (`KeypadProblemChip`). `deskDisagrees` checks
+  a typed selection against CITP, red only once CITP has confirmed one.
+  Never retype through RDP after a Host error. CLEAR: CITP clear of the
+  desk's selection, then `clearProgrammer(everyUser: true)`. Quick Keys type
+  "@ level Enter" (`deskLevelKeys`, `rampOnDesk`). Don't go back to sending
+  single keys. Groups, FX and CCT stay on the WebAPI.
+- **RDP touch suspend (0.45):** `titan_channel_connected` sets RDPEI's
+  `SuspendTouch` / `ResumeTouch`; suspended, `titan_rdp_touch_ready` is 0 and
+  the canvas uses the mouse.
 - **One selection, newest wins (0.44.5):** `DeckSessionController.selectedFixtures`
   is always `keypad.selected`; a change of the desk's selection (desk link)
   goes in with `keypad.select`. The deck's CLEAR, when `deskLink.state` is

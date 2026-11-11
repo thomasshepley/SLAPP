@@ -347,13 +347,20 @@ final class AppState: ObservableObject {
 
     /// Fire an action at Titan. Pass the key index when it came from the deck
     /// so a failure can flash that key red.
-    /// The keypad types on the Titan PC (Settings > Desk link), so it's on the
-    /// desk's own command line and its selection shows on the desk.
-    /// Off for good since 0.41: the user asked for everything through the
-    /// WebAPI, as typing on the desk glitched (once it selected every
-    /// fixture at 100%). The keypad, Quick Keys, Groups and FX use
-    /// `runKeypad` and the WebAPI calls; the typing code is left unused.
-    var keypadTypesOnDesk: Bool { false }
+    /// The keypad and Quick Keys type on the Titan PC (Settings > Desk), so
+    /// they're on the desk's own command line and programmer. Off from 0.41
+    /// to 0.44 (it glitched: keys went one at a time, unconfirmed); back in
+    /// 0.45 at the user's ask, a whole line at a time and confirmed by
+    /// TitanDeck Host 0.19. Groups and FX stay on the WebAPI.
+    @Published var keypadOnDesk = UserDefaults.standard.object(forKey: SettingsKeys.keypadOnDesk) as? Bool ?? true {
+        didSet { UserDefaults.standard.set(keypadOnDesk, forKey: SettingsKeys.keypadOnDesk) }
+    }
+    /// On, and there's a way to type: a paired TitanDeck Host, or the remote
+    /// desktop connected. Otherwise the keypad goes through the WebAPI.
+    var keypadTypesOnDesk: Bool { keypadOnDesk && (host.client != nil || rdp.state == .connected) }
+    /// A typed selection has been seen arriving over CITP, so one that
+    /// doesn't arrive is worth a red key (never before it's known to work).
+    private var citpConfirmsTyping = false
     /// A key press waiting to be typed on the desk.
     private struct DeskPress {
         let action: TitanAction
@@ -363,6 +370,9 @@ final class AppState: ObservableObject {
         /// Done through Titan's WebAPI instead when it can't be typed (RIG's
         /// keys with no Host or remote desktop to type them).
         var webAPIIfNotTyped = false
+        /// A whole keypad line (0.45): typed in a request of its own, and its
+        /// result goes here rather than to the key.
+        var answer: ((TitanResult) -> Void)?
     }
     /// Presses waiting for the desk, in the order pressed.
     private var deskPresses: [DeskPress] = []
@@ -408,20 +418,18 @@ final class AppState: ObservableObject {
         let typing = keypad.readout.current?.text
         let keypadLine = keypad.press(action)
         intensity.deckWillSend(action)
-        if runKeypad(action, typing: typing, keypadLine: keypadLine, keyIndex: keyIndex) { return }
-        if case .dimmerFlash(let down, let seconds) = action, !deck.selectedFixtures.isEmpty,
+        keypad.problem = nil
+        // Decided once per press: typed on the desk, or through the WebAPI.
+        let keypadTypesOnDesk = self.keypadTypesOnDesk
+        if keypadTypesOnDesk {
+            if runKeypadOnDesk(action, typing: typing, keypadLine: keypadLine, keyIndex: keyIndex) { return }
+        } else if runKeypad(action, typing: typing, keypadLine: keypadLine, keyIndex: keyIndex) {
+            return
+        }
+        if !keypadTypesOnDesk, case .dimmerFlash(let down, let seconds) = action, !deck.selectedFixtures.isEmpty,
            let levels = programmedFlashLevels(down: down) {
             levelThroughWebAPI(action, from: levels.from, to: levels.to, seconds: seconds,
                                keypadLine: keypadLine, keyIndex: keyIndex)
-            return
-        }
-        if keypadTypesOnDesk, action == .keypadEnter, let typing, let level = DeskKeys.typedLevel(typing) {
-            // "101 @ 50" is about 101 (the deck selects it after this key); "@ 50" the selection now.
-            rememberTyped(level / 100, fixtures: DeskKeys.typedFixtures(typing) ?? deck.selectedFixtures)
-        }
-        if keypadTypesOnDesk, action == .keypadClear {
-            // Exit backs out anything typed on the desk, then the WebAPI clears the selection (only).
-            queueOnDesk(action, keys: typing == nil ? [] : ["exit"], keypadLine: keypadLine, keyIndex: keyIndex)
             return
         }
         let needsLevel = switch action {
@@ -446,7 +454,7 @@ final class AppState: ObservableObject {
             rampOnDesk(action, from: levels.from, to: levels.to, seconds: seconds, keypadLine: keypadLine, keyIndex: keyIndex)
             return
         }
-        if keypadTypesOnDesk, let keys = DeskKeys.names(for: action) ?? deskLevelKeys(for: action) {
+        if keypadTypesOnDesk, let keys = deskLevelKeys(for: action) {
             queueOnDesk(action, keys: keys, keypadLine: keypadLine, keyIndex: keyIndex)
             return
         }
@@ -553,6 +561,134 @@ final class AppState: ObservableObject {
             ? "The deck's WebAPI is now user \(after.name ?? "\(target)")" + (after.id == target ? "" : " (Titan says user \(after.id.map(String.init) ?? "?"))")
             : "Titan didn't change the WebAPI's user: " + (result.error ?? "no answer")
         connectionLog.record(.app, .info, sharedUserStatus ?? "")
+    }
+
+    // MARK: - Keypad typed on the desk (0.45)
+
+    /// The deck's keypad typed on the Titan PC, a whole line at a time. The
+    /// deck builds the line itself (numbers, @, THRU only change what it
+    /// shows); Enter sends it in one go, so it's typed whole or not at all,
+    /// and TitanDeck Host (0.19) answers when its window has typed it, or
+    /// says why not. Before 0.41 every key went on its own, unconfirmed: a
+    /// dropped digit left "@ 50 Enter" for whatever was selected. Exit with
+    /// a line drops the line; without one it's the desk's Exit, and a bare
+    /// Enter the desk's Enter. Clear with a line drops it; without one it
+    /// clears the desk's selection (CITP) and every programmer. False for
+    /// anything that isn't a keypad key.
+    private func runKeypadOnDesk(_ action: TitanAction, typing: String?, keypadLine: UUID?, keyIndex: Int?) -> Bool {
+        let done = { (ok: Bool, error: String?, detail: String?) in
+            self.finish(TitanResult(action: action, ok: ok, statusCode: nil, milliseconds: 0, error: error, date: Date(), detail: detail),
+                        keypadLine: keypadLine, keyIndex: keyIndex)
+        }
+        switch action {
+        case .keypadDigit, .keypadAt, .keypadThro:
+            done(true, nil, nil)
+            return true
+        case .keypadExit:
+            if typing != nil {
+                done(true, nil, nil)
+            } else {
+                queueOnDesk(action, keys: ["exit"], keypadLine: keypadLine, keyIndex: keyIndex)
+            }
+            return true
+        case .keypadEnter:
+            guard let typing, !typing.isEmpty else {
+                queueOnDesk(action, keys: ["enter"], keypadLine: keypadLine, keyIndex: keyIndex)
+                return true
+            }
+            guard let keys = DeskKeys.line(typing), keys.count <= HostClient.maxDeskKeys else {
+                done(false, "\"\(typing)\" is too long to type on the desk in one go, so none of it was typed", nil)
+                return true
+            }
+            let fixtures = DeskKeys.typedFixtures(typing)
+            let level = DeskKeys.typedLevel(typing)
+            // The deck shows the new selection straight away (after this
+            // call); if the line isn't typed, it goes back to this one.
+            let before = deck.selectedFixtures
+            Task {
+                let typed = await typeLine(action, keys: keys)
+                guard typed.ok else {
+                    if fixtures != nil { deck.restoreSelection(before) }
+                    finish(typed, keypadLine: keypadLine, keyIndex: keyIndex)
+                    return
+                }
+                if let level {
+                    // "101 @ 50" is about 101; "@ 50" the selection as it was.
+                    programmer.setLevel(level / 100, for: fixtures ?? before)
+                    rememberTyped(level / 100, fixtures: fixtures ?? before)
+                }
+                var result = typed
+                if let fixtures, let problem = await deskDisagrees(with: fixtures) {
+                    result = TitanResult(action: action, ok: false, statusCode: nil, milliseconds: typed.milliseconds,
+                                         error: problem, date: typed.date)
+                }
+                finish(result, keypadLine: keypadLine, keyIndex: keyIndex)
+            }
+            return true
+        case .keypadClear:
+            // Like the desk: the first Clear empties what's typed (on the deck).
+            if typing != nil {
+                done(true, nil, nil)
+                return true
+            }
+            forgetProgrammer()
+            Task {
+                var problems: [String] = []
+                // The desk's selection: over CITP when the Host hears the desk
+                // (it can only clear), else every user's through the WebAPI.
+                if case .linkedViaCitp = deskLink.state, let hostClient = host.client,
+                   let byHost = await hostAction(action, { try await hostClient.clearSelection() }) {
+                    if !byHost.ok { problems.append("the desk's selection: " + (byHost.error ?? "TitanDeck Host couldn't clear it")) }
+                    _ = await titan.clearSelection()
+                } else {
+                    let selection = await titan.clearSelection(everyUser: true)
+                    if !selection.ok { problems.append("selection: " + (selection.error ?? "Titan didn't take it")) }
+                }
+                // Every programmer: what was typed is in the desk's, the
+                // colour keys' in the deck's own. (Titan's Clear key is Alt+C,
+                // and the Host never types Alt.)
+                let cleared = await titan.clearProgrammer(everyUser: true)
+                if !cleared.ok { problems.append("programmer: " + (cleared.error ?? "Titan didn't take it")) }
+                done(problems.isEmpty, problems.isEmpty ? nil : problems.joined(separator: "; "),
+                     "cleared the selection and every programmer")
+            }
+            return true
+        default:
+            return false
+        }
+    }
+
+    /// Types one whole line on the desk, after anything already waiting.
+    private func typeLine(_ action: TitanAction, keys: [String]) async -> TitanResult {
+        await withCheckedContinuation { continuation in
+            deskPresses.append(DeskPress(action: action, keys: keys, keypadLine: nil, keyIndex: nil,
+                                         answer: { continuation.resume(returning: $0) }))
+            startDeskTyping()
+        }
+    }
+
+    /// After a selection is typed, the desk's selection over CITP should be
+    /// those fixtures. Nil when it is, or when that can't be told (no CITP
+    /// link, or CITP has never yet shown a typed selection on this desk);
+    /// else what the desk has instead.
+    private func deskDisagrees(with fixtures: [Int]) async -> String? {
+        guard case .linkedViaCitp = deskLink.state else { return nil }
+        let wanted = Set(fixtures)
+        for _ in 0 ..< 6 {
+            if Set(deskLink.selection) == wanted {
+                citpConfirmsTyping = true
+                return nil
+            }
+            try? await Task.sleep(nanoseconds: 250_000_000)
+        }
+        guard case .linkedViaCitp = deskLink.state else { return nil }
+        let has = DeckFlow.compactSelection(deskLink.selection) ?? "nothing"
+        let message = "Typed, but the desk shows \(has) selected, not \(DeckFlow.compactSelection(fixtures) ?? "them"). Is something else open on the desk (a menu, a text box)?"
+        guard citpConfirmsTyping else {
+            connectionLog.record(.key, .info, message + " (Not shown on the key: CITP hasn't confirmed a typed selection yet.)")
+            return nil
+        }
+        return message
     }
 
     // MARK: - Keypad through the WebAPI (0.41)
@@ -758,6 +894,10 @@ final class AppState: ObservableObject {
             deskPresses.append(DeskPress(action: action, keys: piece, keypadLine: last ? keypadLine : nil,
                                          keyIndex: last ? keyIndex : nil, webAPIIfNotTyped: webAPIIfNotTyped))
         }
+        startDeskTyping()
+    }
+
+    private func startDeskTyping() {
         guard deskTyping == nil else { return }
         deskTyping = Task { [weak self] in
             await self?.typeWaitingPresses()
@@ -776,9 +916,15 @@ final class AppState: ObservableObject {
                 finish(await typeOnDesk(press.action, keys: press.keys), keypadLine: press.keypadLine, keyIndex: press.keyIndex)
                 continue
             }
+            if let answer = deskPresses[0].answer {
+                // A keypad line: on its own, so its result is its own.
+                let press = deskPresses.removeFirst()
+                answer(await typeOnDesk(press.action, keys: press.keys))
+                continue
+            }
             var batch: [DeskPress] = []
             var keys: [String] = []
-            while let next = deskPresses.first, next.action != .keypadClear,
+            while let next = deskPresses.first, next.action != .keypadClear, next.answer == nil,
                   batch.isEmpty || keys.count + next.keys.count <= HostClient.maxDeskKeys {
                 batch.append(deskPresses.removeFirst())
                 keys += next.keys
@@ -827,6 +973,10 @@ final class AppState: ObservableObject {
             deck.setCurrentKelvin(kelvin)
         }
         if let keypadLine { keypad.markAnswered(keypadLine, ok: result.ok) }
+        // What went wrong with a deck key, where it can be seen (0.45).
+        if !result.ok, keyIndex != nil || keypadLine != nil {
+            keypad.problem = result.error ?? "\(result.action.summary) didn't work"
+        }
         recentResults.insert(result, at: 0)
         if recentResults.count > Self.maxResults {
             recentResults.removeLast(recentResults.count - Self.maxResults)
@@ -933,6 +1083,7 @@ final class AppState: ObservableObject {
         case .adjustIntensity(let percent):
             guard let level = currentLevel else { return nil }
             let target = DeskKeys.nudged(level * 100, by: percent)
+            programmer.setLevel(target / 100, for: deck.selectedFixtures)
             rememberTyped(target / 100)
             return DeskKeys.level(target)
         case .dimmerFlash(let down, _):
@@ -1022,24 +1173,33 @@ final class AppState: ObservableObject {
 
     /// Types keys on the PC through the Host, else the remote desktop.
     private func typeKeys(_ keys: [String]) async -> (typed: Bool, why: String?) {
-        var typed = false
-        var why: String?
         if let client = host.client {
             do {
-                try await client.typeOnDesk(keys)
-                typed = true
+                let confirmed = try await client.typeOnDesk(keys)
+                if !confirmed, !warnedUnconfirmedTyping {
+                    // A Host before 0.19 answers when the keys are queued, not typed.
+                    warnedUnconfirmedTyping = true
+                    let warning = "TitanDeck Host on the PC is older than 0.19, so it can't confirm what it types. Update it (Host window > Update) for a keypad that says when a line didn't land."
+                    connectionLog.record(.app, .info, warning)
+                    keypad.problem = warning
+                }
+                return (true, nil)
             } catch {
-                why = error.localizedDescription
+                // Never typed again through the remote desktop: the Host may
+                // have typed some of it, or refused for a reason (Titan not
+                // in front) that the remote desktop would type straight past.
+                return (false, error.localizedDescription)
             }
         }
-        if !typed, rdp.state == .connected {
-            for name in keys {
-                for stroke in DeskKeys.strokes(for: name) { rdp.send(stroke) }
-            }
-            typed = true
+        // No Host paired: the remote desktop's keyboard (not confirmed).
+        guard rdp.state == .connected else { return (false, nil) }
+        for name in keys {
+            for stroke in DeskKeys.strokes(for: name) { rdp.send(stroke) }
         }
-        return (typed, why)
+        return (true, nil)
     }
+    /// Said once per launch.
+    private var warnedUnconfirmedTyping = false
 
     func checkConnection() {
         isCheckingConnection = true

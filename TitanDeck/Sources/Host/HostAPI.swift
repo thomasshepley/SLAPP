@@ -85,6 +85,13 @@ struct HostDeskKeysRequest: Codable, Equatable {
     let keys: [String]
 }
 
+/// The Host's answer to desk keys. `confirmed` (Host 0.19+): its window
+/// reported it typed them all; an older Host answers as soon as they're queued.
+struct HostDeskKeysResponse: Codable, Equatable {
+    let typed: Int?
+    let confirmed: Bool?
+}
+
 struct HostFixRequest: Codable, Equatable {
     var action: String
 }

@@ -123,6 +123,14 @@ enum DeckFlow {
             selected = fixtures
         }
 
+        /// The desk's own selection changed (desk link): it's the selection
+        /// now, but a line being typed on the deck is left as it is (0.45: a
+        /// typed selection coming back over CITP wiped the next line's
+        /// first digits).
+        mutating func follow(_ fixtures: [Int]) {
+            selected = fixtures
+        }
+
         /// "102" or "1>10" (Thro) as fixture numbers, or nil if it's neither.
         static func fixtures(in text: String) -> [Int]? {
             let parts = text.split(separator: ">", omittingEmptySubsequences: false)

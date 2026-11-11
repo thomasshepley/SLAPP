@@ -6,6 +6,15 @@ until it's show-ready (1.0): MINOR for features, PATCH for fixes. Keep
 (ChangelogTests checks). Each version is published as a GitHub release
 `host-v<version>` with the installer attached.
 
+## 0.19.0 - 2026-11-11 - Says whether the keypad was really typed
+
+- **For TitanDeck 0.45, whose keypad types on the desk again.** The Host used to answer "typed" as soon as keys were queued, so a line that never reached Titan still looked fine on the deck. Now the answer waits until the Host window has typed the whole line, and says exactly why if it couldn't.
+- **A line is typed whole or not at all.** One that has waited more than 2 seconds for the Host window is refused, never typed late, and one the window doesn't pick up is taken back.
+- **Only when Titan is the window in front.** Typed keys go to whichever window is in front on the PC, so if that isn't Titan nothing is typed and the deck is told which window was ("Tap Titan's screen once").
+- **It notices when Windows refuses the keys** (Windows blocks typing into a program with more rights, such as Titan run as administrator), and stops there, saying how far it got.
+- Back-to-back levels from the deck's intensity keys still only type the newest.
+- Update the Host window too: it and the service now talk a new way (an older window won't be given keys).
+
 ## 0.18.2 - 2026-10-30 - Keeps the deck's selection
 
 - **Fixed for TitanDeck 0.41, which works through the WebAPI:** after an FX or Groups action the Host put the WebAPI user's selection back to the desk's, which threw away what the deck had selected (an FX group at 100%, a group from the Groups page). It now puts back exactly what the WebAPI user had selected before; only if that can't be read does it use the desk's, as before.

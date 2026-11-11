@@ -172,9 +172,10 @@ actor TitanClient {
 
     /// Clears this WebAPI user's whole programmer (0.44.1, the deck's CLEAR):
     /// no look at the command line first, as the deck types nothing there.
-    func clearProgrammer() async -> TitanResult {
+    /// `everyUser` (0.45, with the keypad typed on the desk): the desk's too.
+    func clearProgrammer(everyUser: Bool = false) async -> TitanResult {
         let start = Date()
-        let result = await get(TitanEndpoints.clearProgrammerURL(host: host, port: port))
+        let result = await get(TitanEndpoints.clearProgrammerURL(host: host, port: port, allProgrammers: everyUser))
         return finish(.keypadClear, start, ok: result.ok, status: result.status, error: result.error,
                       detail: "cleared the programmer")
     }

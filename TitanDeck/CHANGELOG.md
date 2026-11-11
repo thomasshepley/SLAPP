@@ -7,6 +7,18 @@ the GitHub Actions run that built it. The top entry is shown in the app
 so add an entry - and bump `MARKETING_VERSION` in `project.yml` to match -
 with every change that goes to `main`.
 
+## 0.45.0 - 2026-11-11 - The keypad types on the desk again, and says when a line didn't land
+
+- **The keypad and Quick Keys type on the Titan PC again** (Settings > Desk > Keypad types on the desk, on by default), so what you select and set is on the desk's own command line and in its programmer. Needs TitanDeck Host paired; without it they go through Titan's WebAPI as before. Groups, FX and the colour keys still use the WebAPI.
+- **A whole line at a time.** The deck builds the line itself and sends it in one go when you press Enter, so it's typed whole or not at all. Before, every key went on its own: if a digit was lost, "@ 50 Enter" still went, on whatever was selected.
+- **It knows whether the line was typed.** With TitanDeck Host 0.19 (update the Host too), the answer comes back once the PC has really typed the line. If it couldn't, the key goes red and the reason shows in red on the Deck tab and along the bottom of the Remote screen: the Host window isn't open, Titan isn't the window in front on the PC, the line waited too long, or Windows wouldn't let it type. The deck's selection then goes back to what it was.
+- When the deck is following the desk (CITP), it also checks the fixtures you typed are the ones the desk now has selected.
+- **CLEAR** clears the desk's selection and every programmer, the desk's included (Titan's own Clear key is Alt+C, which the Host never types).
+- **Exit** with a line typed drops the line; with none it's the desk's Exit. Enter with nothing typed is the desk's Enter.
+- The bar above the keys on the Deck tab shows the line you're typing, then whether the last one landed.
+- **Fixed: a line being typed could lose its first digits** when the selection you'd just typed came back from the desk.
+- **Remote desktop: touch not working for a while after connecting.** Windows asks for touch to wait while a session settles (and at its sign-in and lock screens); TitanDeck carried on sending touches it wasn't taking. It now falls back to the mouse until Windows is ready, then goes back to real touch.
+
 ## 0.44.5 - 2026-11-11 - The desk's selection and the deck's, kept in step
 
 - **Fixed: a selection made on the desk could stop reaching the deck.** Since the deck stopped typing on the desk (0.41), its CLEAR only cleared its own side, so the desk kept its selection; selecting the same fixtures on the desk again wasn't a change, and nothing came across. While the deck is following the desk (CITP through TitanDeck Host), CLEAR now clears the desk's selection as well, as it used to, so the next thing you select on the desk always comes over.

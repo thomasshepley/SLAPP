@@ -66,10 +66,22 @@ public static class DeskKeys
         return kept;
     }
 
+    /// <summary>A whole request that is one level command and nothing else ("@ 6 4 Enter").</summary>
+    public static bool IsLevelOnly(IReadOnlyList<string> keys) => IsLevel(keys.ToList());
+
     /// <summary>"@", digits, Enter: a level for the selection.</summary>
     private static bool IsLevel(List<string> command) =>
         command.Count >= 3 && command[0] == "@" && command[^1] == "enter"
         && command.Skip(1).Take(command.Count - 2).All(k => k.Length == 1 && char.IsAsciiDigit(k[0]));
+
+    /// <summary>
+    /// A process that is Titan's (as <c>WindowsProbe</c> finds Titan running):
+    /// "titan" in its name, and not TitanDeck Host itself.
+    /// </summary>
+    public static bool IsTitanProcess(string name) =>
+        name.Contains("titan", StringComparison.OrdinalIgnoreCase)
+        && !name.StartsWith("TitanDeckHost", StringComparison.OrdinalIgnoreCase)
+        && !name.StartsWith("TitanDeck Host", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>Why these keys can't be typed, or null when they all can.</summary>
     public static string? Problem(IReadOnlyList<string>? keys)

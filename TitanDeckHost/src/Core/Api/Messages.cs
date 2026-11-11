@@ -143,6 +143,16 @@ public sealed record CitpStatusDto(bool Enabled, bool Allowed, bool Running, int
 /// ("1", "@", "enter", "clear"...; see <c>DeskKeys</c>).</summary>
 public sealed record DeskKeysRequest(IReadOnlyList<string> Keys);
 
+/// <summary>The answer to `POST /api/v1/desk/keys` (Host 0.19): how many keys,
+/// and `Confirmed` when the Host window reported it typed them all.</summary>
+public sealed record DeskKeysResponse(int Typed, bool Confirmed);
+
+/// <summary>`GET /local/desk/jobs/wait`: a line for the Host window to type, whole.</summary>
+public sealed record DeskTypeJob(long Id, IReadOnlyList<string> Keys);
+
+/// <summary>`POST /local/desk/jobs/done`: the Host window's report on a line.</summary>
+public sealed record DeskJobDoneRequest(long Id, bool Typed, string? Problem);
+
 /// <summary>`POST /local/citp`: the on/off switch.</summary>
 public sealed record CitpEnableRequest(bool Enabled);
 

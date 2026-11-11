@@ -14,8 +14,6 @@ import SwiftUI
 struct OnScreenDeckView: View {
     @EnvironmentObject private var appState: AppState
     @ObservedObject var deck: DeckSessionController
-    /// Titan's command line, shown while the deck is on screen.
-    @State private var commandLine: String?
 
     private static let margin = 16.0
 
@@ -42,13 +40,6 @@ struct OnScreenDeckView: View {
                 // A status light, not a button: no glass bubble round it.
                 .sharedBackgroundVisibility(.hidden)
             }
-            .task {
-                // Poll the command line twice a second while this tab is open.
-                while !Task.isCancelled {
-                    commandLine = await appState.titan.commandLineText()
-                    try? await Task.sleep(nanoseconds: 500_000_000)
-                }
-            }
         }
     }
 
@@ -62,6 +53,7 @@ struct OnScreenDeckView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
                         commandLineBar
+                        KeypadProblemChip(store: appState.keypad)
                         SelectionCard(deck: deck)
                         pageList
                     }
@@ -75,6 +67,7 @@ struct OnScreenDeckView: View {
         case .stacked:
             VStack(spacing: 14) {
                 commandLineBar
+                KeypadProblemChip(store: appState.keypad)
                 // Room kept for the strip, so the keys don't jump when something's selected.
                 ZStack {
                     Color.clear.frame(height: 34)
@@ -88,23 +81,11 @@ struct OnScreenDeckView: View {
         }
     }
 
-    @ViewBuilder
+    /// The deck's own keypad line (0.45): what Enter will send, then whether
+    /// the last line got there. (It used to show the WebAPI user's command
+    /// line, which the deck no longer types on.)
     private var commandLineBar: some View {
-        if let commandLine {
-            HStack {
-                Image(systemName: "terminal")
-                    .foregroundStyle(.secondary)
-                Text(commandLine.isEmpty ? " " : commandLine)
-                    .font(.title3.monospaced())
-                    .lineLimit(1)
-                    .truncationMode(.head)
-                Spacer()
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 10)
-            .glassEffect(.regular, in: .rect(cornerRadius: 14))
-            .accessibilityLabel("Titan command line: \(commandLine)")
-        }
+        DeckLineBar(store: appState.keypad)
     }
 
     /// The pages in a row that scrolls sideways, above the keys.
@@ -267,5 +248,43 @@ struct ConnectionDot: View {
         case .down: return .red
         case .unknown: return .gray
         }
+    }
+}
+
+/// The line being typed on the deck's keypad, or the last one sent and how it went.
+struct DeckLineBar: View {
+    @ObservedObject var store: KeypadReadoutStore
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "terminal")
+                .foregroundStyle(.secondary)
+            if let current = store.readout.current {
+                Text(current.text)
+                    .font(.title3.monospaced())
+                    .lineLimit(1)
+                    .truncationMode(.head)
+            } else if let last = store.readout.lastCommand {
+                Text(last.text)
+                    .font(.title3.monospaced())
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.head)
+                switch last.delivery {
+                case .sending: ProgressView().controlSize(.small)
+                case .sent: Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
+                case .failed: Image(systemName: "xmark.octagon.fill").foregroundStyle(.red)
+                }
+            } else {
+                Text("Fixture number, then Enter")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .glassEffect(.regular, in: .rect(cornerRadius: 14))
+        .accessibilityElement(children: .combine)
     }
 }

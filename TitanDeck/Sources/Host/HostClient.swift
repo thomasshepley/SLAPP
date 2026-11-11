@@ -19,7 +19,8 @@ struct HostClient: Sendable {
     /// free one behind a slow Host call (status, a cue fade, a file).
     private static let keysSession: URLSession = {
         let configuration = URLSessionConfiguration.ephemeral
-        configuration.timeoutIntervalForRequest = 2
+        // Long enough for the Host to type a line and confirm it (0.45).
+        configuration.timeoutIntervalForRequest = 10
         configuration.waitsForConnectivity = false
         configuration.httpMaximumConnectionsPerHost = 2
         #if os(iOS)
@@ -111,13 +112,18 @@ struct HostClient: Sendable {
 
     /// Types keypad keys on the PC for Titan (Host 0.10+). Throws when the
     /// Host can't (its window isn't open, Titan isn't running, an older Host).
-    func typeOnDesk(_ keys: [String]) async throws {
+    /// Host 0.19 answers once its window has typed them (or says why not), so
+    /// the wait covers the typing. True when the Host confirmed it typed them;
+    /// false from an older Host, which only says they were queued.
+    @discardableResult
+    func typeOnDesk(_ keys: [String]) async throws -> Bool {
         var request = try request("desk/keys", method: "POST")
-        request.timeoutInterval = 1.5
+        request.timeoutInterval = DeskKeys.patience(keys: keys.count)
         request.httpBody = try HostAPI.encoder.encode(HostDeskKeysRequest(keys: keys))
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         let (data, response) = try await transport { try await Self.keysSession.data(for: request) }
         try check(response, body: data)
+        return (try? HostAPI.decoder.decode(HostDeskKeysResponse.self, from: data))?.confirmed ?? false
     }
 
     /// The desk's selection from the Host's CITP link (Host 0.9+).

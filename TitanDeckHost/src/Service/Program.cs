@@ -47,7 +47,7 @@ builder.Services.AddHostedService<Advertiser>();
 builder.Services.AddSingleton<DmxUniverses>();
 builder.Services.AddSingleton<SacnListener>();
 builder.Services.AddHostedService(services => services.GetRequiredService<SacnListener>());
-builder.Services.AddSingleton<DeskKeyQueue>();
+builder.Services.AddSingleton(new DeskTypeQueue());
 builder.Services.AddSingleton<SlateService>();
 builder.Services.AddHostedService(services => services.GetRequiredService<SlateService>());
 builder.Services.AddSingleton<CitpService>();
@@ -168,7 +168,7 @@ network.MapGet("/patch", (PatchReader patch) => patch.Status());
 
 // The deck's keypad typed on the PC, so it lands on the desk's own command line
 // (Titan 19's WebAPI is a separate user). Keypad keys only; the Host window types them.
-network.MapPost("/desk/keys", (DeskKeysRequest request, DeskKeyQueue queue, TitanLog log, HttpContext http) =>
+network.MapPost("/desk/keys", async (DeskKeysRequest request, DeskTypeQueue queue, TitanLog log, HttpContext http) =>
 {
     if (DeskKeys.Problem(request.Keys) is { } problem) return Results.BadRequest(new { error = problem });
     if (!queue.WindowListening)
@@ -176,10 +176,17 @@ network.MapPost("/desk/keys", (DeskKeysRequest request, DeskKeyQueue queue, Tita
             statusCode: StatusCodes.Status409Conflict);
     if (!WindowsProbe.IsTitanRunning())
         return Results.Json(new { error = "Titan isn't running, so the keypad isn't typed on the PC." }, statusCode: StatusCodes.Status409Conflict);
-    queue.Enqueue(request.Keys);
-    log.Add("Desk keys", http.Connection.RemoteIpAddress?.ToString() ?? "", "TYPE", string.Join(" ", request.Keys), "", 200, 0,
-        "typed on the PC for Titan", null, false, DateTimeOffset.Now);
-    return Results.Ok(new { typed = request.Keys.Count });
+    // Host 0.19: the answer waits for the window to say what it did with the
+    // line (typed whole, or why not), so the deck never shows "sent" for keys
+    // that went nowhere.
+    var started = DateTimeOffset.Now;
+    var result = await queue.Enqueue(request.Keys, cancel: http.RequestAborted);
+    var took = (int)(DateTimeOffset.Now - started).TotalMilliseconds;
+    log.Add("Desk keys", http.Connection.RemoteIpAddress?.ToString() ?? "", "TYPE", string.Join(" ", request.Keys), "",
+        result.Typed ? 200 : 409, took, result.Typed ? "typed on the PC for Titan" : "NOT typed: " + result.Problem, null, !result.Typed, started);
+    return result.Typed
+        ? Results.Ok(new DeskKeysResponse(request.Keys.Count, true))
+        : Results.Json(new { error = result.Problem }, statusCode: StatusCodes.Status409Conflict);
 });
 
 // TitanDeck's cue fade and Clear keys, done here so a better way only needs a
@@ -307,12 +314,18 @@ local.MapPost("/mode", (ModeDto request, HostModeStore mode) =>
 local.MapGet("/citp", (CitpService citp) => citp.Status());
 local.MapPost("/citp", (CitpEnableRequest request, CitpService citp) => citp.SetEnabled(request.Enabled));
 
-// The Host window waits here for keypad keys to type (long poll).
-// Ends at once when the service stops: the window's 20 s wait otherwise held a stop up for 20 s.
-local.MapGet("/desk/keys/wait", async (DeskKeyQueue queue, IHostApplicationLifetime life, CancellationToken cancel) =>
+// The Host window waits here for keypad lines to type (long poll), and says
+// what it did with each. Ends at once when the service stops: the window's
+// 20 s wait otherwise held a stop up for 20 s.
+local.MapGet("/desk/jobs/wait", async (DeskTypeQueue queue, IHostApplicationLifetime life, CancellationToken cancel) =>
 {
     using var either = CancellationTokenSource.CreateLinkedTokenSource(cancel, life.ApplicationStopping);
     return await queue.Next(TimeSpan.FromSeconds(20), either.Token);
+});
+local.MapPost("/desk/jobs/done", (DeskJobDoneRequest done, DeskTypeQueue queue) =>
+{
+    queue.Done(done.Id, done.Typed, done.Problem);
+    return Results.Ok();
 });
 
 local.MapGet("/pairing", () => PairingInfo(pairing));
