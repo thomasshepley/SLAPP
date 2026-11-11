@@ -7,6 +7,12 @@ the GitHub Actions run that built it. The top entry is shown in the app
 so add an entry - and bump `MARKETING_VERSION` in `project.yml` to match -
 with every change that goes to `main`.
 
+## 0.44.5 - 2026-11-11 - The desk's selection and the deck's, kept in step
+
+- **Fixed: a selection made on the desk could stop reaching the deck.** Since the deck stopped typing on the desk (0.41), its CLEAR only cleared its own side, so the desk kept its selection; selecting the same fixtures on the desk again wasn't a change, and nothing came across. While the deck is following the desk (CITP through TitanDeck Host), CLEAR now clears the desk's selection as well, as it used to, so the next thing you select on the desk always comes over.
+- **Fixed: while following the desk, the deck only ever showed the desk's selection,** so fixtures picked on the deck's own keypad or Groups page didn't show as selected. Now it's simply whichever was selected last, on the desk or on the deck.
+- Following the desk still needs this phone or iPad paired with TitanDeck Host, and Follow selection via CITP on in the Host: Settings > Desk says which is missing if it isn't linked.
+
 ## 0.44.4 - 2026-11-06 - Remote bar taps, iPad-sized desktop, zoom
 
 - **Fixed (second go): the keyboard and deck buttons still didn't open with the remote desktop connected.** Moving the bar down (0.44.3) wasn't it. Now the desktop itself steps aside wherever the bar's controls, the selection strip and the floating deck are, so their taps can't go to the PC instead.

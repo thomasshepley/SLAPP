@@ -149,7 +149,6 @@ final class DeckSessionController: ObservableObject {
     @Published private(set) var pageMasters: [CueChoice]?
     /// The group masters on Titan's page 60.
     var groupMasters: [DeckFlow.GroupMaster] { DeckFlow.groupMasters(pageMasters ?? availableCues, levels: masterLevels) }
-    private var deskSelection: [Int] = []
     private var follower = DeckFlow.SelectionFollower()
 
     /// "101-110" for the Remote screen, or nil with nothing selected.
@@ -270,8 +269,10 @@ final class DeckSessionController: ObservableObject {
     /// brings up the intensity keys (as if typed on the keypad); an empty
     /// selection puts them away again.
     func setDeskSelection(_ fixtures: [Int]) {
-        deskSelection = fixtures
         guard deskLinked else { return }
+        // The newest selection wins (0.44.5): the desk's replaces whatever
+        // the deck's keypad had, as the keypad's replaces the desk's.
+        keypad.select(fixtures)
         refreshSelection()
         switch follower.update(fixtures) {
         case .show:
@@ -288,7 +289,6 @@ final class DeckSessionController: ObservableObject {
     /// even without the desk link (with it, CITP confirms it).
     func selectTyped(_ fixtures: [Int]) {
         keypad.select(fixtures)
-        if deskLinked { deskSelection = fixtures }
         refreshSelection()
     }
 
@@ -310,7 +310,11 @@ final class DeckSessionController: ObservableObject {
     }
 
     private func refreshSelection() {
-        let current = deskLinked ? deskSelection : keypad.selected
+        // One selection, the newest (0.44.5): the deck's keypad, a group it
+        // recalled, or the desk's when it changes (`setDeskSelection`). Before,
+        // a linked deck only ever showed the desk's, so its own keypad
+        // selections and CLEAR didn't show.
+        let current = keypad.selected
         guard current != selectedFixtures else { return }
         selectedFixtures = current
         stripOffset = 0
