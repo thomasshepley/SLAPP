@@ -230,8 +230,8 @@ final class AppState: ObservableObject {
         deck.onGroupSetChosen = { [weak self] set in
             self?.groupSettings.chosen = set
         }
-        deck.onPickGroup = { [weak self] titanId, _ in
-            Task { await self?.selectGroup(titanId: titanId) }
+        deck.onPickGroup = { [weak self] titanId, keyIndex in
+            Task { await self?.selectGroup(titanId: titanId, keyIndex: keyIndex) }
         }
         fxLibrary.$index
             .map { $0.items.compactMap(\.deckItem) }
@@ -572,9 +572,9 @@ final class AppState: ObservableObject {
     /// says why not. Before 0.41 every key went on its own, unconfirmed: a
     /// dropped digit left "@ 50 Enter" for whatever was selected. Exit with
     /// a line drops the line; without one it's the desk's Exit, and a bare
-    /// Enter the desk's Enter. Clear with a line drops it; without one it
-    /// clears the desk's selection (CITP) and every programmer. False for
-    /// anything that isn't a keypad key.
+    /// Enter the desk's Enter. Clear with a line drops it; with fixtures
+    /// selected it clears the desk's selection (CITP); with nothing selected,
+    /// every programmer. False for anything that isn't a keypad key.
     private func runKeypadOnDesk(_ action: TitanAction, typing: String?, keypadLine: UUID?, keyIndex: Int?) -> Bool {
         let done = { (ok: Bool, error: String?, detail: String?) in
             self.finish(TitanResult(action: action, ok: ok, statusCode: nil, milliseconds: 0, error: error, date: Date(), detail: detail),
@@ -626,12 +626,16 @@ final class AppState: ObservableObject {
             }
             return true
         case .keypadClear:
-            // Like the desk: the first Clear empties what's typed (on the deck).
-            if typing != nil {
+            // Like the desk: the first Clear empties what's typed (on the
+            // deck), the next the selection, and only with nothing selected
+            // the programmers (`DeckFlow.clearStep`).
+            let step = DeckFlow.clearStep(typing: typing != nil, hasSelection: !deck.selectedFixtures.isEmpty)
+            if step == .line {
                 done(true, nil, nil)
                 return true
             }
-            forgetProgrammer()
+            let selectionOnly = step == .selection
+            if !selectionOnly { forgetProgrammer() }
             Task {
                 var problems: [String] = []
                 // The desk's selection: over CITP when the Host hears the desk
@@ -644,13 +648,15 @@ final class AppState: ObservableObject {
                     let selection = await titan.clearSelection(everyUser: true)
                     if !selection.ok { problems.append("selection: " + (selection.error ?? "Titan didn't take it")) }
                 }
-                // Every programmer: what was typed is in the desk's, the
-                // colour keys' in the deck's own. (Titan's Clear key is Alt+C,
-                // and the Host never types Alt.)
-                let cleared = await titan.clearProgrammer(everyUser: true)
-                if !cleared.ok { problems.append("programmer: " + (cleared.error ?? "Titan didn't take it")) }
+                if !selectionOnly {
+                    // Every programmer: what was typed is in the desk's, the
+                    // colour keys' in the deck's own. (Titan's Clear key is
+                    // Alt+C, and the Host never types Alt.)
+                    let cleared = await titan.clearProgrammer(everyUser: true)
+                    if !cleared.ok { problems.append("programmer: " + (cleared.error ?? "Titan didn't take it")) }
+                }
                 done(problems.isEmpty, problems.isEmpty ? nil : problems.joined(separator: "; "),
-                     "cleared the selection and every programmer")
+                     selectionOnly ? "cleared the selection (CLEAR again clears the programmers)" : "cleared every programmer")
             }
             return true
         default:
@@ -697,7 +703,7 @@ final class AppState: ObservableObject {
     /// line, so nothing is typed anywhere. Numbers, @, THRU and Exit only
     /// build the line; Enter selects the fixtures named (clear, then select
     /// by number) and sets "@ level" (SetDimmerLevel); Clear clears the line,
-    /// then the selection and programmer. On Titan 19 that's the WebAPI
+    /// then the selection, then the programmer. On Titan 19 that's the WebAPI
     /// user's own (it outputs like any other), on 14-18 with the desk link
     /// the operator's. False for anything that isn't a keypad key.
     private func runKeypad(_ action: TitanAction, typing: String?, keypadLine: UUID?, keyIndex: Int?) -> Bool {
@@ -740,20 +746,24 @@ final class AppState: ObservableObject {
             }
             return true
         case .keypadClear:
-            // Like the desk: the first Clear empties what's typed.
-            if typing != nil {
+            // Like the desk: the first Clear empties what's typed, the next
+            // the selection, and only with nothing selected the programmer
+            // (`DeckFlow.clearStep`; 0.44.1-0.45.0 cleared both at once).
+            let step = DeckFlow.clearStep(typing: typing != nil, hasSelection: !deck.selectedFixtures.isEmpty)
+            if step == .line {
                 done(true, nil, nil)
                 return true
             }
-            // 0.44.1: the whole programmer straight away. (It used to check
-            // Titan's command line first and only start a new command when it
-            // wasn't empty, so CLEAR often cleared nothing.)
-            forgetProgrammer()
+            let selectionOnly = step == .selection
+            if !selectionOnly { forgetProgrammer() }
             Task {
-                let cleared = await client.clearProgrammer()
+                var problems: [String] = []
+                if !selectionOnly {
+                    let cleared = await client.clearProgrammer()
+                    if !cleared.ok { problems.append("programmer: " + (cleared.error ?? "Titan didn't take it")) }
+                }
                 let selection = await client.clearSelection()
                 let left = await client.selectedFixtureIds() ?? []
-                var problems: [String] = []
                 // Following the desk over CITP, the desk's selection goes too
                 // (0.44.5, as before 0.41): else the desk keeps it, and
                 // selecting the same fixtures there again isn't a change, so
@@ -763,12 +773,11 @@ final class AppState: ObservableObject {
                    let byHost = await hostAction(action, { try await hostClient.clearSelection() }), !byHost.ok {
                     problems.append("the desk's selection: " + (byHost.error ?? "TitanDeck Host couldn't clear it"))
                 }
-                if !cleared.ok { problems.append("programmer: " + (cleared.error ?? "Titan didn't take it")) }
                 if !selection.ok || !left.isEmpty {
                     problems.append("selection: " + (selection.error ?? "\(left.count) still selected"))
                 }
                 done(problems.isEmpty, problems.isEmpty ? nil : problems.joined(separator: "; "),
-                     "cleared the programmer and selection")
+                     selectionOnly ? "cleared the selection (CLEAR again clears the programmer)" : "cleared the programmer")
             }
             return true
         default:
@@ -1423,20 +1432,67 @@ final class AppState: ObservableObject {
         connectionLog.record(.app, .info, "Groups: Titan didn't list Groups page \(page + 1)")
     }
 
-    /// A group selected on the desk: TitanDeck Host says which fixtures it
-    /// has, and they're typed on the desk ("1 THRU 10 AND 15 Enter"), so the
-    /// desk's own selection is the group. Titan's Group key is an Alt
-    /// shortcut, which Titan 19 ignores from the PC keyboard.
-    private func selectGroup(titanId: Int) async {
+    /// A group from the Groups page. Titan's WebAPI recalls it, which says
+    /// which fixtures it has. On Titan 19 that's the WebAPI's own user, not
+    /// the desk, so with the keypad typing on the desk (0.45.1) those
+    /// fixtures are then typed there as one line ("1 THRU 10 AND 15 Enter"),
+    /// confirmed by TitanDeck Host like any keypad line: the desk's own
+    /// selection is the group. Titan's Group key is an Alt shortcut, which
+    /// Titan 19 ignores from the PC keyboard.
+    private func selectGroup(titanId: Int, keyIndex: Int) async {
+        let action = TitanAction.deckChoice(.pickGroup(titanId: titanId))
+        let fail = { (why: String) in
+            self.deck.report(success: false, forKey: keyIndex)
+            self.keypad.problem = why
+            self.connectionLog.record(.key, .info, why)
+        }
+        // Titan 14-18's desk link is the operator's own selection already.
+        let typed = keypadTypesOnDesk && deskLink.commandClient == nil
         let client = deskLink.commandClient ?? titan
-        guard let fixtures = await recallGroup(titanId: titanId, number: groupNumbers[titanId], client: client) else {
-            connectionLog.record(.key, .info, "Group not selected: Titan selected nothing for it through the WebAPI")
+        var fixtures = await recallGroup(titanId: titanId, number: groupNumbers[titanId], client: client)
+        if typed, fixtures?.isEmpty != false, let hostClient = host.client,
+           let answer = try? await hostClient.groupFixtures(titanId: titanId, number: groupNumbers[titanId]),
+           answer.ok, !answer.fixtures.isEmpty {
+            // Titan's handles didn't number them: the Host knows them from CITP.
+            fixtures = answer.fixtures
+        }
+        guard let fixtures else {
+            fail("Group not selected: Titan selected nothing for it through the WebAPI")
             return
         }
-        // The deck's own idea of the selection too, so it shows and the
-        // intensity keys know their level.
+        guard typed else {
+            // The deck's own idea of the selection too, so it shows and the
+            // intensity keys know their level.
+            deck.selectTyped(fixtures)
+            connectionLog.record(.key, .info, "Group: \(fixtures.count) fixture\(fixtures.count == 1 ? "" : "s") selected (\(DeckFlow.compactSelection(fixtures) ?? "fixture numbers not known"))")
+            return
+        }
+        let keys = DeskKeys.selecting(fixtures)
+        guard !keys.isEmpty else {
+            fail("Group not selected on the desk: Titan didn't give its fixtures' numbers, so there's nothing to type")
+            return
+        }
+        // Shown straight away; if it isn't typed, back to what there was.
+        let before = deck.selectedFixtures
         deck.selectTyped(fixtures)
-        connectionLog.record(.key, .info, "Group: \(fixtures.count) fixture\(fixtures.count == 1 ? "" : "s") selected (\(DeckFlow.compactSelection(fixtures) ?? "fixture numbers not known"))")
+        // A long group goes in pieces (the Host takes so many keys at once),
+        // each confirmed; Enter is the last key of the last piece.
+        let size = HostClient.maxDeskKeys
+        let pieces = stride(from: 0, to: keys.count, by: size).map { Array(keys[$0 ..< min($0 + size, keys.count)]) }
+        for (number, piece) in pieces.enumerated() {
+            let result = await typeLine(action, keys: piece)
+            guard !result.ok else { continue }
+            // Part of it may be on the desk's command line: back it out.
+            if number > 0 { _ = await typeLine(action, keys: ["exit"]) }
+            deck.restoreSelection(before)
+            fail("Group not selected on the desk: " + (result.error ?? "the keys weren't typed"))
+            return
+        }
+        if let problem = await deskDisagrees(with: fixtures) {
+            fail(problem)
+            return
+        }
+        connectionLog.record(.key, .info, "Group: \(DeckFlow.compactSelection(fixtures) ?? "\(fixtures.count) fixtures") typed on the desk")
     }
 
     // MARK: - FX (Test mode)

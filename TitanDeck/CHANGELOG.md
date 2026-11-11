@@ -7,6 +7,12 @@ the GitHub Actions run that built it. The top entry is shown in the app
 so add an entry - and bump `MARKETING_VERSION` in `project.yml` to match -
 with every change that goes to `main`.
 
+## 0.45.1 - 2026-11-11 - CLEAR clears the selection first, groups select on the desk
+
+- **Fixed: CLEAR cleared everything in one press.** Since 0.45.0 one press cleared the selection and every programmer, so the levels you'd just set went with it. It's back to steps, like the desk: with something typed it clears the line; with fixtures selected it clears only the selection and the levels stay; press it again with nothing selected and it clears the programmers.
+- **So that second CLEAR has a key,** the keypad's bottom-left key now stays CLEAR until you start typing a number, then becomes THRU ("1 THRU 10"). It used to be THRU whenever nothing was selected.
+- **Fixed: a group from the Groups page wasn't selected on Titan.** It was only recalled on the deck's WebAPI user, which on Titan 19 is separate from the desk. With the keypad typing on the desk, the group's fixtures are now typed there as one line ("1 THRU 10 AND 15 Enter") and confirmed like any keypad line. If it can't be typed, the key goes red, the reason shows in red, and the deck goes back to what was selected before.
+
 ## 0.45.0 - 2026-11-11 - The keypad types on the desk again, and says when a line didn't land
 
 - **The keypad and Quick Keys type on the Titan PC again** (Settings > Desk > Keypad types on the desk, on by default), so what you select and set is on the desk's own command line and in its programmer. Needs TitanDeck Host paired; without it they go through Titan's WebAPI as before. Groups, FX and the colour keys still use the WebAPI.

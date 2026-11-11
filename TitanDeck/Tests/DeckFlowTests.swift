@@ -53,7 +53,7 @@ final class DeckFlowTests: XCTestCase {
 
         XCTAssertEqual(type(.keypadDigit(3), .keypadClear), .none, "the first Clear empties the line")
         XCTAssertEqual(keypad.selection, 7)
-        XCTAssertEqual(type(.keypadClear), .clearedProgrammer, "the next clears the programmer")
+        XCTAssertEqual(type(.keypadClear), .clearedProgrammer, "the next clears the selection")
         XCTAssertNil(keypad.selection)
         _ = type(.keypadDigit(4), .keypadExit, .keypadEnter)
         XCTAssertNil(keypad.selection, "Exit drops what's typed")
@@ -92,16 +92,35 @@ final class DeckFlowTests: XCTestCase {
         XCTAssertNil(DeckFlow.KeypadBuffer.fixtures(in: "1>99999"), "too many to list")
     }
 
-    func testClearIsThruWhileNothingIsSelected() {
+    func testClearIsThruOnceANumbersTypedWithNothingSelected() {
         let clear = KeyDefinition(index: 12, label: "CLEAR", colorHex: DeckProfile.releaseColor, action: .keypadClear)
-        let thru = DeckFlow.keypadKey(clear, onKeypad: true, hasSelection: false)
+        let thru = DeckFlow.keypadKey(clear, onKeypad: true, hasSelection: false, typing: true)
         XCTAssertEqual(thru?.action, .keypadThro)
         XCTAssertEqual(thru?.label, "THRU")
         XCTAssertEqual(thru?.index, 12)
-        XCTAssertEqual(DeckFlow.keypadKey(clear, onKeypad: true, hasSelection: true), clear, "something selected: Clear")
-        XCTAssertEqual(DeckFlow.keypadKey(clear, onKeypad: false, hasSelection: false), clear, "only on the keypad")
+        XCTAssertEqual(DeckFlow.keypadKey(clear, onKeypad: true, hasSelection: false, typing: false), clear,
+                       "nothing typed: still Clear, so a second Clear can clear the programmers")
+        XCTAssertEqual(DeckFlow.keypadKey(clear, onKeypad: true, hasSelection: true, typing: true), clear, "something selected: Clear")
+        XCTAssertEqual(DeckFlow.keypadKey(clear, onKeypad: false, hasSelection: false, typing: true), clear, "only on the keypad")
         let enter = KeyDefinition(index: 11, label: "ENTER", action: .keypadEnter)
-        XCTAssertEqual(DeckFlow.keypadKey(enter, onKeypad: true, hasSelection: false), enter)
+        XCTAssertEqual(DeckFlow.keypadKey(enter, onKeypad: true, hasSelection: false, typing: true), enter)
+    }
+
+    func testClearGoesLineThenSelectionThenProgrammers() {
+        XCTAssertEqual(DeckFlow.clearStep(typing: true, hasSelection: true), .line)
+        XCTAssertEqual(DeckFlow.clearStep(typing: true, hasSelection: false), .line)
+        XCTAssertEqual(DeckFlow.clearStep(typing: false, hasSelection: true), .selection,
+                       "fixtures selected: only the selection, the levels stay")
+        XCTAssertEqual(DeckFlow.clearStep(typing: false, hasSelection: false), .programmers)
+    }
+
+    func testTheKeypadSaysWhenALinesBeingTyped() {
+        var keypad = DeckFlow.KeypadBuffer()
+        XCTAssertFalse(keypad.isTyping)
+        _ = keypad.apply(.keypadDigit(1))
+        XCTAssertTrue(keypad.isTyping)
+        _ = keypad.apply(.keypadEnter)
+        XCTAssertFalse(keypad.isTyping)
     }
 
     func testAnythingWithAtIsNotASelection() {
