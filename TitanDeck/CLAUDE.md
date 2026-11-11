@@ -299,9 +299,19 @@ support posts):
   `SetDimmerLevel` (`levelThroughWebAPI`, steps over the fade): Titan's
   FlashOut doesn't move a programmer level. Otherwise FlashOut / ClearFlash.
 - There's no documented way to read a fixture's current intensity from the
-  WebAPI. `IntensityReader` reads it from Titan's sACN through TitanDeck Host
-  and learns each fixture's intensity channels from what moves when the deck
-  nudges or flashes it (`IntensityLearning`).
+  WebAPI, and CITP doesn't seem to carry live levels either (Capture's
+  connectivity page lists Titan as Art-Net for DMX, with patch, selection and
+  blind preview over CITP; not checked on the desk, and the Host ignores
+  CITP's SDMX layer). `IntensityReader` reads it from Titan's sACN through TitanDeck
+  Host. **Titan's patch wins (0.45.2)** for which channels are the intensity;
+  what was learnt from a nudge (`IntensityLearning`) is only for a fixture the
+  patch doesn't know (it used to win, so channels learnt on an old show were
+  read on the next). `deckSet(level:)` after every level the deck sets at once
+  (not flashes or fades; a failed key cancels it): 3 s on, a reading that
+  isn't within `followTolerance` isn't shown or used until one does follow (a
+  master below full, a programmer fade, the wrong channel made "-10%" go up).
+  `whyNotLive` says why there's no live level, on the Deck tab's selection
+  card; the Remote strip shows a remembered level fainter with a clock.
 - **Desk link** (`App/DeskLink.swift`): port 4430 is its own user with its own
   programmer and selection (Avolites, 2021: selection is "just handled in the
   user interface"). `webapi.enabled` in Titan's .exe.config (Titan 14+,

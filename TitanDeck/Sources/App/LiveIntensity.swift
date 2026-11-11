@@ -59,6 +59,18 @@ enum IntensityLearning {
         return Double(pair ? first : values.max() ?? first) / 255
     }
 
+    /// How far a reading may be from the level the deck set and still count
+    /// as following it: whole percents typed, 8-bit DMX, a little slack.
+    static let followTolerance = 0.04
+
+    /// The live reading is where the deck just put the level (both 0...1).
+    /// When it isn't (a group or grand master below full, a fade time on the
+    /// programmer, a dimmer curve, the wrong channels), a nudge worked out
+    /// from the reading lands somewhere else: "-10%" could go up.
+    static func follows(set: Double, read: Double) -> Bool {
+        abs(set - read) <= followTolerance
+    }
+
     /// A fixture's intensity channels from Titan's patch report, or nil when
     /// the Host doesn't know them (no personality found) or they'd run off
     /// the universe.

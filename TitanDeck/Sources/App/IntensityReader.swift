@@ -2,13 +2,16 @@
 import Foundation
 
 /// The selected fixture's live level, for the deck's flash key. Titan's
-/// WebAPI can't report a level, so it's read from the sACN Titan sends,
-/// through TitanDeck Host. Which channels are the fixture's intensity is
-/// learned the first time the deck nudges or flashes it (the channels that
-/// move with it), and remembered. Optionally (both off by default) Titan's
-/// patch report, read by the Host, gives the intensity channels straight
-/// away, and the Patch route finds the fixture's address to narrow the
-/// search. What's learnt from a nudge always wins over the report.
+/// WebAPI can't report a level, and its CITP link brings the patch and
+/// the selection (a visualiser gets live levels from Titan by sACN or
+/// Art-Net), so it's read from the sACN Titan sends, through TitanDeck
+/// Host. Titan's patch (over CITP, or a patch report) says which
+/// channels are the fixture's intensity. Only for a fixture the patch
+/// doesn't know are they learned the first time the deck nudges or flashes
+/// it (the channels that move with it), and remembered. Until 0.45.2 what
+/// was learnt won over the patch, so channels learnt on an old show kept
+/// being read on the next one. The reading is checked against what the
+/// deck sets (`deckSet`): one that doesn't follow isn't shown or used.
 @MainActor
 final class IntensityReader: ObservableObject {
     @Published var isEnabled: Bool {
@@ -36,6 +39,9 @@ final class IntensityReader: ObservableObject {
     @Published private(set) var level: Double?
     @Published private(set) var learned: [Int: [DmxSlot]]
     @Published private(set) var note: String?
+    /// Why there's no live level for the selected fixture, in a line for the
+    /// deck's selection card (0.45.2); nil when there is one, or nothing's selected.
+    @Published private(set) var whyNotLive: String?
 
     var onLevel: ((Double?) -> Void)?
 
@@ -57,8 +63,21 @@ final class IntensityReader: ObservableObject {
     /// The patch report by user number, and when it was fetched.
     private var patch: [Int: HostPatchFixture] = [:]
     private var patchRead: Date?
+    /// What the Host said was wrong with its patch, if anything.
+    private var patchProblem: String?
     private var poll: Task<Void, Never>?
     private var learning: Task<Void, Never>?
+    /// The latest reading, shown or not.
+    private var raw: Double?
+    /// Fixtures whose reading didn't follow a level the deck set, and why.
+    /// Until one does, the deck goes by what it set itself.
+    private var distrusted: [Int: String] = [:]
+    private var followCheck: Task<Void, Never>?
+    /// Reads in a row the Host didn't answer.
+    private var misses = 0
+    /// Long enough for the line to be typed on the desk, Titan to output it
+    /// and the Host to hear it.
+    static let followDelay: Duration = .seconds(3)
     /// Until a fixture is learnt: the whole of every universe, kept fresh,
     /// so a press has a "before" without waiting for one.
     private var recent: (taken: Date, levels: IntensityLearning.Snapshot)?
@@ -89,8 +108,44 @@ final class IntensityReader: ObservableObject {
         learned = [:]
         addresses = [:]
         lookedUp = []
+        distrusted = [:]
         defaults.removeObject(forKey: Keys.learned)
         refresh()
+    }
+
+    /// The deck has just set the selection to this level (0...1), at once
+    /// (not a fade). A few seconds on, the reading should be there; if it
+    /// isn't, it isn't this fixture's level as the deck sets it, so it's not
+    /// shown or used for the next nudge until one does follow.
+    func deckSet(level expected: Double) {
+        followCheck?.cancel()
+        guard isEnabled, let fixture else { return }
+        followCheck = Task { [weak self] in
+            try? await Task.sleep(for: Self.followDelay)
+            guard !Task.isCancelled, let self, self.fixture == fixture, let read = self.raw else { return }
+            if IntensityLearning.follows(set: expected, read: read) {
+                guard self.distrusted.removeValue(forKey: fixture) != nil else { return }
+                self.whyNotLive = nil
+                self.setLevel(read)
+            } else {
+                let why = "Fixture \(fixture) reads \(Self.percent(read)) on sACN after the deck set \(Self.percent(expected)), so the reading isn't shown: a master below full, a fade time, or not its intensity channel."
+                self.distrusted[fixture] = why
+                self.whyNotLive = why
+                self.note = why
+                self.setLevel(nil)
+            }
+        }
+    }
+
+    /// The level the deck was about to check for didn't go out (the key
+    /// failed), or is about to change on purpose (a flash, a fade).
+    func cancelFollowCheck() {
+        followCheck?.cancel()
+        followCheck = nil
+    }
+
+    private static func percent(_ level: Double) -> String {
+        "\(Int((min(max(level, 0), 1) * 100).rounded()))%"
     }
 
     /// Call just before the deck sends an action. If it moves the selected
@@ -135,17 +190,37 @@ final class IntensityReader: ObservableObject {
         poll?.cancel()
         poll = nil
         recent = nil
+        raw = nil
+        misses = 0
+        followCheck?.cancel()
+        followCheck = nil
         setLevel(nil)
-        guard isEnabled, let fixture else { return }
+        whyNotLive = nil
+        guard let fixture else { return }
+        guard isEnabled else {
+            whyNotLive = "Live intensity is off (Settings > Desk)."
+            return
+        }
         poll = Task { [weak self] in
             await self?.loadPatch()
             await self?.lookUpAddress(fixture)
             while !Task.isCancelled {
                 guard let self else { return }
+                guard let host = self.host() else {
+                    self.whyNotLive = "Live levels need TitanDeck Host paired: it hears the sACN Titan sends."
+                    try? await Task.sleep(nanoseconds: 1_000_000_000)
+                    continue
+                }
                 if self.slots(for: fixture) == nil {
                     // Not learnt yet: keep a fresh "before" for the next nudge.
-                    if let host = self.host(), let levels = await self.snapshot(host) {
+                    await self.loadPatch()
+                    let levels = await self.snapshot(host)
+                    guard !Task.isCancelled, self.fixture == fixture else { return }
+                    if let levels {
                         self.recent = (Date(), levels)
+                        self.whyNotLive = self.whyNoChannels(fixture)
+                    } else {
+                        self.whyNotLive = Self.noSacn
                     }
                     try? await Task.sleep(nanoseconds: 500_000_000)
                 } else {
@@ -156,9 +231,27 @@ final class IntensityReader: ObservableObject {
         }
     }
 
-    /// Learnt from a nudge, else from the patch report.
+    private static let noSacn = "TitanDeck Host doesn't hear any sACN from Titan. Titan needs sACN on its DMX lines (System > DMX Settings; it can sit alongside Art-Net or the DMX sockets)."
+
+    /// Why the patch doesn't give this fixture's intensity channels.
+    private func whyNoChannels(_ fixture: Int) -> String {
+        guard usesPatchReport else {
+            return "Use Titan's patch is off (Settings > Desk), so fixture \(fixture)'s intensity channel isn't known until the deck nudges it."
+        }
+        if let entry = patch[fixture] {
+            return "Fixture \(fixture) is in Titan's patch at \(entry.universe).\(entry.address), but TitanDeck Host couldn't find its personality, so its intensity channel isn't known until the deck nudges it."
+        }
+        if patch.isEmpty {
+            return patchProblem ?? "TitanDeck Host has no patch from Titan yet (CITP not linked, and no patch report)."
+        }
+        return "Fixture \(fixture) isn't in the patch TitanDeck Host has from Titan."
+    }
+
+    /// From Titan's patch, else (a fixture the patch doesn't know) learnt
+    /// from a nudge. The patch is the show's as it is now; what was learnt
+    /// may be from another show, with the fixture somewhere else.
     private func slots(for fixture: Int) -> [DmxSlot]? {
-        learned[fixture] ?? patch[fixture].flatMap(IntensityLearning.slots(for:))
+        patch[fixture].flatMap(IntensityLearning.slots(for:)) ?? learned[fixture]
     }
 
     /// The patch report, fetched again when it's more than 30 s old.
@@ -167,9 +260,11 @@ final class IntensityReader: ObservableObject {
         if let patchRead, Date().timeIntervalSince(patchRead) < 30 { return }
         patchRead = Date()
         guard let report = try? await host.patch() else {
+            patchProblem = "TitanDeck Host didn't send a patch."
             note = "TitanDeck Host didn't send a patch (it needs Host 0.6 or later)."
             return
         }
+        patchProblem = report.fixtures.isEmpty ? report.problem : nil
         patch = Dictionary(report.fixtures.map { ($0.user, $0) }, uniquingKeysWith: { first, _ in first })
         guard let fixture, learned[fixture] == nil else { return }
         if let entry = patch[fixture] {
@@ -203,6 +298,7 @@ final class IntensityReader: ObservableObject {
     private func read(_ fixture: Int) async {
         await loadPatch()
         guard let slots = slots(for: fixture), let host = host() else {
+            raw = nil
             setLevel(nil)
             return
         }
@@ -210,8 +306,25 @@ final class IntensityReader: ObservableObject {
         for (universe, inUniverse) in Dictionary(grouping: slots, by: \.universe) {
             let first = inUniverse.map(\.address).min() ?? 1
             let last = inUniverse.map(\.address).max() ?? first
-            guard let answer = try? await host.dmx(universe: universe, start: first, count: last - first + 1) else {
+            let answer: HostDmxLevels
+            do {
+                answer = try await host.dmx(universe: universe, start: first, count: last - first + 1)
+            } catch {
+                guard !Task.isCancelled, self.fixture == fixture else { return }
+                if case HostError.server(404, _) = error {
+                    // The Host is there, but Titan isn't sending that universe as sACN.
+                    raw = nil
+                    setLevel(nil)
+                    whyNotLive = "TitanDeck Host hears no sACN for universe \(universe), where fixture \(fixture)'s intensity is (\(Self.describe(slots))). Titan needs sACN on that DMX line (System > DMX Settings; it can sit alongside Art-Net or the DMX sockets)."
+                    return
+                }
+                // The Host didn't answer: one missed read isn't worth
+                // blanking the level for, a run of them is.
+                misses += 1
+                guard misses >= 3 else { return }
+                raw = nil
                 setLevel(nil)
+                whyNotLive = "TitanDeck Host isn't answering, so there's no live level: \(error.localizedDescription)"
                 return
             }
             var levels = [Int](repeating: 0, count: 512)
@@ -220,14 +333,23 @@ final class IntensityReader: ObservableObject {
             }
             snapshot[universe] = levels
         }
-        guard self.fixture == fixture else { return }
-        setLevel(IntensityLearning.level(of: slots, in: snapshot))
+        guard !Task.isCancelled, self.fixture == fixture else { return }
+        misses = 0
+        raw = IntensityLearning.level(of: slots, in: snapshot)
+        if let why = distrusted[fixture] {
+            // Read, but not following the deck: not shown until it does.
+            whyNotLive = why
+            setLevel(nil)
+            return
+        }
+        whyNotLive = raw == nil ? "The sACN for fixture \(fixture) couldn't be read." : nil
+        setLevel(raw)
     }
 
     /// Every universe the Host hears, in full.
     private func snapshot(_ host: HostClient) async -> IntensityLearning.Snapshot? {
         guard let summary = try? await host.dmxSummary(), !summary.universes.isEmpty else {
-            note = "TitanDeck Host doesn't hear any sACN from Titan yet."
+            note = Self.noSacn
             return nil
         }
         var snapshot: IntensityLearning.Snapshot = [:]

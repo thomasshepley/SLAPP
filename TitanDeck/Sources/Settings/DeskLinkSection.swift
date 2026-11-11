@@ -82,7 +82,7 @@ struct DeskLinkSection: View {
                 }
             }
         } footer: {
-            Text("Reads the selected fixture's level from the sACN Titan sends, through TitanDeck Host\(host.isPaired ? "" : " (pair with the Host first)"). The first time you nudge or flash a fixture from the deck, TitanDeck learns which channels are its intensity, then the flash key shows its level. With Titan's patch report, the Host already knows them, so the level shows straight away (a nudge still corrects it). \(showMode ? "" : "Find addresses with Patch asks Titan's patch editor for the fixture's address first, on the deck's own WebAPI user only, never your desk's Patch window.")")
+            Text("Reads the selected fixture's level from the sACN Titan sends, through TitanDeck Host\(host.isPaired ? "" : " (pair with the Host first)"). CITP brings Titan's patch and selection; the levels come from sACN, so Titan needs sACN on its DMX lines (System > DMX Settings; it can sit alongside Art-Net or the DMX sockets). Titan's patch says which channels are a fixture's intensity, so the level shows as soon as it's selected; for a fixture the patch doesn't know, TitanDeck learns them the first time you nudge it from the deck. A reading that doesn't follow what the deck sets isn't used. \(showMode ? "" : "Find addresses with Patch asks Titan's patch editor for the fixture's address first, on the deck's own WebAPI user only, never your desk's Patch window.")")
         }
     }
 

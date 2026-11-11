@@ -340,9 +340,15 @@ struct SelectionStrip: View {
                     }
                     if let level = deck.liveLevel ?? deck.typedLevel {
                         Divider().frame(height: 12)
-                        Label(DeckFlow.percentText(level), systemImage: "light.max")
+                        // A level the deck only remembers (no live reading)
+                        // shows fainter, with a clock: it may not be the level now.
+                        Label(DeckFlow.percentText(level), systemImage: deck.liveLevel == nil ? "clock.arrow.circlepath" : "light.max")
                             .labelStyle(.titleAndIcon)
+                            .foregroundStyle(deck.liveLevel == nil ? .secondary : .primary)
                             .fixedSize()
+                            .accessibilityLabel(deck.liveLevel == nil
+                                ? "Level \(DeckFlow.percentText(level)), as the deck last set it, not live"
+                                : "Level \(DeckFlow.percentText(level))")
                     }
                     if let kelvin = deck.currentKelvin {
                         Divider().frame(height: 12)

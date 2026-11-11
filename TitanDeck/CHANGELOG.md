@@ -7,6 +7,14 @@ the GitHub Actions run that built it. The top entry is shown in the app
 so add an entry - and bump `MARKETING_VERSION` in `project.yml` to match -
 with every change that goes to `main`.
 
+## 0.45.2 - 2026-11-11 - Steadier live levels, and the deck says when a level isn't live
+
+- **Fixed: a quick key could send the level the wrong way** ("-10%" went up). The deck works a nudge out from the fixture's live level, and that reading isn't always the level the desk holds: a group or grand master below full, a fade time on the programmer, or the wrong channel all make it read something else. Now, each time the deck sets a level it checks the reading gets there. If it doesn't, the reading is dropped for that fixture and the deck goes by what it set itself, until a reading follows again.
+- **Fixed: readings from an old show.** The channels the deck once "learnt" for a fixture number won over Titan's own patch, so on a new show, with that number patched somewhere else, it kept reading the old channels. Titan's patch (over CITP) now wins; learning is only for a fixture the patch doesn't know.
+- **The deck says when a level isn't live, and why.** The Deck tab's selection card shows a line under the level when there's no live reading: the Host hears no sACN from Titan, not on that fixture's universe, the fixture isn't in Titan's patch, or the reading didn't follow the deck. On the Remote screen a level the deck only remembers shows fainter, with a clock.
+- Live levels come from the sACN Titan sends, heard by TitanDeck Host. CITP gives the deck Titan's patch and selection; as far as I can find, Titan sends its live levels by sACN or Art-Net, to a visualiser too, not over CITP. If the card says the Host hears no sACN, add sACN to the DMX lines in Titan (System > DMX Settings); it can sit alongside Art-Net or the DMX sockets.
+- One missed read from the Host no longer blanks the level.
+
 ## 0.45.1 - 2026-11-11 - CLEAR clears the selection first, groups select on the desk
 
 - **Fixed: CLEAR cleared everything in one press.** Since 0.45.0 one press cleared the selection and every programmer, so the levels you'd just set went with it. It's back to steps, like the desk: with something typed it clears the line; with fixtures selected it clears only the selection and the levels stay; press it again with nothing selected and it clears the programmers.

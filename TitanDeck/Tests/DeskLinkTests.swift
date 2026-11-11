@@ -60,6 +60,14 @@ final class TitanSelectionParserTests: XCTestCase {
 }
 
 final class IntensityLearningTests: XCTestCase {
+    func testAReadingThatFollowsWhatTheDeckSetIsTrusted() {
+        XCTAssertTrue(IntensityLearning.follows(set: 0.5, read: 128.0 / 255))
+        XCTAssertTrue(IntensityLearning.follows(set: 0.5, read: 0.53), "a little out is rounding")
+        XCTAssertTrue(IntensityLearning.follows(set: 0, read: 0))
+        XCTAssertFalse(IntensityLearning.follows(set: 0.5, read: 0.25), "a master at half: a nudge from 25% would jump")
+        XCTAssertFalse(IntensityLearning.follows(set: 0.4, read: 0.8), "still where it was: not this fixture's channel, or a fade")
+    }
+
     private func universe(_ set: [Int: Int]) -> [Int] {
         var levels = [Int](repeating: 0, count: 512)
         for (address, level) in set { levels[address - 1] = level }
