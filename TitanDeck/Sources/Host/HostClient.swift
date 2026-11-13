@@ -259,6 +259,41 @@ struct HostClient: Sendable {
         return try await send(request)
     }
 
+    // MARK: - Levels (Host 0.20+)
+
+    /// The most fixtures asked about at once.
+    static let maxLevelFixtures = 400
+
+    /// These fixtures' levels now, worked out by the Host from sACN and
+    /// Titan's patch. An older Host answers 404 (`HostError.server(404, _)`).
+    func levels(users: [Int]) async throws -> HostLevels {
+        let wanted = users.prefix(Self.maxLevelFixtures).map(String.init).joined(separator: ",")
+        var request = try request("levels", query: [URLQueryItem(name: "users", value: wanted)])
+        request.timeoutInterval = 1.5
+        return try await send(request)
+    }
+
+    /// The deck is about to set these fixtures to a level (0...1): the Host
+    /// watches which of their channels get there, and so learns where that
+    /// fixture type's dimmer is.
+    func expectLevel(users: [Int], level: Double) async throws {
+        var request = try request("levels/expect", method: "POST")
+        request.timeoutInterval = 2
+        request.httpBody = try HostAPI.encoder.encode(HostLevelsExpect(fixtures: Array(users.prefix(Self.maxLevelFixtures)),
+                                                                        level: min(max(level, 0), 1)))
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        let (data, response) = try await transport { try await Self.session.data(for: request) }
+        try check(response, body: data)
+    }
+
+    /// Forgets every dimmer channel the Host has learnt (a new rig).
+    func forgetLevels() async throws {
+        var request = try request("levels/forget", method: "POST")
+        request.timeoutInterval = 3
+        let (data, response) = try await transport { try await Self.session.data(for: request) }
+        try check(response, body: data)
+    }
+
     /// Levels (0-255) of one universe from `start` (1-based).
     func dmx(universe: Int, start: Int = 1, count: Int = 512) async throws -> HostDmxLevels {
         var request = try request("dmx/\(universe)", query: [URLQueryItem(name: "start", value: "\(start)"),

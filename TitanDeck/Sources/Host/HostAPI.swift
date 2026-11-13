@@ -154,6 +154,30 @@ struct HostDmxLevels: Codable, Equatable {
     let ageMs: Int
 }
 
+/// One fixture's level now (0...1), or why the Host hasn't got one.
+/// `source` is how its dimmer channel is known: "learnt", "personality" or "dimmer".
+struct HostFixtureLevel: Codable, Equatable {
+    let user: Int
+    let level: Double?
+    let why: String?
+    let source: String?
+    let universe: Int?
+}
+
+/// `GET /api/v1/levels?users=404,405` (Host 0.20+): fixtures' levels, worked
+/// out on the PC from the sACN it hears and Titan's patch.
+struct HostLevels: Codable, Equatable {
+    let fixtures: [HostFixtureLevel]
+    let hearing: [Int]?
+    let problem: String?
+}
+
+/// `POST /api/v1/levels/expect`: the deck is about to set these fixtures to a level (0...1).
+struct HostLevelsExpect: Codable, Equatable {
+    let fixtures: [Int]
+    let level: Double
+}
+
 /// `GET /api/v1/patch` (Host 0.6+): the show's patch from Titan's patch
 /// report (Disk > Reports), with each fixture's intensity channels when the
 /// Host found its personality.

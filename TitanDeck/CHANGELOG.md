@@ -7,6 +7,15 @@ the GitHub Actions run that built it. The top entry is shown in the app
 so add an entry - and bump `MARKETING_VERSION` in `project.yml` to match -
 with every change that goes to `main`.
 
+## 0.46.0 - 2026-11-13 - Levels tracked properly (with TitanDeck Host 0.20)
+
+- **Fixture levels now come from TitanDeck Host 0.20, which tracks every patched fixture on the Titan PC.** Update the Host as well. A fixture's level shows as soon as it's selected, with no nudge first.
+- **Fixed: nudging to "teach" a fixture its level never worked with the keypad typing on the desk.** The deck refused the nudge because it didn't know the level, so there was nothing to learn from; and fixtures on higher universes (your 404 on 17, 306 on 12) weren't being listened to at all. The Host now listens on every universe in the patch.
+- **If Titan's personality for a fixture can't be found, set a level once from the keypad** ("@ 50" on one fixture). The Host learns where the dimmer is for every fixture of that type, and keeps it.
+- **Several fixtures selected:** the selection card says when they aren't all at one level ("at 30% to 80%").
+- **When there's no level, the card and Settings > Desk say exactly why**, in the Host's words: nothing heard on that universe, dimmer channel not known yet, or not in the patch. A DMX line that only goes out of the DMX sockets can't be heard: give it sACN in Titan as well (a line can have both).
+- With an older Host everything works as it did in 0.45.2.
+
 ## 0.45.2 - 2026-11-11 - Steadier live levels, and the deck says when a level isn't live
 
 - **Fixed: a quick key could send the level the wrong way** ("-10%" went up). The deck works a nudge out from the fixture's live level, and that reading isn't always the level the desk holds: a group or grand master below full, a fade time on the programmer, or the wrong channel all make it read something else. Now, each time the deck sets a level it checks the reading gets there. If it doesn't, the reading is dropped for that fixture and the deck goes by what it set itself, until a reading follows again.

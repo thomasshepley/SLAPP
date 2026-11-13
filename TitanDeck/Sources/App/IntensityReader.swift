@@ -1,6 +1,14 @@
 // App/IntensityReader.swift
 import Foundation
 
+/// The selected fixtures' live levels, for the deck's flash key and
+/// selection card. With TitanDeck Host 0.20 or later the Host does the
+/// work (`readFromHost`): it tracks every patched fixture's level on the
+/// Titan PC, listens on every universe the patch uses, and learns a fixture
+/// type's dimmer channel the first time the deck sets a level on one
+/// (`willSet`). What follows is the way it was done before, still used
+/// with an older Host:
+///
 /// The selected fixture's live level, for the deck's flash key. Titan's
 /// WebAPI can't report a level, and its CITP link brings the patch and
 /// the selection (a visualiser gets live levels from Titan by sACN or
@@ -37,6 +45,10 @@ final class IntensityReader: ObservableObject {
     }
     /// 0...1, or nil when it isn't known.
     @Published private(set) var level: Double?
+    /// Every selected fixture's live level by fixture number (Host 0.20+).
+    @Published private(set) var levels: [Int: Double] = [:]
+    /// The Host tracks levels itself (0.20+), so it's the one that learns.
+    @Published private(set) var hostTracksLevels = false
     @Published private(set) var learned: [Int: [DmxSlot]]
     @Published private(set) var note: String?
     /// Why there's no live level for the selected fixture, in a line for the
@@ -58,6 +70,11 @@ final class IntensityReader: ObservableObject {
     private let host: @MainActor () -> HostClient?
     private let deskLinked: @MainActor () -> Bool
     private var fixture: Int?
+    /// The whole selection, `fixture` first.
+    private var fixtures: [Int] = []
+    private enum Tracking { case unknown, yes, no }
+    /// Whether the Host answers `levels` (0.20+); asked again with each selection.
+    private var hostTracking = Tracking.unknown
     private var addresses: [Int: DmxAddress] = [:]
     private var lookedUp: Set<Int> = []
     /// The patch report by user number, and when it was fetched.
@@ -97,11 +114,25 @@ final class IntensityReader: ObservableObject {
         } ?? [:]
     }
 
-    /// The fixture the deck is showing intensity keys for, or nil.
-    func setFixture(_ newFixture: Int?) {
-        guard newFixture != fixture else { return }
-        fixture = newFixture
+    /// The fixtures the deck is showing intensity keys for (the first is
+    /// the one the keys go by), or none.
+    func setFixtures(_ selected: [Int]) {
+        guard selected != fixtures else { return }
+        fixtures = selected
+        fixture = selected.first
         refresh()
+    }
+
+    /// One fixture, or none.
+    func setFixture(_ fixture: Int?) {
+        setFixtures(fixture.map { [$0] } ?? [])
+    }
+
+    /// The selection's lowest and highest live level, when its fixtures aren't all at one.
+    var spread: ClosedRange<Double>? {
+        let shown = fixtures.compactMap { levels[$0] }
+        guard shown.count > 1, let low = shown.min(), let high = shown.max(), high - low > 0.015 else { return nil }
+        return low ... high
     }
 
     func forgetLearned() {
@@ -110,7 +141,16 @@ final class IntensityReader: ObservableObject {
         lookedUp = []
         distrusted = [:]
         defaults.removeObject(forKey: Keys.learned)
+        if let host = host() { Task { try? await host.forgetLevels() } }
         refresh()
+    }
+
+    /// The deck is about to set these fixtures to a level (0...1), at once.
+    /// TitanDeck Host (0.20+) watches which of their channels get there:
+    /// that's the dimmer, for every fixture of that type from then on.
+    func willSet(level: Double, fixtures: [Int]) {
+        guard isEnabled, hostTracking != .no, !fixtures.isEmpty, let host = host() else { return }
+        Task { try? await host.expectLevel(users: fixtures, level: level) }
     }
 
     /// The deck has just set the selection to this level (0...1), at once
@@ -195,7 +235,9 @@ final class IntensityReader: ObservableObject {
         followCheck?.cancel()
         followCheck = nil
         setLevel(nil)
+        if !levels.isEmpty { levels = [:] }
         whyNotLive = nil
+        if hostTracking == .no { hostTracking = .unknown }   // the Host may have been updated since
         guard let fixture else { return }
         guard isEnabled else {
             whyNotLive = "Live intensity is off (Settings > Desk)."
@@ -209,6 +251,11 @@ final class IntensityReader: ObservableObject {
                 guard let host = self.host() else {
                     self.whyNotLive = "Live levels need TitanDeck Host paired: it hears the sACN Titan sends."
                     try? await Task.sleep(nanoseconds: 1_000_000_000)
+                    continue
+                }
+                // Host 0.20+: it tracks the levels itself.
+                if self.hostTracking != .no, await self.readFromHost(host, fixture: fixture) {
+                    try? await Task.sleep(nanoseconds: 250_000_000)
                     continue
                 }
                 if self.slots(for: fixture) == nil {
@@ -229,6 +276,51 @@ final class IntensityReader: ObservableObject {
                 }
             }
         }
+    }
+
+    /// The selection's levels from the Host's tracker. False for a Host
+    /// that hasn't got one (before 0.20): the old way is used instead.
+    private func readFromHost(_ host: HostClient, fixture: Int) async -> Bool {
+        let answer: HostLevels
+        do {
+            answer = try await host.levels(users: fixtures)
+        } catch {
+            guard !Task.isCancelled, self.fixture == fixture else { return true }
+            if case HostError.server(404, _) = error {
+                hostTracking = .no
+                if hostTracksLevels { hostTracksLevels = false }
+                return false
+            }
+            // One missed read isn't worth blanking the level for, a run of them is.
+            misses += 1
+            guard misses >= 3 else { return true }
+            raw = nil
+            if !levels.isEmpty { levels = [:] }
+            setLevel(nil)
+            whyNotLive = "TitanDeck Host isn't answering, so there's no live level: \(error.localizedDescription)"
+            return true
+        }
+        guard !Task.isCancelled, self.fixture == fixture else { return true }
+        hostTracking = .yes
+        if !hostTracksLevels { hostTracksLevels = true }
+        misses = 0
+        var found: [Int: Double] = [:]
+        for entry in answer.fixtures {
+            if let level = entry.level { found[entry.user] = level }
+        }
+        if found != levels { levels = found }
+        let first = answer.fixtures.first { $0.user == fixture }
+        raw = first?.level
+        if raw != nil, let why = distrusted[fixture] {
+            // Read, but not following the deck: not shown until it does.
+            whyNotLive = why
+            setLevel(nil)
+            return true
+        }
+        let why = raw == nil ? (first?.why ?? answer.problem ?? "TitanDeck Host has no level for fixture \(fixture).") : nil
+        if why != whyNotLive { whyNotLive = why }
+        setLevel(raw)
+        return true
     }
 
     private static let noSacn = "TitanDeck Host doesn't hear any sACN from Titan. Titan needs sACN on its DMX lines (System > DMX Settings; it can sit alongside Art-Net or the DMX sockets)."

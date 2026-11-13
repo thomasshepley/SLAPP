@@ -76,13 +76,19 @@ struct DeskLinkSection: View {
                 if let note = intensity.note {
                     Text(note).font(.caption).foregroundStyle(.secondary)
                 }
-                if !intensity.learned.isEmpty {
+                if let why = intensity.whyNotLive, why != intensity.note {
+                    Text(why).font(.caption).foregroundStyle(.secondary)
+                }
+                if intensity.hostTracksLevels {
+                    // Host 0.20+: it learns dimmer channels by fixture type, and keeps them on the PC.
+                    Button("Forget learnt dimmer channels", role: .destructive) { intensity.forgetLearned() }
+                } else if !intensity.learned.isEmpty {
                     Button("Forget \(intensity.learned.count) learnt fixture\(intensity.learned.count == 1 ? "" : "s")",
                            role: .destructive) { intensity.forgetLearned() }
                 }
             }
         } footer: {
-            Text("Reads the selected fixture's level from the sACN Titan sends, through TitanDeck Host\(host.isPaired ? "" : " (pair with the Host first)"). CITP brings Titan's patch and selection; the levels come from sACN, so Titan needs sACN on its DMX lines (System > DMX Settings; it can sit alongside Art-Net or the DMX sockets). Titan's patch says which channels are a fixture's intensity, so the level shows as soon as it's selected; for a fixture the patch doesn't know, TitanDeck learns them the first time you nudge it from the deck. A reading that doesn't follow what the deck sets isn't used. \(showMode ? "" : "Find addresses with Patch asks Titan's patch editor for the fixture's address first, on the deck's own WebAPI user only, never your desk's Patch window.")")
+            Text("TitanDeck Host (0.20 or later) tracks every patched fixture's level on the Titan PC\(host.isPaired ? "" : " (pair with the Host first)"), from the sACN Titan sends and Titan's patch over CITP. A line that only goes out of the DMX sockets can't be heard: give it sACN as well in Titan (System > DMX Settings; a line can have both). Where a fixture's dimmer is comes from Titan's personality, or the Host learns it for that fixture type the first time you set a level on one from the deck's keypad (\"@ 50\"). A reading that doesn't follow what the deck sets isn't used. \(showMode ? "" : "Find addresses with Patch asks Titan's patch editor for the fixture's address first, on the deck's own WebAPI user only, never your desk's Patch window.")")
         }
     }
 

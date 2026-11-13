@@ -312,6 +312,14 @@ support posts):
   master below full, a programmer fade, the wrong channel made "-10%" go up).
   `whyNotLive` says why there's no live level, on the Deck tab's selection
   card; the Remote strip shows a remembered level fainter with a clock.
+  **With Host 0.20+ the Host tracks levels (0.46):** `readFromHost` polls
+  `GET /levels?users=` for the whole selection (`levels`, `spread`), and
+  `willSet(level:fixtures:)` goes to the Host **before** a level is typed
+  (keypad "@" lines and nudges, not flashes or fades) so it can learn that
+  fixture type's dimmer channel. A 404 means an older Host: everything
+  above is then done on the iPad as before. The user's rig: fixtures on
+  universes 12 and 17, some lines on the DMX sockets only (those can't be
+  heard without sACN on the line too).
 - **Desk link** (`App/DeskLink.swift`): port 4430 is its own user with its own
   programmer and selection (Avolites, 2021: selection is "just handled in the
   user interface"). `webapi.enabled` in Titan's .exe.config (Titan 14+,

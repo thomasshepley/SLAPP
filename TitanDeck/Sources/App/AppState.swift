@@ -286,7 +286,7 @@ final class AppState: ObservableObject {
                     await self.refreshCurrentKelvin()
                 }
             }
-            self.intensity.setFixture(fixtures.first)
+            self.intensity.setFixtures(fixtures)
             self.showTypedLevel()
             // Typed on the desk: the deck's WebAPI user selects the same fixtures,
             // so the intensity, flash and colour keys act on them. (Following the
@@ -442,7 +442,7 @@ final class AppState: ObservableObject {
             // The WebAPI's own programmer isn't the desk's: nudging or flashing
             // there did nothing you could see, or gave odd levels.
             finish(TitanResult(action: action, ok: false, statusCode: nil, milliseconds: 0,
-                               error: "TitanDeck doesn't know the level yet, so it can't nudge it or put it back after Hold for 0%: needs live levels (sACN through TitanDeck Host, with Titan's patch over CITP or a patch report), or set it once from the keypad (\"@ 50\")",
+                               error: "TitanDeck doesn't know the level yet, so it can't nudge it or put it back after Hold for 0%. Set it once from the keypad (\"@ 50\"): the level then shows, and TitanDeck Host learns where that fixture type's dimmer is. " + (intensity.whyNotLive ?? ""),
                                date: Date()),
                    keypadLine: keypadLine, keyIndex: keyIndex)
             return
@@ -493,6 +493,9 @@ final class AppState: ObservableObject {
             return currentLevel
         }()
         let fixtures = deck.selectedFixtures
+        if case .adjustIntensity(let percent) = action, let nudgedFrom {
+            intensity.willSet(level: DeskKeys.nudged(nudgedFrom * 100, by: percent) / 100, fixtures: fixtures)
+        }
         Task {
             let result = await client.perform(action)
             if result.ok, case .adjustIntensity(let percent) = action, let nudgedFrom {
@@ -608,6 +611,9 @@ final class AppState: ObservableObject {
             // The deck shows the new selection straight away (after this
             // call); if the line isn't typed, it goes back to this one.
             let before = deck.selectedFixtures
+            // The Host watches these fixtures for the level arriving: that's
+            // how it learns where their dimmer is.
+            if let level { intensity.willSet(level: level / 100, fixtures: fixtures ?? before) }
             Task {
                 let typed = await typeLine(action, keys: keys)
                 guard typed.ok else {
@@ -732,7 +738,10 @@ final class AppState: ObservableObject {
                 done(false, "TitanDeck couldn't read \"\(typing)\": a fixture number (\"101\", \"1 THRU 10\"), then @ and a level in two digits (\"@ 05\", \"@ 50\", \"@ @\" for full)", nil)
                 return true
             }
-            if let level { rememberTyped(level / 100, fixtures: fixtures ?? deck.selectedFixtures) }
+            if let level {
+                rememberTyped(level / 100, fixtures: fixtures ?? deck.selectedFixtures)
+                intensity.willSet(level: level / 100, fixtures: fixtures ?? deck.selectedFixtures)
+            }
             Task {
                 var problems: [String] = []
                 if let fixtures, !(await client.selectFixtures(userNumbers: fixtures)) {
@@ -1103,6 +1112,7 @@ final class AppState: ObservableObject {
             rememberTyped(target / 100)
             // The live reading should be there in a moment; if it isn't, it
             // isn't followed for the next nudge (a failed key cancels this).
+            intensity.willSet(level: target / 100, fixtures: deck.selectedFixtures)
             intensity.deckSet(level: target / 100)
             return DeskKeys.level(target)
         case .dimmerFlash(let down, _):

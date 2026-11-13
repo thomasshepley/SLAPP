@@ -52,6 +52,9 @@ public sealed class PatchReader(TitanLog log, HostModeStore mode, ILogger<PatchR
         }
     }
 
+    /// <summary>How many of Titan's personalities were found on this PC.</summary>
+    public int PersonalityCount => library.Count;
+
     public PatchDto Reload()
     {
         lock (gate)
@@ -244,25 +247,51 @@ public sealed class PatchReader(TitanLog log, HostModeStore mode, ILogger<PatchR
     private static IEnumerable<string> Special(Environment.SpecialFolder folder) =>
         Environment.GetFolderPath(folder) is { Length: > 0 } path ? [path] : [];
 
-    /// <summary>The user's own personalities first, then the factory library.</summary>
+    /// <summary>
+    /// The user's own personalities first, then the factory library. Titan 19
+    /// installs each part in a folder per version (Avolites\WebAPI\19.2.104.5),
+    /// so the library is looked for a few folders down, newest first (Host
+    /// 0.20: before, only Avolites\&lt;something&gt;\FixtureLibrary, which
+    /// found none on Titan 19), and in ProgramData too.
+    /// </summary>
     private static IEnumerable<string> PersonalityFolders()
     {
-        foreach (var documents in UserDocuments()) yield return Path.Combine(documents, "Titan", "Personalities");
-        yield return @"D:\Personalities";
-        foreach (var programs in Special(Environment.SpecialFolder.ProgramFiles).Concat(Special(Environment.SpecialFolder.ProgramFilesX86)).Distinct())
+        foreach (var documents in UserDocuments())
         {
-            var avolites = Path.Combine(programs, "Avolites");
-            string[] titans;
-            try
-            {
-                titans = Directory.Exists(avolites) ? Directory.GetDirectories(avolites) : [];
-            }
-            catch (Exception)
-            {
-                titans = [];
-            }
-            foreach (var titan in titans) yield return Path.Combine(titan, "FixtureLibrary");
+            yield return Path.Combine(documents, "Titan", "Personalities");
+            yield return Path.Combine(documents, "Avolites", "Titan", "Personalities");
         }
+        yield return @"D:\Personalities";
+        var roots = Special(Environment.SpecialFolder.ProgramFiles)
+            .Concat(Special(Environment.SpecialFolder.ProgramFilesX86))
+            .Concat(Special(Environment.SpecialFolder.CommonApplicationData))
+            .Distinct()
+            .Select(root => Path.Combine(root, "Avolites"));
+        foreach (var avolites in roots)
+            foreach (var library in Named(avolites, ["FixtureLibrary", "Personalities"], depth: 4))
+                yield return library;
         yield return @"D:\TitanData\FixtureLibrary";
+    }
+
+    /// <summary>Folders with one of these names under a root, a few levels down, newest version (by path) first.</summary>
+    internal static IReadOnlyList<string> Named(string root, string[] names, int depth)
+    {
+        try
+        {
+            if (!Directory.Exists(root)) return [];
+            return Directory.EnumerateDirectories(root, "*", new EnumerationOptions
+                {
+                    RecurseSubdirectories = true, MaxRecursionDepth = depth, IgnoreInaccessible = true,
+                })
+                .Where(path => names.Contains(Path.GetFileName(path), StringComparer.OrdinalIgnoreCase))
+                // Not a library inside a library.
+                .Where(path => !names.Contains(Path.GetFileName(Path.GetDirectoryName(path) ?? ""), StringComparer.OrdinalIgnoreCase))
+                .OrderByDescending(path => path, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+        catch (Exception)
+        {
+            return [];
+        }
     }
 }

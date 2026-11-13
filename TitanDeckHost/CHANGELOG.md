@@ -6,6 +6,15 @@ until it's show-ready (1.0): MINOR for features, PATCH for fixes. Keep
 (ChangelogTests checks). Each version is published as a GitHub release
 `host-v<version>` with the installer attached.
 
+## 0.20.0 - 2026-11-13 - Tracks every fixture's level
+
+- **New: the Host tracks every patched fixture's level itself**, for TitanDeck 0.46 (`GET /api/v1/levels`). It puts Titan's patch (over CITP) together with the sACN Titan sends, so the deck can show any fixture's level the moment it's selected, and each fixture's level when several are.
+- **Fixed: fixtures on higher universes never showed a level.** The Host only listened to sACN universes 1 to 4 unless it was asked for another, and it was only asked once a fixture's dimmer channel was known, which needed its universe to be heard first. It now listens on every universe the patch uses, straight away.
+- **Fixed: "the Host couldn't find its personality" on Titan 19.** Titan 19 keeps each part in a folder per version, and the Host only looked one folder down for Titan's fixture library. It now looks deeper, and in ProgramData.
+- **New: it learns where a fixture type's dimmer is from the deck.** When the personality isn't found, set a level on one fixture from the deck's keypad ("@ 50"). TitanDeck tells the Host first, the Host watches that fixture's own channels for the one that goes to 50%, and that's the dimmer for every fixture of that model and mode from then on (kept in ProgramData, shown in the Titan log as "Levels LEARNT"). Before, the iPad did this one fixture at a time, from nudges only.
+- The same watch notices when a DMX line goes out on a different sACN universe number from its own.
+- When there's no level it says why: no sACN heard on that universe (a line that only goes out of the DMX sockets can't be heard: give it sACN in Titan as well), the dimmer channel isn't known yet, or the fixture isn't in the patch.
+
 ## 0.19.1 - 2026-11-11 - Says what's really wrong with the service
 
 - **Fixed: the Host window said "the service isn't running" while Windows showed it running.** The window never asked Windows: it asked the service for its whole checklist and called anything short of a good answer "not running" - a slow answer, an error, a call that never arrived. Now it checks three things (does the service answer at all, did its checklist come back, what does Windows say) and the top of the window says which it is: stopped (with Start the service), running but not answering this window (with a new **Restart the service** button and the reason in brackets), still starting, not installed, or answering fine with only the checklist late - in which case pairing, files and the keypad carry on working.
