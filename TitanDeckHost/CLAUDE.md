@@ -55,6 +55,18 @@ TitanDeckHost/
   refused after 2 s). Only GitHub calls (`HostUpdater`, RDP Wrapper download) keep Windows' proxy settings.
 - **The status is one reading at a time** (`SharedAnswer`, kept 2 s, `Forget()` after a fix or a mode change), and
   the window never starts a refresh on top of one still running.
+- **Levels are tracked on the Host (0.20)**: `Core/Levels/LevelTracker` (pure, tested) + `Service/LevelService`.
+  `GET /api/v1/levels?users=` gives each fixture's level or a plain-English `why`; `POST /api/v1/levels/expect`
+  is TitanDeck saying "these fixtures are about to go to this level", which starts a 6 s watch of those fixtures'
+  own channels (`LevelLearning.Arrived`): the channel that gets there is the dimmer for that **fixture type**
+  (`TypeKey`: model|mode|channels), kept in `ProgramData\TitanDeck Host\levels.json`. Order: learnt on this rig,
+  then Titan's personality, then a one-channel fixture's only channel. The watch also finds a DMX line sent on
+  another sACN universe number. `LevelService.Listen` joins every universe up to the patch's highest line: before
+  0.20 only 1-4 plus ones asked for, so nothing on universe 17 was ever heard or learnt. Titan gives no levels
+  over the WebAPI or CITP; a line on the DMX sockets only can't be heard at all.
+- **Personalities:** `PatchReader.PersonalityFolders` looks for `FixtureLibrary` / `Personalities` up to 4 folders
+  under `Avolites` in Program Files, Program Files (x86) and ProgramData (Titan 19 nests by version). Not checked
+  on a real Titan 19 PC: the `why` text says how many were found.
 - **Anything that needs admin happens in the service**, never the window app.
 - **The iPad's API is paired.** Only `/api/v1/hello` and `/api/v1/pair` work
   without a token; match them exactly. Fixes that weaken the PC (Defender

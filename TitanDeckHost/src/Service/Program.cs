@@ -54,6 +54,7 @@ builder.Services.AddSingleton<DmxUniverses>();
 builder.Services.AddSingleton<SacnListener>();
 builder.Services.AddHostedService(services => services.GetRequiredService<SacnListener>());
 builder.Services.AddSingleton(new DeskTypeQueue());
+builder.Services.AddSingleton<LevelService>();
 builder.Services.AddSingleton<SlateService>();
 builder.Services.AddHostedService(services => services.GetRequiredService<SlateService>());
 builder.Services.AddSingleton<CitpService>();
@@ -170,6 +171,37 @@ network.MapGet("/titanlog", (long? after, TitanLog log) => TitanLogResult(log, a
 
 // Live sACN levels, for showing a fixture's intensity on the deck.
 network.MapGet("/dmx", (DmxUniverses store, SacnListener listener) => DmxSummary(store, listener));
+
+// Fixtures' levels now, worked out here from sACN and Titan's patch (Host 0.20):
+// "users=404,405" for those, or the whole patch. Expect is TitanDeck saying it's
+// about to set a level, so the Host can learn which channel is the dimmer.
+network.MapGet("/levels", (string? users, LevelService levels) =>
+{
+    List<int>? wanted = null;
+    if (!string.IsNullOrWhiteSpace(users))
+    {
+        wanted = [];
+        foreach (var part in users.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            if (!int.TryParse(part, out var user) || user <= 0) return Results.BadRequest(new { error = "users is fixture numbers, with commas." });
+            wanted.Add(user);
+        }
+        if (wanted.Count > 2000) return Results.BadRequest(new { error = "That's too many fixtures to ask for at once." });
+    }
+    return Results.Ok(levels.Levels(wanted));
+});
+network.MapPost("/levels/expect", (LevelsExpectRequest request, LevelService levels) =>
+{
+    if (request.Fixtures is not { Count: > 0 and <= 2000 } || request.Fixtures.Any(f => f <= 0) || !double.IsFinite(request.Level) || request.Level is < 0 or > 1)
+        return Results.BadRequest(new { error = "That isn't fixture numbers and a level from 0 to 1." });
+    levels.Expect(request.Fixtures.ToHashSet(), request.Level);
+    return Results.Ok();
+});
+network.MapPost("/levels/forget", (LevelService levels) =>
+{
+    levels.Forget();
+    return Results.Ok();
+});
 
 // The show's patch from Titan's patch report, for finding a fixture's intensity channel.
 network.MapGet("/patch", (PatchReader patch) => patch.Status());

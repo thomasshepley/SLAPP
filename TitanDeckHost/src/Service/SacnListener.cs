@@ -21,6 +21,7 @@ public sealed class SacnListener(DmxUniverses store, ILogger<SacnListener> log) 
     private static readonly TimeSpan RejoinEvery = TimeSpan.FromSeconds(30);
 
     private readonly ConcurrentDictionary<int, bool> wanted = new();
+    private readonly ConcurrentDictionary<int, string> joinErrors = new();
     private readonly HashSet<(int Universe, IPAddress Adapter)> joined = [];
     private readonly object joinGate = new();
     private Socket? socket;
@@ -36,6 +37,9 @@ public sealed class SacnListener(DmxUniverses store, ILogger<SacnListener> log) 
     }
 
     public IReadOnlyList<int> Listening => wanted.Keys.Order().ToList();
+
+    /// <summary>Why a universe couldn't be joined on any adapter, or null when it was (or hasn't been tried).</summary>
+    public string? JoinError(int universe) => joinErrors.GetValueOrDefault(universe);
 
     protected override async Task ExecuteAsync(CancellationToken stopping)
     {
@@ -88,6 +92,7 @@ public sealed class SacnListener(DmxUniverses store, ILogger<SacnListener> log) 
             foreach (var universe in wanted.Keys)
             {
                 var group = new IPAddress(SacnPacket.MulticastGroup(universe));
+                string? failed = null;
                 foreach (var adapter in adapters)
                 {
                     if (joined.Contains((universe, adapter))) continue;
@@ -99,9 +104,14 @@ public sealed class SacnListener(DmxUniverses store, ILogger<SacnListener> log) 
                     }
                     catch (SocketException error)
                     {
+                        failed = error.Message;
                         log.LogDebug("Couldn't join sACN universe {Universe} on {Adapter}: {Error}", universe, adapter, error.Message);
                     }
                 }
+                // Heard on one adapter is heard; not joined on any is worth saying (once, as a warning).
+                if (joined.Any(j => j.Universe == universe)) joinErrors.TryRemove(universe, out _);
+                else if (failed is not null && joinErrors.TryAdd(universe, failed))
+                    log.LogWarning("Couldn't listen to sACN universe {Universe} on any adapter: {Error}", universe, failed);
             }
         }
     }

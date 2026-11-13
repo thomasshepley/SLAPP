@@ -209,6 +209,13 @@ struct SelectionCard: View {
                         symbol: "thermometer.sun.fill",
                         tint: deck.currentKelvin.map { Color(kelvin: Double($0)) } ?? .primary)
             }
+            // The selection isn't all at one level (Host 0.20's tracker knows each).
+            if let spread = intensity.spread, deck.liveLevel != nil {
+                Text("Selected fixtures are at \(DeckFlow.percentText(spread.lowerBound)) to \(DeckFlow.percentText(spread.upperBound)). Quick keys go from the first one's level and set them all.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             // No live reading (0.45.2): say so, and why, so a level the deck
             // only remembers isn't taken for the fixture's level now.
             if !fixtures.isEmpty, deck.liveLevel == nil, let why = intensity.whyNotLive {

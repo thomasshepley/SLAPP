@@ -88,6 +88,18 @@ public sealed record DmxLevelsDto(int Universe, int Start, IReadOnlyList<int> Le
 /// it can't listen, if it can't.</summary>
 public sealed record DmxSummaryDto(IReadOnlyList<int> Universes, IReadOnlyList<int> Listening, string? Problem);
 
+/// <summary>One fixture's level now (0...1), or why there isn't one. Source is
+/// how its dimmer channel is known: "learnt", "personality" or "dimmer".</summary>
+public sealed record FixtureLevelDto(int User, double? Level, string? Why, string? Source, int Universe);
+
+/// <summary>Fixtures' levels (`GET /api/v1/levels?users=404,405`, the whole
+/// patch without `users`; Host 0.20), from the sACN this PC hears and Titan's patch.</summary>
+public sealed record LevelsDto(IReadOnlyList<FixtureLevelDto> Fixtures, IReadOnlyList<int> Hearing, string? Problem);
+
+/// <summary>TitanDeck is about to set these fixtures to a level (0...1)
+/// (`POST /api/v1/levels/expect`): the Host watches which of their channels get there.</summary>
+public sealed record LevelsExpectRequest(IReadOnlyList<int> Fixtures, double Level);
+
 /// <summary>Host updates (`GET /local/update`). Ready is the checked installer
 /// to run, with its SHA-256 so the window can check it again before running it.</summary>
 public sealed record UpdateStatusDto(string Current, string? Latest, bool Available, string? Notes, DateTimeOffset? Published,
