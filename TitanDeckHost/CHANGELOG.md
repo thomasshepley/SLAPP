@@ -6,6 +6,13 @@ until it's show-ready (1.0): MINOR for features, PATCH for fixes. Keep
 (ChangelogTests checks). Each version is published as a GitHub release
 `host-v<version>` with the installer attached.
 
+## 0.20.1 - 2026-11-16 - CITP keeps itself going, and levels from Titan's visualiser feed
+
+- **Fixed: "Waiting for Titan to connect" that never cleared.** CITP runs four jobs (announcing the Host, hearing announcements, taking Titan's connection, connecting out). If one hit a network error (the PC asleep, a cable out, an adapter changing) it stopped for good while the card still said it was waiting. Each job now restarts itself a few seconds later, and joins network adapters that come up afterwards. Until you've updated, Switch off then Switch on does the same by hand.
+- **The card says how the announcing is going:** which adapters it's announcing on, and whether the announcements come back round on this PC (if they do, Titan can hear them).
+- **Where Titan shows the Host:** Titan links by itself when it hears the Host, and lists it under Patch > Active Fixtures > CITP Visualisers. It was never going to be in DMX Settings: "Visualiser DMX" there is Titan's own built-in visualiser, and the card's old wording pointed you at the wrong place.
+- **New: levels for lines with no sACN, from Titan's visualiser feed.** Titan's manual lists the feed it sends its built-in visualiser ("LiveDMX", UDP 5584), which carries every DMX line whatever it goes out on. The Host now listens to it. If it reads the way sACN does, a fixture on a line that only goes out of the DMX sockets gets a level from it, once the feed has been checked against sACN on a universe that has both. If it doesn't read that way, the first few packets go in the Titan log marked LiveDMX, so the layout can be worked out from a real one. It only ever listens.
+
 ## 0.20.0 - 2026-11-13 - Tracks every fixture's level
 
 - **New: the Host tracks every patched fixture's level itself**, for TitanDeck 0.46 (`GET /api/v1/levels`). It puts Titan's patch (over CITP) together with the sACN Titan sends, so the deck can show any fixture's level the moment it's selected, and each fixture's level when several are.

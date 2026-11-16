@@ -54,6 +54,8 @@ builder.Services.AddSingleton<DmxUniverses>();
 builder.Services.AddSingleton<SacnListener>();
 builder.Services.AddHostedService(services => services.GetRequiredService<SacnListener>());
 builder.Services.AddSingleton(new DeskTypeQueue());
+builder.Services.AddSingleton<LiveDmxListener>();
+builder.Services.AddHostedService(services => services.GetRequiredService<LiveDmxListener>());
 builder.Services.AddSingleton<LevelService>();
 builder.Services.AddSingleton<SlateService>();
 builder.Services.AddHostedService(services => services.GetRequiredService<SlateService>());

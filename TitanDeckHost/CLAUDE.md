@@ -64,9 +64,22 @@ TitanDeckHost/
   another sACN universe number. `LevelService.Listen` joins every universe up to the patch's highest line: before
   0.20 only 1-4 plus ones asked for, so nothing on universe 17 was ever heard or learnt. Titan gives no levels
   over the WebAPI or CITP; a line on the DMX sockets only can't be heard at all.
+- **CITP's four jobs each restart themselves (0.20.1)**: `CitpService.KeepGoing` around Hear, Announce, Accept and
+  ConnectOut. Before, they sat under one `Task.WhenAll`, so one that faulted (a socket error after sleep or a
+  network change) was never noticed while Accept ran on: the card said "Waiting for Titan to connect" for days.
+  Accept owns its listener; Hear rejoins adapters every 30 s; `_problems` is per job. Titan links inbound when it
+  hears the Host's PLoc and lists it under Patch > Active Fixtures > CITP Visualisers (Titan's manual), never in
+  DMX Settings ("Visualiser DMX" there is the built-in Capture). Titan's manual: CITP is UDP 4809, multicast
+  224.0.0.180, then TCP.
+- **Titan's visualiser feed (0.20.1)**: `LiveDmxListener` on UDP 5584, groups 239.184.hi.lo ("LiveDMX" in the
+  manual's Ports used by Titan: "used for internal Visualiser DMX data"). Packet layout undocumented: tried as
+  sACN (`SacnPacket.ParseData`) into its own `DmxUniverses`; unreadable ones are sampled into the Titan log as hex
+  (who "LiveDMX"). `LevelService.Universe` uses sACN first, then the feed, only when `FeedMatch.Offset` (Core,
+  tested) lines its universe numbers up with sACN's (same, or one out); a checked match is kept. **Not seen on a
+  real Titan yet**: whether it's heard at all off the PC's loopback, and its layout, are unknown.
 - **Personalities:** `PatchReader.PersonalityFolders` looks for `FixtureLibrary` / `Personalities` up to 4 folders
-  under `Avolites` in Program Files, Program Files (x86) and ProgramData (Titan 19 nests by version). Not checked
-  on a real Titan 19 PC: the `why` text says how many were found.
+  under `Avolites` in Program Files, Program Files (x86) and ProgramData (Titan 19 nests by version). On the
+  user's Titan 19 PC (16 Nov): 21,062 personalities found, intensity channel known for 330 of 396 fixtures.
 - **Anything that needs admin happens in the service**, never the window app.
 - **The iPad's API is paired.** Only `/api/v1/hello` and `/api/v1/pair` work
   without a token; match them exactly. Fixes that weaken the PC (Defender

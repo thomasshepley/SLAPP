@@ -56,11 +56,16 @@ public sealed partial class MainViewModel
         CitpText = citp.Connected is { } connected
             ? $"Linked with {connected}{(citp.PeerShow is { } show ? $", show \"{show}\"" : "")}. {citp.Fixtures} fixtures known. "
               + (citp.Selection.Count == 0 ? "Nothing selected." : $"Selected: {Shorten(citp.Selection)}.")
-            : $"Waiting for Titan to connect ({listening}). In Titan, look for TitanDeck Host under the CITP / visualiser connections.";
-        CitpDetail = citp.Peers.Count == 0
-            ? "Nothing is announcing CITP yet."
+            // Titan links by itself when it hears the Host. It lists it under Patch >
+            // Active Fixtures > CITP Visualisers (Titan's manual), never in DMX
+            // Settings: "Visualiser DMX" there is Titan's own built-in visualiser.
+            : $"Waiting for Titan to connect ({listening}). Titan links by itself once it hears TitanDeck Host; " +
+              "it lists it under Patch > Active Fixtures > CITP Visualisers. (It won't be in DMX Settings: Visualiser DMX there is Titan's own built-in visualiser.)";
+        var heard = citp.Peers.Count == 0
+            ? "Nothing else heard announcing CITP (Titan links without being heard)."
             : string.Join("\n", citp.Peers.Select(p =>
                 $"{p.Type} \"{p.Name}\" at {p.Address}{(p.TcpPort > 0 ? ":" + p.TcpPort : "")} - {p.State}{(p.OnThisPc ? "" : " (another PC, ignored)")}"));
+        CitpDetail = citp.Announcing is { } announcing ? announcing + "\n" + heard : heard;
     }
 
     private static string Shorten(IReadOnlyList<int> fixtures) =>

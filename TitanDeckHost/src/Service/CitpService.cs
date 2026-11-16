@@ -49,7 +49,12 @@ public sealed class CitpService(HostPaths paths, TitanLog titanLog, PatchReader 
     private int _refusedSinceLogged;
     private DateTimeOffset _lastLinkLogged = DateTimeOffset.MinValue;
     private int? _listeningPort;
-    private string? _problem;
+    /// <summary>What's wrong with each of CITP's jobs, if anything, and when it was last logged.</summary>
+    private readonly ConcurrentDictionary<string, (string Text, DateTimeOffset Noted)> _problems = new();
+    private static readonly TimeSpan RestartAfter = TimeSpan.FromSeconds(3);
+    private IReadOnlyList<string> _announcedOn = [];
+    private DateTimeOffset? _announcedAt;
+    private DateTimeOffset? _heardOurselves;
 
     public bool Enabled
     {
@@ -106,7 +111,7 @@ public sealed class CitpService(HostPaths paths, TitanLog titanLog, PatchReader 
         {
             var snapshot = Latest();
             return new CitpSelectionDto(Active, snapshot is not null, snapshot?.PeerName,
-                snapshot?.Selection ?? [], snapshot?.Problem ?? _problem);
+                snapshot?.Selection ?? [], snapshot?.Problem ?? Problem);
         }
     }
 
@@ -124,8 +129,21 @@ public sealed class CitpService(HostPaths paths, TitanLog titanLog, PatchReader 
             var connected = snapshot is null ? null
                 : $"{snapshot.PeerName ?? "Titan"}{(links > 1 ? $" ({links} links)" : "")}";
             return new CitpStatusDto(Enabled, true, _running is not null, _listeningPort, peers, connected,
-                snapshot?.PeerShow, snapshot?.FixtureCount ?? 0, snapshot?.Selection ?? [], snapshot?.Problem ?? _problem);
+                snapshot?.PeerShow, snapshot?.FixtureCount ?? 0, snapshot?.Selection ?? [], snapshot?.Problem ?? Problem,
+                _running is null ? null : Announcing());
         }
+    }
+
+    /// <summary>How the announcing is going, for the card: where to, and whether it's coming back round.</summary>
+    private string Announcing()
+    {
+        var now = DateTimeOffset.UtcNow;
+        if (_announcedAt is not { } at || now - at > TimeSpan.FromSeconds(10) || _announcedOn.Count == 0)
+            return "Not announcing itself at the moment (it starts again by itself).";
+        var heard = _heardOurselves is { } own && now - own < TimeSpan.FromSeconds(10);
+        return $"Announcing itself every second on {string.Join(", ", _announcedOn)}. " +
+               (heard ? "The announcements come back round on this PC, so Titan can hear them."
+                      : "The announcements aren't coming back round on this PC, so Titan may not hear them.");
     }
 
     protected override async Task ExecuteAsync(CancellationToken stopping)
@@ -154,40 +172,73 @@ public sealed class CitpService(HostPaths paths, TitanLog titanLog, PatchReader 
         }
     }
 
-    /// <summary>While switched on: hear announcements, announce ourselves, take Titan's connection.</summary>
+    /// <summary>
+    /// While switched on: hear announcements, announce ourselves, take
+    /// Titan's connection. Each of the four jobs is kept going on its own
+    /// (Host 0.20.1): before, one that hit a network error (the PC asleep, a
+    /// cable out) stopped for good while the others carried on, so the card
+    /// said "Waiting for Titan to connect" until CITP was switched off and on.
+    /// </summary>
     private async Task Run(CancellationToken token)
     {
-        _problem = null;
-        TcpListener? listener = null;
+        _problems.Clear();
+        Note($"Announcing \"{OurName}\" as a CITP visualiser");
+        var started = DateTimeOffset.UtcNow;
         try
         {
-            listener = StartListener();
-            _listeningPort = ((IPEndPoint)listener.LocalEndpoint).Port;
-            Note($"Announcing \"{OurName}\" as a CITP visualiser, listening on TCP {_listeningPort}");
-            var started = DateTimeOffset.UtcNow;
             await Task.WhenAll(
-                Hear(token),
-                Announce(token),
-                Accept(listener, token),
-                ConnectOut(started, token));
-        }
-        catch (OperationCanceledException)
-        {
-            // switched off
-        }
-        catch (Exception error)
-        {
-            _problem = "CITP stopped: " + error.Message;
-            log.LogWarning("{Problem}", _problem);
-            Note(_problem, flagged: true);
+                KeepGoing("hearing announcements", Hear, token),
+                KeepGoing("announcing", Announce, token),
+                KeepGoing("taking Titan's connection", Accept, token),
+                KeepGoing("connecting to Titan", t => ConnectOut(started, t), token));
         }
         finally
         {
-            listener?.Stop();
             _listeningPort = null;
             Note("CITP stopped");
         }
     }
+
+    /// <summary>Runs one of CITP's jobs until CITP is switched off, starting it again a few seconds after it stops or fails.</summary>
+    private async Task KeepGoing(string what, Func<CancellationToken, Task> job, CancellationToken token)
+    {
+        while (!token.IsCancellationRequested)
+        {
+            try
+            {
+                await job(token);
+            }
+            catch (OperationCanceledException) when (token.IsCancellationRequested)
+            {
+                return;
+            }
+            catch (Exception error)
+            {
+                Trouble(what, $"CITP {what} stopped ({error.Message}). Starting it again.");
+            }
+            try
+            {
+                await Task.Delay(RestartAfter, token);
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+        }
+    }
+
+    /// <summary>Something wrong with one of the jobs: shown on the card, and logged when it's new (not every retry).</summary>
+    private void Trouble(string what, string problem)
+    {
+        var known = _problems.TryGetValue(what, out var before) && before.Text == problem
+                    && DateTimeOffset.UtcNow - before.Noted < TimeSpan.FromMinutes(10);
+        _problems[what] = (problem, known ? before.Noted : DateTimeOffset.UtcNow);
+        if (known) return;
+        log.LogWarning("{Problem}", problem);
+        Note(problem, flagged: true);
+    }
+
+    private string? Problem => _problems.IsEmpty ? null : string.Join(" ", _problems.Values.Select(p => p.Text));
 
     private static TcpListener StartListener()
     {
@@ -210,49 +261,58 @@ public sealed class CitpService(HostPaths paths, TitanLog titanLog, PatchReader 
     private async Task Hear(CancellationToken token)
     {
         using var socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
-        try
+        var joined = new HashSet<(string Group, IPAddress Adapter)>();
+        // Every adapter that's up now, and again every half minute for ones that come up later.
+        void Join()
         {
-            socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);   // shared with Titan
-            socket.Bind(new IPEndPoint(IPAddress.Any, CitpMessages.Port));
             foreach (var group in CitpMessages.MulticastGroups)
             foreach (var adapter in Adapters().Prepend(IPAddress.Loopback))
             {
+                if (joined.Contains((group, adapter))) continue;
                 try
                 {
                     socket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.AddMembership,
                         new MulticastOption(IPAddress.Parse(group), adapter));
+                    joined.Add((group, adapter));
                 }
                 catch (SocketException)
                 {
                     // that adapter can't do multicast: the others still can
                 }
+                catch (ObjectDisposedException)
+                {
+                    return;
+                }
             }
+        }
+        try
+        {
+            socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);   // shared with Titan
+            socket.Bind(new IPEndPoint(IPAddress.Any, CitpMessages.Port));
         }
         catch (SocketException error)
         {
-            _problem = $"Can't hear CITP announcements on UDP {CitpMessages.Port}: {error.Message}";
-            Note(_problem, flagged: true);
-            return;   // still announce and take connections
+            // Still announcing and taking connections: Titan links without being heard. Tried again in a while.
+            Trouble("hearing announcements", $"Can't hear CITP announcements on UDP {CitpMessages.Port}: {error.Message}");
+            await Task.Delay(TimeSpan.FromSeconds(30), token);
+            return;
         }
+        Join();
+        _problems.TryRemove("hearing announcements", out _);
+        using var rejoin = new Timer(_ => Join(), null, TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(30));
         var buffer = new byte[65536];
         EndPoint from = new IPEndPoint(IPAddress.Any, 0);
         while (!token.IsCancellationRequested)
         {
-            SocketReceiveFromResult received;
-            try
-            {
-                received = await socket.ReceiveFromAsync(buffer, SocketFlags.None, from, token);
-            }
-            catch (SocketException error)
-            {
-                _problem = "Stopped hearing CITP announcements: " + error.Message;
-                Note(_problem, flagged: true);
-                return;
-            }
+            var received = await socket.ReceiveFromAsync(buffer, SocketFlags.None, from, token);
             if (CitpPacket.Parse(buffer.AsSpan(0, received.ReceivedBytes)) is not { } packet) continue;
             if (CitpMessages.ReadLocation(packet) is not { } location) continue;
             var address = ((IPEndPoint)received.RemoteEndPoint).Address;
-            if (location.Name == OurName && location.ListeningTcpPort == _listeningPort) continue;   // our own
+            if (location.Name == OurName && location.ListeningTcpPort == _listeningPort)
+            {
+                _heardOurselves = DateTimeOffset.UtcNow;   // multicast loops back on this PC, so Titan can hear it too
+                continue;
+            }
             var seen = _peers.TryGetValue(address, out var before);
             _peers[address] = new Peer(address, location, DateTimeOffset.UtcNow);
             if (!seen || before!.Location != location)
@@ -266,22 +326,30 @@ public sealed class CitpService(HostPaths paths, TitanLog titanLog, PatchReader 
     {
         while (!token.IsCancellationRequested)
         {
-            var bytes = CitpAllowlist.Check(CitpMessages.Location((ushort)(_listeningPort ?? 0), "Visualizer", OurName, "Running")).ToBytes();
-            foreach (var adapter in Adapters().Prepend(IPAddress.Loopback))
+            // Nothing to announce until there's a port for Titan to connect to.
+            if (_listeningPort is { } port)
             {
-                try
+                var bytes = CitpAllowlist.Check(CitpMessages.Location((ushort)port, "Visualizer", OurName, "Running")).ToBytes();
+                var sent = new List<string>();
+                foreach (var adapter in Adapters().Prepend(IPAddress.Loopback))
                 {
-                    using var socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
-                    socket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.MulticastTimeToLive, 1);   // never past a router
-                    socket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.MulticastLoopback, true);   // Titan's on this PC
-                    socket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.MulticastInterface, adapter.GetAddressBytes());
-                    foreach (var group in CitpMessages.MulticastGroups)
-                        await socket.SendToAsync(bytes, SocketFlags.None, new IPEndPoint(IPAddress.Parse(group), CitpMessages.Port), token);
+                    try
+                    {
+                        using var socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+                        socket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.MulticastTimeToLive, 1);   // never past a router
+                        socket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.MulticastLoopback, true);   // Titan's on this PC
+                        socket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.MulticastInterface, adapter.GetAddressBytes());
+                        foreach (var group in CitpMessages.MulticastGroups)
+                            await socket.SendToAsync(bytes, SocketFlags.None, new IPEndPoint(IPAddress.Parse(group), CitpMessages.Port), token);
+                        sent.Add(IPAddress.IsLoopback(adapter) ? "this PC" : adapter.ToString());
+                    }
+                    catch (SocketException)
+                    {
+                        // an adapter that can't send multicast; the others still do
+                    }
                 }
-                catch (SocketException)
-                {
-                    // an adapter that can't send multicast; the others still do
-                }
+                _announcedOn = sent;
+                _announcedAt = DateTimeOffset.UtcNow;
             }
             await Task.Delay(AnnounceEvery, token);
         }
@@ -289,7 +357,24 @@ public sealed class CitpService(HostPaths paths, TitanLog titanLog, PatchReader 
 
     // --- The TCP link with Titan ---
 
-    private async Task Accept(TcpListener listener, CancellationToken token)
+    private async Task Accept(CancellationToken token)
+    {
+        var listener = StartListener();
+        try
+        {
+            var port = ((IPEndPoint)listener.LocalEndpoint).Port;
+            if (_listeningPort != port) Note($"Listening for Titan on TCP {port}");
+            _listeningPort = port;
+            _problems.TryRemove("taking Titan's connection", out _);
+            await AcceptOn(listener, token);
+        }
+        finally
+        {
+            listener.Stop();
+        }
+    }
+
+    private async Task AcceptOn(TcpListener listener, CancellationToken token)
     {
         while (!token.IsCancellationRequested)
         {

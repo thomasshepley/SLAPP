@@ -152,7 +152,7 @@ public sealed record CitpPeerDto(string Address, string Type, string Name, strin
 
 /// <summary>`GET /local/citp`: the Host window's CITP card.</summary>
 public sealed record CitpStatusDto(bool Enabled, bool Allowed, bool Running, int? ListeningPort, IReadOnlyList<CitpPeerDto> Peers,
-    string? Connected, string? PeerShow, int Fixtures, IReadOnlyList<int> Selection, string? Problem);
+    string? Connected, string? PeerShow, int Fixtures, IReadOnlyList<int> Selection, string? Problem, string? Announcing = null);
 
 /// <summary>`POST /api/v1/desk/keys`: keypad keys to type on the PC for Titan
 /// ("1", "@", "enter", "clear"...; see <c>DeskKeys</c>).</summary>

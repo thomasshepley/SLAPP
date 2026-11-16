@@ -26,26 +26,81 @@ public sealed class LevelService
     private readonly PatchReader _patch;
     private readonly DmxUniverses _store;
     private readonly SacnListener _listener;
+    private readonly LiveDmxListener _live;
+    /// <summary>How Titan's visualiser feed numbers its universes against sACN's, looked at again every few seconds.</summary>
+    private (DateTimeOffset At, (int Offset, bool Checked)? Match) _feed;
+    private string? _feedNoted;
     private readonly TitanLog _log;
     private readonly ILogger<LevelService> _logger;
     private readonly string _file;
     private readonly LevelTracker _tracker;
     private int _watching;
 
-    public LevelService(HostPaths paths, PatchReader patch, DmxUniverses store, SacnListener listener, TitanLog log,
-                        ILogger<LevelService> logger)
+    public LevelService(HostPaths paths, PatchReader patch, DmxUniverses store, SacnListener listener, LiveDmxListener live,
+                        TitanLog log, ILogger<LevelService> logger)
     {
         _patch = patch;
         _store = store;
         _listener = listener;
+        _live = live;
         _log = log;
         _logger = logger;
         _file = Path.Combine(paths.Data, "levels.json");
         var kept = Read();
-        _tracker = new LevelTracker(
-            universe => _store.Get(universe, DateTimeOffset.UtcNow)?.Levels,
-            () => _store.Known(DateTimeOffset.UtcNow),
-            kept?.Dimmers, kept?.Lines);
+        _tracker = new LevelTracker(Universe, Heard, kept?.Dimmers, kept?.Lines);
+    }
+
+    /// <summary>A universe's levels: sACN when it's heard, else Titan's visualiser feed when that lines up with sACN.</summary>
+    private byte[]? Universe(int universe)
+    {
+        var now = DateTimeOffset.UtcNow;
+        if (_store.Get(universe, now)?.Levels is { } sacn) return sacn;
+        return Feed() is { } feed ? _live.Store.Get(universe + feed.Offset, now)?.Levels : null;
+    }
+
+    private IReadOnlyList<int> Heard()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var sacn = _store.Known(now);
+        return Feed() is { } feed
+            ? sacn.Union(_live.Store.Known(now).Select(u => u - feed.Offset).Where(u => u >= 1)).Order().ToList()
+            : sacn;
+    }
+
+    /// <summary>The visualiser feed's numbering, or null while it isn't read or doesn't match sACN.</summary>
+    private (int Offset, bool Checked)? Feed()
+    {
+        var now = DateTimeOffset.UtcNow;
+        if (now - _feed.At < TimeSpan.FromSeconds(5)) return _feed.Match;
+        var feed = _live.Store.Known(now);
+        // Nothing read from it (yet): looked at again each time, so it's used as soon as it turns up.
+        if (feed.Count == 0)
+        {
+            _feed = (DateTimeOffset.MinValue, null);
+            return null;
+        }
+        // Checked against sACN once, it's kept while the feed lasts: a rig mid-fade
+        // can look different for a moment, and the level shown shouldn't come and go.
+        if (_feed.Match is { Checked: true })
+        {
+            _feed = (now, _feed.Match);
+            return _feed.Match;
+        }
+        var match = FeedMatch.Offset(_store.Known(now), u => _store.Get(u, now)?.Levels, feed, u => _live.Store.Get(u, now)?.Levels);
+        {
+            var words = match is { } m
+                ? $"Titan's visualiser feed is used for lines with no sACN ({(m.Checked ? "checked against sACN" : "nothing lit on both to check it against")}" +
+                  $"{(m.Offset == 0 ? "" : $", its universes are numbered {m.Offset:+0;-0} from sACN's")})"
+                : "Titan's visualiser feed doesn't match the sACN for the same universes at the moment, so it isn't used";
+            // Said when it changes, not every look.
+            if (words != _feedNoted)
+            {
+                _feedNoted = words;
+                _log.Add("Levels", "Host", "FEED", words, "", 200, 0, null, null, match is null, DateTimeOffset.Now);
+            }
+        }
+        _feed = (now, match);
+        return match;
     }
 
     /// <summary>These fixtures' levels (the whole patch for null).</summary>
@@ -57,7 +112,7 @@ public sealed class LevelService
         var fixtures = _tracker.Levels(patch, users)
             .Select(level => new FixtureLevelDto(level.User, level.Level, Why(level, byUser.GetValueOrDefault(level.User)), level.Source, level.Universe))
             .ToList();
-        return new LevelsDto(fixtures, _store.Known(DateTimeOffset.UtcNow), _listener.Problem);
+        return new LevelsDto(fixtures, Heard(), _listener.Problem);
     }
 
     /// <summary>TitanDeck is about to set these fixtures to a level: watch for the channels that get there.</summary>
@@ -112,6 +167,8 @@ public sealed class LevelService
         var highest = Math.Min(patch.Max(f => f.Line), MostUniverses);
         for (var universe = 1; universe <= highest; universe++) _listener.Want(universe);
         foreach (var universe in _tracker.LineUniverses.Values) _listener.Want(universe);
+        // Titan's visualiser feed too, one either side in case it counts from 0.
+        for (var universe = 0; universe <= highest + 1; universe++) _live.Want(universe);
     }
 
     private string? Why(FixtureLevel level, PatchFixture? fixture) => level.Gap switch
@@ -121,12 +178,24 @@ public sealed class LevelService
         LevelGap.NoSacn =>
             $"TitanDeck Host hears no sACN on universe {level.Universe}, where fixture {level.User} is patched" +
             (fixture is null ? "" : $" ({fixture.Line}.{fixture.Address})") +
-            ". If that line only goes out of the DMX sockets, add sACN to it in Titan as well (a line can have both)." +
+            ". " + FeedWords() + " If that line only goes out of the DMX sockets, add sACN to it in Titan as well (a line can have both)." +
             (_listener.JoinError(level.Universe) is { } join ? $" Listening to it failed: {join}" : "") +
             (_listener.Problem is { } problem ? $" {problem}" : ""),
         _ => $"Which channel is the dimmer on {Name(fixture, level.User)} isn't known yet: Titan's personality for it wasn't found " +
              $"({_patch.PersonalityCount} on this PC). Set its level once from the deck's keypad (\"@ 50\") and the Host learns it for every fixture of that type.",
     };
+
+    /// <summary>Where Titan's visualiser feed has got to, for a fixture with no sACN.</summary>
+    private string FeedWords()
+    {
+        if (_live.Problem is { } problem) return problem;
+        if (_live.Heard == 0) return "Titan's built-in visualiser feed (which carries every line) isn't heard on this PC either.";
+        if (_live.Readable == 0)
+            return "Titan's built-in visualiser feed is heard, but not in a form the Host reads yet: the Titan log has samples marked LiveDMX to pass on.";
+        return Feed() is null
+            ? "Titan's built-in visualiser feed is heard but doesn't match the sACN, so it isn't used."
+            : "Titan's built-in visualiser feed is heard, but hasn't got that universe.";
+    }
 
     private static string Name(PatchFixture? fixture, int user) =>
         fixture?.Model is { Length: > 0 } model
