@@ -131,4 +131,31 @@ final class DeckCuesTests: XCTestCase {
             XCTAssertEqual(ActionDraft(action: action).action, action)
         }
     }
+    func testTheWatchListsTheDecksGoKeysThenTitansNamedPlaybacks() {
+        let slots = [CueSlot(slot: 2, cue: CueRef(titanId: 30, page: 0, index: 4, legend: "Old name")),
+                     CueSlot(slot: 0, cue: CueRef(titanId: 10, page: 0, index: 0, legend: "House"))]
+        let choices = [CueChoice(titanId: 40, page: 1, index: 0, legend: "Blackout", isActive: false),
+                       CueChoice(titanId: 30, page: 0, index: 4, legend: "Storm", isActive: true),
+                       CueChoice(titanId: 20, page: 0, index: 1, legend: "  ", isActive: false),
+                       CueChoice(titanId: 50, page: 0, index: 9, legend: "Sunrise", isActive: false)]
+        let cues = DeckCues.watchCues(slots: slots, choices: choices)
+        XCTAssertEqual(cues.map(\.titanId), [10, 30, 50, 40], "GO keys in key order, then named playbacks in Titan's order, each once")
+        XCTAssertEqual(cues.map(\.onDeck), [true, true, false, false])
+        XCTAssertEqual(cues[1].title, "Storm", "the name Titan has for it now")
+        XCTAssertEqual(cues[0].title, "House", "Titan hasn't listed it: the name it was picked with")
+    }
+
+    func testAWatchCueGoesByTitansIdAndAnOldPhoneRefusesIt() {
+        let go = WatchCommand(kind: .go, playback: 0, titanId: 77)
+        XCTAssertEqual(go.action, .fireHandle(titanId: 77))
+        XCTAssertEqual(WatchCommand(kind: .release, playback: 0, titanId: 77).action, .releaseHandle(titanId: 77))
+        XCTAssertNil(go.message["playback"], "no playback number for an older iPhone app to fire by mistake")
+        XCTAssertEqual(WatchCommand(message: go.message), go)
+        XCTAssertEqual(WatchCommand(message: ["command": "go", "playback": 12])?.action, .playbackGo(userNumber: 12))
+        XCTAssertNil(WatchCommand(message: ["command": "go", "titanId": 0]))
+
+        let cue = WatchCue(titanId: 77, title: "Storm", onDeck: true)
+        XCTAssertEqual(WatchCue.list(from: [cue.dictionary, ["title": "no id"]]), [cue])
+        XCTAssertEqual(WatchCue.list(from: nil), [])
+    }
 }

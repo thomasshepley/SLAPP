@@ -7,6 +7,13 @@ the GitHub Actions run that built it. The top entry is shown in the app
 so add an entry - and bump `MARKETING_VERSION` in `project.yml` to match -
 with every change that goes to `main`.
 
+## 0.46.1 - 2026-11-17 - Apple Watch: cues, and it works without TitanDeck open on the iPhone
+
+- **New: cues on the Watch.** The Watch now opens on a list of cues: the ones on the deck's GO keys first, then Titan's other named playbacks. Tap one to fire it, swipe it left to release it. The Digital Crown scrolls the list. The numbered GO button is still there, a swipe to the side.
+- **Fixed: "The resource could not be l..." on the Watch.** The Watch fires through the iPhone, waking TitanDeck in the background if it has to. But TitanDeck only started listening for the Watch once it had been opened on screen, so a woken app never answered. The Watch then tried Titan directly, which watchOS refuses, and that was the error. TitanDeck now listens from the moment it's launched, on screen or not.
+- The Watch's messages are in plain words and no longer cut off.
+- The cue list is sent to the Watch whenever the iPhone app is connected to Titan, and kept on the Watch. Open TitanDeck on the iPhone once after updating so it has it.
+
 ## 0.46.0 - 2026-11-13 - Levels tracked properly (with TitanDeck Host 0.20)
 
 - **Fixture levels now come from TitanDeck Host 0.20, which tracks every patched fixture on the Titan PC.** Update the Host as well. A fixture's level shows as soon as it's selected, with no nudge first.

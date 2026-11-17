@@ -121,7 +121,7 @@ final class AppState: ObservableObject {
         localNetwork = LocalNetworkPermission()
         connectionLog = ConnectionLogStore()
         playbackState = PlaybackStatePoller()
-        watch = WatchBridge()
+        watch = WatchBridge.shared
         fileDrop = FileDropStore()
         unifi = UniFiStore()
         let hostStore = HostStore()
@@ -237,6 +237,13 @@ final class AppState: ObservableObject {
             .map { $0.items.compactMap(\.deckItem) }
             .removeDuplicates()
             .sink { [weak self] items in self?.deck.fxItems = items }
+            .store(in: &fxSubscriptions)
+        // The Watch's cue list: the deck's GO keys, then Titan's named playbacks.
+        deck.$profile.map(\.cueSlots).removeDuplicates()
+            .combineLatest(deck.$availableCues.removeDuplicates())
+            .map { DeckCues.watchCues(slots: $0, choices: $1) }
+            .removeDuplicates()
+            .sink { [weak self] cues in self?.watch.shareCues(cues) }
             .store(in: &fxSubscriptions)
         // The FX page is Test mode only for now.
         deck.fxEnabled = !UserDefaults.standard.bool(forKey: SettingsKeys.showMode)
