@@ -11,8 +11,8 @@ import WatchConnectivity
 /// delegate), not from when TitanDeck first appears on screen (0.46.1).
 /// The Watch wakes this app in the background to fire something; before,
 /// nothing was listening then, so the Watch gave up on the iPhone and tried
-/// Titan directly, which watchOS refuses ("The resource could not be
-/// loaded...").
+/// Titan directly, which failed on the user's Watch ("The resource could
+/// not be loaded...").
 @MainActor
 final class WatchBridge: NSObject, ObservableObject {
     static let shared = WatchBridge()

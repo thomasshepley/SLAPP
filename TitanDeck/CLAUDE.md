@@ -425,7 +425,8 @@ support posts):
 - **Apple Watch (0.46.1):** `WatchBridge.shared.activate()` runs from the app delegate's
   `didFinishLaunching`, not from `AppState.start()` (which only runs once a view appears): the Watch wakes
   the iPhone app in the background, and with nothing listening the Watch fell back to direct HTTP, which
-  watchOS refuses with the App Transport Security error however the Watch's Info.plist is set. Woken like
+  failed on the user's Watch with the App Transport Security error although the Watch's Info.plist allows
+  local networking (why isn't known; direct is still the last resort). Woken like
   that, the bridge uses a `TitanClient` for the saved Titan host. `WatchCommand.titanId` fires a cue by
   Titan's id (`fireHandle` / `releaseHandle`); the list is `DeckCues.watchCues` (pure, tested), sent with the
   host in one application context (`WatchCue`, at most 60) and kept in the Watch's UserDefaults. The Watch
