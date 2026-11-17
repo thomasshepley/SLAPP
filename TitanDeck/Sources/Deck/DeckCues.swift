@@ -76,6 +76,27 @@ enum DeckCues {
         data.flatMap { try? JSONDecoder().decode([FlashFadeRule].self, from: $0) } ?? []
     }
 
+    // MARK: Apple Watch
+
+    /// The cues the Watch lists (0.46.1): what's on the deck's GO keys, in
+    /// key order, then Titan's other playbacks that have a name, in Titan's
+    /// order. A cue on a GO key keeps the name Titan has for it now.
+    static func watchCues(slots: [CueSlot], choices: [CueChoice]) -> [WatchCue] {
+        var cues: [WatchCue] = []
+        var listed = Set<Int>()
+        for slot in slots.sorted(by: { $0.slot < $1.slot }) where listed.insert(slot.cue.titanId).inserted {
+            let now = choices.first { $0.titanId == slot.cue.titanId }?.ref
+            cues.append(WatchCue(titanId: slot.cue.titanId, title: (now ?? slot.cue).title, onDeck: true))
+        }
+        let named = choices
+            .filter { !$0.legend.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+            .sorted { ($0.page, $0.index) < ($1.page, $1.index) }
+        for choice in named where listed.insert(choice.titanId).inserted {
+            cues.append(WatchCue(titanId: choice.titanId, title: choice.ref.title, onDeck: false))
+        }
+        return Array(cues.prefix(WatchCue.most))
+    }
+
     // MARK: Labels
 
     /// Seconds without trailing zeros: "0.5s", "5s".

@@ -11,6 +11,14 @@ import UIKit
 @MainActor
 final class TitanDeckAppDelegate: NSObject, UIApplicationDelegate {
     func application(_ application: UIApplication,
+                     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
+        // The Watch can launch the app in the background to fire a cue:
+        // listen for it now, not when TitanDeck first appears on screen.
+        WatchBridge.shared.activate()
+        return true
+    }
+
+    func application(_ application: UIApplication,
                      supportedInterfaceOrientationsFor window: UIWindow?) -> UIInterfaceOrientationMask {
         DeviceSetup.orientations
     }

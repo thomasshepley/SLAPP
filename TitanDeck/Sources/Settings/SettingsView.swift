@@ -589,7 +589,7 @@ private struct WatchSection: View {
             } header: {
                 Text("Apple Watch")
             } footer: {
-                Text("Install TitanDeck on the Watch from the Watch app on this iPhone. Turn the Digital Crown to pick a playback, then tap GO (or double tap) to fire. The Watch goes through this iPhone when it's nearby, or straight to Titan over Wi-Fi when it isn't.")
+                Text("Install TitanDeck on the Watch from the Watch app on this iPhone. The Watch lists the deck's GO keys and Titan's named playbacks: tap a cue to fire it, swipe it left to release it. Swipe sideways for the numbered GO button (Digital Crown picks the playback; tap or double tap to fire). The Watch works through this iPhone, which it wakes by itself: TitanDeck needn't be open.")
             }
         }
     }

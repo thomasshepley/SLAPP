@@ -35,7 +35,8 @@ struct GoView: View {
                     .font(.caption2)
                     .foregroundStyle(outcome.ok ? .green : .red)
                     .multilineTextAlignment(.center)
-                    .lineLimit(3)
+                    .lineLimit(4)
+                    .minimumScaleFactor(0.8)
             }
         }
         .onAppear { crown = Double(model.playback) }

@@ -7,9 +7,16 @@ struct TitanDeckWatchApp: App {
 
     var body: some Scene {
         WindowGroup {
-            GoView()
-                .environmentObject(model)
-                .onAppear { model.start() }
+            // Cues first, the numbered GO button a swipe to the side. Pages
+            // go sideways so the Digital Crown stays free for the cue list
+            // and for picking a playback number.
+            TabView {
+                NavigationStack { CuesView() }
+                GoView()
+            }
+            .tabViewStyle(.page)
+            .environmentObject(model)
+            .onAppear { model.start() }
         }
     }
 }
